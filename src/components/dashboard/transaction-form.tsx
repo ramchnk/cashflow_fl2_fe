@@ -27,110 +27,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Party } from '@/app/lib/parties';
 import { parties } from '@/app/lib/parties';
 import type { Balances } from '@/app/lib/types';
+import { Textarea } from "@/components/ui/textarea";
 
 type TransactionFormProps = {
-  onTransaction: (from: Party, to: Party, amount: number) => boolean;
+  onTransaction: (from: Party, to: Party, amount: number, description?: string) => boolean;
   balances: Balances;
 };
 
-const createTransactionSchema = (balances: Balances) => z.object({
-  from: z.custom<Party>(val => typeof val === 'string' && val in parties, "Please select a source."),
-  to: z.custom<Party>(val => typeof val === 'string' && val in parties, "Please select a destination."),
-  amount: z.coerce.number().positive("Amount must be positive."),
-}).refine(data => data.from !== data.to, {
-  message: "Source and destination cannot be the same.",
-  path: ["to"],
-});
-
-type TransactionSchema = z.infer<ReturnType<typeof createTransactionSchema>>;
-
-const partyOptions = (Object.keys(parties) as Party[]).map(p => ({
-  value: p,
-  label: parties[p].name,
-}));
-
-function GeneralTransactionForm({ onTransaction }: { onTransaction: TransactionFormProps['onTransaction']}) {
-  const form = useForm<TransactionSchema>({
-    resolver: zodResolver(createTransactionSchema({} as Balances)), // Balances check is done in parent
-    defaultValues: { amount: 0 },
-  });
-
-  function onSubmit(data: TransactionSchema) {
-    const success = onTransaction(data.from, data.to, data.amount);
-    if (success) {
-      form.reset({ amount: 0, from: undefined, to: undefined });
-    }
-  }
-  
-  return (
-     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-            <FormField
-              control={form.control}
-              name="from"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>From</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a source" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {partyOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="to"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>To</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a destination" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {partyOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-        </div>
-        <FormField
-          control={form.control}
-          name="amount"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Amount</FormLabel>
-              <FormControl>
-                <Input type="number" placeholder="0.00" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit" className="w-full">
-          Transfer <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
-      </form>
-    </Form>
-  )
-}
 
 const createQuickTransferSchema = () => z.object({
   amount: z.coerce.number().positive("Amount must be positive."),
@@ -178,28 +81,89 @@ function QuickTransferForm({ from, to, onTransaction }: { from: Party, to: Party
   )
 }
 
+const createDeductionSchema = () => z.object({
+  amount: z.coerce.number().positive("Amount must be positive."),
+  description: z.string().min(1, "Description is required."),
+});
+type DeductionSchema = z.infer<ReturnType<typeof createDeductionSchema>>;
+
+
+function DeductionForm({ onTransaction }: { onTransaction: TransactionFormProps['onTransaction'] }) {
+  const form = useForm<DeductionSchema>({
+    resolver: zodResolver(createDeductionSchema()),
+    defaultValues: { amount: 0, description: "" },
+  });
+
+  function onSubmit(data: DeductionSchema) {
+    const success = onTransaction('bank', 'expenses', data.amount, data.description);
+    if (success) {
+      form.reset({ amount: 0, description: "" });
+    }
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <p className="text-sm text-muted-foreground">
+          Deduct an expense from <strong>{parties.bank.name}</strong>.
+        </p>
+        <FormField
+          control={form.control}
+          name="amount"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Amount</FormLabel>
+              <FormControl>
+                <Input type="number" placeholder="0.00" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea placeholder="e.g. Bank Annual Charges" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" className="w-full">
+          Log Deduction <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </form>
+    </Form>
+  )
+}
+
+
 export default function TransactionForm({ onTransaction, balances }: TransactionFormProps) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Log a Transaction</CardTitle>
-        <CardDescription>Record a new transfer between accounts.</CardDescription>
+        <CardDescription>Record a new transfer or deduction.</CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="cash-to-bank" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="cash-to-bank">Cash to Bank</TabsTrigger>
             <TabsTrigger value="bank-to-tasmac">Bank to Tasmac</TabsTrigger>
-            <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="deduction">Deduction</TabsTrigger>
           </TabsList>
-          <TabsContent value="general" className="pt-6">
-            <GeneralTransactionForm onTransaction={onTransaction} />
-          </TabsContent>
           <TabsContent value="cash-to-bank" className="pt-6">
             <QuickTransferForm from="cashInHand" to="bank" onTransaction={onTransaction} />
           </TabsContent>
           <TabsContent value="bank-to-tasmac" className="pt-6">
             <QuickTransferForm from="bank" to="tasmac" onTransaction={onTransaction} />
+          </TabsContent>
+          <TabsContent value="deduction" className="pt-6">
+            <DeductionForm onTransaction={onTransaction} />
           </TabsContent>
         </Tabs>
       </CardContent>
