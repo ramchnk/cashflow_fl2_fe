@@ -127,6 +127,7 @@ export default function Home() {
     return true;
   };
 
+  const totalBalance = balances.cashInHand + balances.bank + balances.tasmac + balances.stock;
   const displayParties: Party[] = ['cashInHand', 'bank', 'tasmac', 'stock'];
 
 
@@ -137,7 +138,11 @@ export default function Home() {
         <div className="grid gap-8">
           <section>
             <h2 className="text-2xl font-bold tracking-tight mb-4 text-foreground">Account Balances</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+              <BalanceCard
+                party={parties.total}
+                balance={totalBalance}
+              />
               {displayParties.map((party) => (
                 <BalanceCard
                   key={party}

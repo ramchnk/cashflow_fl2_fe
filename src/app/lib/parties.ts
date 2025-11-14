@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
-import { Landmark, HandCoins, Store, Boxes, ReceiptText } from 'lucide-react';
+import { Landmark, HandCoins, Store, Boxes, ReceiptText, Wallet } from 'lucide-react';
 
-export type Party = 'cashInHand' | 'bank' | 'tasmac' | 'stock' | 'expenses';
+export type Party = 'cashInHand' | 'bank' | 'tasmac' | 'stock' | 'expenses' | 'total';
 
 export interface PartyDetails {
   name: string;
@@ -14,4 +14,5 @@ export const parties: Record<Party, PartyDetails> = {
   tasmac: { name: 'Tasmac', icon: Store },
   stock: { name: 'Stock', icon: Boxes },
   expenses: { name: 'Expenses', icon: ReceiptText },
+  total: { name: 'Total', icon: Wallet },
 };
