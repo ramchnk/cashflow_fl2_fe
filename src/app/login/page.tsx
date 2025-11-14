@@ -18,26 +18,48 @@ import { useRouter } from 'next/navigation';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // TODO: Replace with your actual API endpoint
-    // For now, we'll simulate a successful login and redirect to the homepage.
-    if (email && password) {
-      toast({
-        title: 'Login Successful',
-        description: 'Redirecting to your dashboard...',
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
       });
-      router.push('/');
-    } else {
+
+      if (response.ok) {
+        // You might want to handle tokens or user data from the response here
+        // const data = await response.json(); 
+        
         toast({
-            variant: "destructive",
-            title: 'Login Failed',
-            description: 'Please enter your email and password.',
-          });
+          title: 'Login Successful',
+          description: 'Redirecting to your dashboard...',
+        });
+        router.push('/');
+      } else {
+        const errorData = await response.json();
+        toast({
+          variant: "destructive",
+          title: 'Login Failed',
+          description: errorData.message || 'Invalid credentials. Please try again.',
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: 'An Error Occurred',
+        description: 'Could not connect to the server. Please try again later.',
+      });
+    } finally {
+        setIsLoading(false);
     }
   };
 
@@ -61,14 +83,15 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Username</Label>
               <Input
                 id="email"
-                type="email"
-                placeholder="m@example.com"
+                type="text"
+                placeholder="gobi_demo"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -79,10 +102,11 @@ export default function LoginPage() {
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
               />
             </div>
-            <Button type="submit" className="w-full">
-              Login
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Logging in...' : 'Login'}
             </Button>
           </form>
         </CardContent>
