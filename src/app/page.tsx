@@ -95,12 +95,8 @@ export default function Home() {
           </section>
 
           <div className="grid grid-cols-1 gap-8 items-start">
-             <div>
-                <TransactionForm onTransaction={handleTransaction} balances={balances} />
-            </div>
-            <div>
-                <TransactionHistory transactions={transactions} />
-            </div>
+             <TransactionForm onTransaction={handleTransaction} balances={balances} />
+             <TransactionHistory transactions={transactions} />
           </div>
         </div>
       </main>
