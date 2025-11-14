@@ -5,7 +5,7 @@ import { Bot, Loader2, Sparkles } from 'lucide-react';
 
 import { getAccountBalanceSummary } from '@/ai/flows/account-balance-summary';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { Balances } from '@/app/page';
 import { useToast } from "@/hooks/use-toast";
@@ -46,10 +46,6 @@ export default function BalanceSummary({ balances }: BalanceSummaryProps) {
 
   return (
     <Card className="flex flex-col">
-      <CardHeader>
-        <CardTitle>AI Financial Summary</CardTitle>
-        <CardDescription>Get an AI-powered summary of your current financial standing.</CardDescription>
-      </CardHeader>
       <AnimatePresence>
         {summary && (
           <motion.div
@@ -58,7 +54,7 @@ export default function BalanceSummary({ balances }: BalanceSummaryProps) {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
           >
-            <CardContent>
+            <CardContent className="pt-6">
               <Alert className="bg-accent/20 border-accent/50">
                 <Bot className="h-4 w-4 text-accent-foreground" />
                 <AlertTitle className="text-accent-foreground">Analysis</AlertTitle>
