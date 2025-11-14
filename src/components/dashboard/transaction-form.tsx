@@ -26,7 +26,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Party } from '@/app/lib/parties';
 import { parties } from '@/app/lib/parties';
-import type { Balances } from '@/app/page';
+import type { Balances } from '@/app/lib/types';
 
 type TransactionFormProps = {
   onTransaction: (from: Party, to: Party, amount: number) => boolean;
@@ -186,11 +186,11 @@ export default function TransactionForm({ onTransaction, balances }: Transaction
         <CardDescription>Record a new transfer between accounts.</CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="general" className="w-full">
+        <Tabs defaultValue="cash-to-bank" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="cash-to-bank">Cash to Bank</TabsTrigger>
             <TabsTrigger value="bank-to-tasmac">Bank to Tasmac</TabsTrigger>
+            <TabsTrigger value="general">General</TabsTrigger>
           </TabsList>
           <TabsContent value="general" className="pt-6">
             <GeneralTransactionForm onTransaction={onTransaction} />
