@@ -5,19 +5,12 @@ import type { LucideIcon } from 'lucide-react';
 
 import Header from '@/components/layout/header';
 import BalanceCard from '@/components/dashboard/balance-card';
-import BalanceSummary from '@/components/dashboard/balance-summary';
 import TransactionForm from '@/components/dashboard/transaction-form';
 import { useToast } from "@/hooks/use-toast";
-import type { Party, PartyDetails } from '@/app/lib/parties';
+import type { Party } from '@/app/lib/parties';
 import { parties } from '@/app/lib/parties';
+import type { Balances } from '@/app/lib/types';
 
-
-export interface Balances {
-  cashInHand: number;
-  bank: number;
-  tasmac: number;
-  stock: number;
-}
 
 export default function Home() {
   const [balances, setBalances] = useState<Balances>({
@@ -73,9 +66,8 @@ export default function Home() {
             </div>
           </section>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          <div className="grid grid-cols-1 lg:max-w-md lg:mx-auto w-full gap-8 items-start">
             <TransactionForm onTransaction={handleTransaction} balances={balances} />
-            <BalanceSummary balances={balances} />
           </div>
         </div>
       </main>
