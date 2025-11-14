@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from 'react';
-import type { LucideIcon } from 'lucide-react';
-
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/header';
 import BalanceCard from '@/components/dashboard/balance-card';
 import TransactionForm from '@/components/dashboard/transaction-form';
@@ -15,14 +14,59 @@ import type { Balances, Transaction } from '@/app/lib/types';
 
 export default function Home() {
   const [balances, setBalances] = useState<Balances>({
-    cashInHand: 50000,
-    bank: 250000,
-    tasmac: 75000,
-    stock: 120000,
+    cashInHand: 0,
+    bank: 0,
+    tasmac: 0,
+    stock: 0,
     expenses: 0,
   });
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const { toast } = useToast();
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchAccountInfo = async () => {
+      const token = sessionStorage.getItem('accessToken');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      try {
+        const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/account/getAccountInfo', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Assuming the API returns an object with keys matching the Party type
+          setBalances(prev => ({ ...prev, ...data }));
+        } else {
+            if(response.status === 401) {
+                toast({
+                    variant: "destructive",
+                    title: "Session Expired",
+                    description: "Please login again.",
+                });
+                router.push('/login');
+            } else {
+                throw new Error('Failed to fetch account information');
+            }
+        }
+      } catch (error: any) {
+        toast({
+          variant: "destructive",
+          title: "An Error Occurred",
+          description: error.message || "Could not fetch account information.",
+        });
+      }
+    };
+
+    fetchAccountInfo();
+  }, [router, toast]);
 
   const handleTransaction = (from: Party, to: Party, amount: number, description?: string) => {
     if (from !== 'expenses' && balances[from] < amount) {

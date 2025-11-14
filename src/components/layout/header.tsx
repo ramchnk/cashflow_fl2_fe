@@ -15,7 +15,7 @@ export default function Header() {
     const router = useRouter();
 
     const handleLogout = () => {
-        // TODO: Call your actual logout API endpoint
+        sessionStorage.removeItem('accessToken');
         router.push('/login');
     };
 

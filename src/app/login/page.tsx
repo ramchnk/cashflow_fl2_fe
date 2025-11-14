@@ -16,8 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('gobi_demo');
+  const [password, setPassword] = useState('12345');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
@@ -36,14 +36,18 @@ export default function LoginPage() {
       });
 
       if (response.ok) {
-        // You might want to handle tokens or user data from the response here
-        // const data = await response.json(); 
-        
-        toast({
-          title: 'Login Successful',
-          description: 'Redirecting to your dashboard...',
-        });
-        router.push('/');
+        const data = await response.json();
+        if (data.accessToken) {
+          sessionStorage.setItem('accessToken', data.accessToken);
+          toast({
+            title: 'Login Successful',
+            description: 'Redirecting to your dashboard...',
+          });
+          router.push('/');
+        } else {
+            throw new Error('Access token not found in response.');
+        }
+
       } else {
         const errorData = await response.json();
         toast({
@@ -52,11 +56,11 @@ export default function LoginPage() {
           description: errorData.message || 'Invalid credentials. Please try again.',
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: 'An Error Occurred',
-        description: 'Could not connect to the server. Please try again later.',
+        description: error.message || 'Could not connect to the server. Please try again later.',
       });
     } finally {
         setIsLoading(false);
