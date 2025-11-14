@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { PartyDetails } from '@/app/page';
+import type { PartyDetails } from '@/app/lib/parties';
 
 interface BalanceCardProps {
   party: PartyDetails;

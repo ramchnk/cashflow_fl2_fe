@@ -24,8 +24,9 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Party, Balances } from '@/app/page';
-import { parties } from '@/app/page';
+import type { Party } from '@/app/lib/parties';
+import { parties } from '@/app/lib/parties';
+import type { Balances } from '@/app/page';
 
 type TransactionFormProps = {
   onTransaction: (from: Party, to: Party, amount: number) => boolean;

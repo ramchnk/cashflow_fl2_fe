@@ -2,27 +2,15 @@
 
 import { useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { Landmark, HandCoins, Store, Boxes } from 'lucide-react';
 
 import Header from '@/components/layout/header';
 import BalanceCard from '@/components/dashboard/balance-card';
 import BalanceSummary from '@/components/dashboard/balance-summary';
 import TransactionForm from '@/components/dashboard/transaction-form';
 import { useToast } from "@/hooks/use-toast";
+import type { Party, PartyDetails } from '@/app/lib/parties';
+import { parties } from '@/app/lib/parties';
 
-export type Party = 'cashInHand' | 'bank' | 'tasmac' | 'stock';
-
-export interface PartyDetails {
-  name: string;
-  icon: LucideIcon;
-}
-
-export const parties: Record<Party, PartyDetails> = {
-  cashInHand: { name: 'Cash in Hand', icon: HandCoins },
-  bank: { name: 'Bank', icon: Landmark },
-  tasmac: { name: 'Tasmac', icon: Store },
-  stock: { name: 'Stock', icon: Boxes },
-};
 
 export interface Balances {
   cashInHand: number;
