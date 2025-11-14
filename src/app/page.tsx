@@ -42,8 +42,17 @@ export default function Home() {
 
         if (response.ok) {
           const data = await response.json();
-          // Assuming the API returns an object with keys matching the Party type
-          setBalances(prev => ({ ...prev, ...data }));
+          if (data.account) {
+            setBalances(prev => ({
+                ...prev,
+                cashInHand: data.account.cashInHand || 0,
+                bank: data.account.bankAccount || 0,
+                tasmac: data.account.tasmac || 0,
+                stock: data.account.stock || 0
+            }));
+          } else {
+            throw new Error('Account information not found in response.');
+          }
         } else {
             if(response.status === 401) {
                 toast({
@@ -51,6 +60,7 @@ export default function Home() {
                     title: "Session Expired",
                     description: "Please login again.",
                 });
+                sessionStorage.removeItem('accessToken');
                 router.push('/login');
             } else {
                 throw new Error('Failed to fetch account information');
