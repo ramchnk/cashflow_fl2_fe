@@ -66,7 +66,7 @@ export default function Home() {
             </div>
           </section>
 
-          <div className="grid grid-cols-1 lg:max-w-md lg:mx-auto w-full gap-8 items-start">
+          <div className="grid grid-cols-1 w-full gap-8 items-start">
             <TransactionForm onTransaction={handleTransaction} balances={balances} />
           </div>
         </div>
