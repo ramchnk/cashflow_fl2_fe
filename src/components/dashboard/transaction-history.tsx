@@ -1,7 +1,6 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import { ArrowRight, Calendar as CalendarIcon, FilterX } from 'lucide-react';
@@ -15,15 +14,18 @@ import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface TransactionHistoryProps {
     transactions: Transaction[];
     allParties: Party[];
+    dateRange: DateRange | undefined;
+    partyFilter: string;
+    onFiltersChange: (partyFilter: string, dateRange?: DateRange) => void;
+    isLoading: boolean;
 }
 
-export default function TransactionHistory({ transactions, allParties }: TransactionHistoryProps) {
-    const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-    const [partyFilter, setPartyFilter] = useState<string>('all');
+export default function TransactionHistory({ transactions, allParties, dateRange, partyFilter, onFiltersChange, isLoading }: TransactionHistoryProps) {
 
     const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', {
         style: 'currency',
@@ -36,23 +38,17 @@ export default function TransactionHistory({ transactions, allParties }: Transac
         month: 'short',
         year: 'numeric'
     }).format(date);
-
-    const filteredTransactions = useMemo(() => {
-        return transactions.filter(tx => {
-            const isDateInRange = !dateRange || (
-                (!dateRange.from || tx.date >= dateRange.from) &&
-                (!dateRange.to || tx.date <= dateRange.to)
-            );
-
-            const isPartyMatch = partyFilter === 'all' || tx.from === partyFilter || tx.to === partyFilter;
-
-            return isDateInRange && isPartyMatch;
-        });
-    }, [transactions, dateRange, partyFilter]);
     
     const clearFilters = () => {
-        setDateRange(undefined);
-        setPartyFilter('all');
+        onFiltersChange('all', undefined);
+    }
+    
+    const handleDateChange = (newDateRange?: DateRange) => {
+        onFiltersChange(partyFilter, newDateRange);
+    }
+
+    const handlePartyChange = (newPartyFilter: string) => {
+        onFiltersChange(newPartyFilter, dateRange);
     }
 
     const hasActiveFilters = dateRange !== undefined || partyFilter !== 'all';
@@ -98,7 +94,7 @@ export default function TransactionHistory({ transactions, allParties }: Transac
                                     mode="range"
                                     defaultMonth={dateRange?.from}
                                     selected={dateRange}
-                                    onSelect={setDateRange}
+                                    onSelect={handleDateChange}
                                     numberOfMonths={2}
                                 />
                             </PopoverContent>
@@ -106,7 +102,7 @@ export default function TransactionHistory({ transactions, allParties }: Transac
                     </div>
                      <div className="grid gap-2">
                          <label className="text-sm font-medium">Account</label>
-                        <Select value={partyFilter} onValueChange={setPartyFilter}>
+                        <Select value={partyFilter} onValueChange={handlePartyChange}>
                             <SelectTrigger className="w-full sm:w-[220px]">
                                 <SelectValue placeholder="Filter by account" />
                             </SelectTrigger>
@@ -130,33 +126,53 @@ export default function TransactionHistory({ transactions, allParties }: Transac
                 </div>
                 <Separator className="my-4"/>
                 <ScrollArea className="h-96">
-                    {filteredTransactions.length === 0 ? (
+                    {isLoading ? (
+                         <div className="space-y-4">
+                            {[...Array(5)].map((_, i) => (
+                                <div key={i} className="flex items-center space-x-4 p-2">
+                                    <div className="flex items-center space-x-2">
+                                        <Skeleton className="h-9 w-9 rounded-full" />
+                                        <Skeleton className="h-4 w-4" />
+                                        <Skeleton className="h-9 w-9 rounded-full" />
+                                    </div>
+                                    <div className="flex-grow space-y-2">
+                                        <Skeleton className="h-4 w-3/4" />
+                                        <Skeleton className="h-3 w-1/2" />
+                                    </div>
+                                    <Skeleton className="h-6 w-20" />
+                                </div>
+                            ))}
+                        </div>
+                    ) : transactions.length === 0 ? (
                         <div className="flex items-center justify-center h-full text-muted-foreground">
                             No transactions match your filters.
                         </div>
                     ) : (
                         <ul className="space-y-4">
-                            {filteredTransactions.map(tx => {
+                            {transactions.map(tx => {
                                 const fromDetails = getPartyDetails(tx.from);
                                 const toDetails = getPartyDetails(tx.to);
                                 const FromIcon = fromDetails.icon;
                                 const ToIcon = toDetails.icon;
-
-                                const title = tx.to === 'expenses' 
-                                    ? fromDetails.name
-                                    : `${fromDetails.name} to ${toDetails.name}`;
                                 
-                                const description = tx.to === 'expenses'
-                                    ? tx.description
-                                    : tx.description;
+                                const isDeduction = tx.from === tx.to;
+
+                                let title;
+                                let description = tx.description;
+
+                                if (isDeduction) {
+                                    title = fromDetails.name;
+                                } else {
+                                    title = `${fromDetails.name} to ${toDetails.name}`;
+                                }
 
 
                                 return (
                                     <li key={tx.id} className="flex items-center space-x-4 p-2 rounded-lg hover:bg-muted/50 transition-colors">
                                         <div className="flex items-center space-x-2">
                                            <div className="p-2 bg-secondary rounded-full"><FromIcon className="w-5 h-5 text-secondary-foreground" /></div>
-                                           <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                                           <div className="p-2 bg-secondary rounded-full"><ToIcon className="w-5 h-5 text-secondary-foreground" /></div>
+                                           {!isDeduction && <ArrowRight className="w-4 h-4 text-muted-foreground" />}
+                                           {!isDeduction && <div className="p-2 bg-secondary rounded-full"><ToIcon className="w-5 h-5 text-secondary-foreground" /></div>}
                                         </div>
                                         <div className="flex-grow">
                                             <div className="font-semibold">
@@ -171,8 +187,8 @@ export default function TransactionHistory({ transactions, allParties }: Transac
                                             </div>
                                              {description && <div className="text-xs text-muted-foreground pt-1">{formatDate(tx.date)}</div>}
                                         </div>
-                                        <div className={`font-bold text-lg ${tx.to === 'expenses' ? 'text-destructive' : 'text-foreground'}`}>
-                                            {tx.to === 'expenses' ? '-' : ''}{formatCurrency(tx.amount)}
+                                        <div className={`font-bold text-lg ${isDeduction ? 'text-destructive' : 'text-foreground'}`}>
+                                            {isDeduction ? '-' : ''}{formatCurrency(tx.amount)}
                                         </div>
                                     </li>
                                 )

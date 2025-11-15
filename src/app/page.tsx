@@ -1,8 +1,9 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import type { DateRange } from 'react-day-picker';
 import Header from '@/components/layout/header';
 import BalanceCard from '@/components/dashboard/balance-card';
 import TransactionForm from '@/components/dashboard/transaction-form';
@@ -20,6 +21,12 @@ export default function Home() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+
+  // Filter state lifted up
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [partyFilter, setPartyFilter] = useState<string>('all');
+
 
   const fetchAccountInfo = async () => {
     setIsLoading(true);
@@ -68,10 +75,82 @@ export default function Home() {
     }
   };
 
+  const fetchTransactions = useCallback(async (filterType: string, range?: DateRange) => {
+    setIsHistoryLoading(true);
+    const token = sessionStorage.getItem('accessToken');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
+    try {
+      const params = new URLSearchParams();
+      if (filterType !== 'all') {
+        params.append('type', filterType);
+      }
+      if (range?.from) {
+        params.append('startDate', Math.floor(range.from.getTime() / 1000).toString());
+      }
+      if (range?.to) {
+        params.append('endDate', Math.floor(range.to.getTime() / 1000).toString());
+      }
+      
+      const response = await fetch(`https://tnfl2-cb6ea45c64b3.herokuapp.com/services/cashflow?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Assuming the API returns an array of transactions in a property, e.g., `cashflows`
+        // And that each transaction needs to be mapped to our Transaction type
+        const apiTransactions = data.cashflows || [];
+        const formattedTransactions: Transaction[] = apiTransactions.map((tx: any) => ({
+          id: tx._id || crypto.randomUUID(),
+          from: tx.fromAccount,
+          to: tx.toAccount,
+          amount: tx.amount,
+          date: new Date(tx.date * 1000), // Assuming date is a UNIX timestamp
+          description: tx.naration,
+        }));
+        setTransactions(formattedTransactions.sort((a, b) => b.date.getTime() - a.date.getTime()));
+      } else {
+        if(response.status === 401) {
+            toast({
+                variant: "destructive",
+                title: "Session Expired",
+                description: "Please login again.",
+            });
+            sessionStorage.removeItem('accessToken');
+            router.push('/login');
+        } else {
+            throw new Error('Failed to fetch transaction history');
+        }
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "An Error Occurred",
+        description: error.message || "Could not fetch transaction history.",
+      });
+      setTransactions([]); // Clear transactions on error
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  }, [router, toast]);
+
 
   useEffect(() => {
-    fetchAccountInfo();
-  }, []);
+    const token = sessionStorage.getItem('accessToken');
+    if (token) {
+      fetchAccountInfo();
+      fetchTransactions(partyFilter, dateRange);
+    } else {
+      router.push('/login');
+    }
+  }, [partyFilter, dateRange, fetchTransactions, router]);
 
   const handleTransaction = async (from: Party, to: Party, amount: number, date: Date, description?: string): Promise<boolean> => {
     const token = sessionStorage.getItem('accessToken');
@@ -134,17 +213,6 @@ export default function Home() {
             const errorData = await response.json();
             throw new Error(errorData.message || 'Transaction failed on the server.');
         }
-
-        const newTransaction: Transaction = {
-          id: crypto.randomUUID(),
-          from,
-          to,
-          amount,
-          date,
-          description,
-        };
-
-        setTransactions(prev => [newTransaction, ...prev].sort((a, b) => b.date.getTime() - a.date.getTime()));
         
         const fromDetails = getPartyDetails(from);
         const toDetails = getPartyDetails(to);
@@ -160,8 +228,9 @@ export default function Home() {
           description: toastDescription,
         });
 
-        // Re-fetch account info to get the latest state from the server
+        // Re-fetch account info and transactions to get the latest state from the server
         await fetchAccountInfo();
+        await fetchTransactions(partyFilter, dateRange);
         
         return true;
 
@@ -184,6 +253,11 @@ export default function Home() {
   const accountKeys = Object.keys(balances);
   const regularAccounts = accountKeys.filter(key => key !== 'stock' && key !== 'expenses');
   const stockAccount = accountKeys.find(key => key === 'stock');
+
+  const onFiltersChange = (newPartyFilter: string, newDateRange?: DateRange) => {
+    setPartyFilter(newPartyFilter);
+    setDateRange(newDateRange);
+  }
 
 
   return (
@@ -230,7 +304,14 @@ export default function Home() {
                 <TransactionForm onTransaction={handleTransaction} balances={balances} isSubmitting={isSubmitting} />
              </div>
              <div className="lg:col-span-1">
-                <TransactionHistory transactions={transactions} allParties={accountKeys} />
+                <TransactionHistory 
+                    transactions={transactions} 
+                    allParties={accountKeys}
+                    dateRange={dateRange}
+                    partyFilter={partyFilter}
+                    onFiltersChange={onFiltersChange}
+                    isLoading={isHistoryLoading}
+                />
             </div>
           </div>
         </div>
