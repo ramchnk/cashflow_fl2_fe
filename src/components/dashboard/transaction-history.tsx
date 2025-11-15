@@ -3,7 +3,7 @@
 
 import type { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, FilterX } from 'lucide-react';
+import { Calendar as CalendarIcon, FilterX, Printer } from 'lucide-react';
 import type { Transaction } from '@/app/lib/types';
 import { getPartyDetails, type Party } from '@/app/lib/parties';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -75,6 +75,10 @@ export default function TransactionHistory({ transactions, allParties, dateRange
     const handlePartyChange = (newPartyFilter: string) => {
         onFiltersChange(newPartyFilter, dateRange);
     }
+    
+    const handlePrint = () => {
+        window.print();
+    }
 
     const hasActiveFilters = dateRange !== undefined || partyFilter !== 'all';
     
@@ -84,13 +88,13 @@ export default function TransactionHistory({ transactions, allParties, dateRange
 
 
     return (
-        <Card>
+        <Card id="transaction-history-card">
             <CardHeader>
                 <CardTitle>Transaction History</CardTitle>
                 <CardDescription>A log of all your recent transactions.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="flex flex-col sm:flex-row gap-4 mb-4 items-end">
+                <div className="flex flex-col sm:flex-row gap-4 mb-4 items-end print:hidden">
                     <div className="grid gap-2">
                         <label className="text-sm font-medium">Date range</label>
                         <Popover>
@@ -149,6 +153,9 @@ export default function TransactionHistory({ transactions, allParties, dateRange
                     <Button onClick={onGetReport} disabled={isReportButtonDisabled}>
                         Get Report
                     </Button>
+                     <Button onClick={handlePrint} variant="outline" disabled={isLoading || transactions.length === 0}>
+                        <Printer className="mr-2 h-4 w-4"/> Print
+                    </Button>
                     {hasActiveFilters && (
                         <div className="flex items-end">
                              <Button variant="ghost" onClick={clearFilters} className="sm:ml-auto">
@@ -157,8 +164,8 @@ export default function TransactionHistory({ transactions, allParties, dateRange
                         </div>
                     )}
                 </div>
-                <Separator className="my-4"/>
-                <ScrollArea className="h-96">
+                <Separator className="my-4 print:hidden"/>
+                <ScrollArea className="h-96 print:h-auto print:overflow-visible">
                     {isLoading ? (
                          <div className="space-y-4 p-2">
                             {[...Array(5)].map((_, i) => (

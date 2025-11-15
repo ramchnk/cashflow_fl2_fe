@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -81,5 +82,31 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .print-only {
+    display: block;
+  }
+  .print-hidden, .print\:hidden {
+    display: none;
+  }
+  main > div > section,
+  main > div > div > div:first-child {
+    display: none;
+  }
+  #transaction-history-card {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: none !important;
+    box-shadow: none !important;
   }
 }
