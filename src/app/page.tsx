@@ -165,7 +165,7 @@ export default function Home() {
     .reduce((acc, [, value]) => acc + (typeof value === 'number' ? value : 0), 0);
 
   const accountKeys = Object.keys(balances);
-  const regularAccounts = accountKeys.filter(key => key !== 'stock');
+  const regularAccounts = accountKeys.filter(key => key !== 'stock' && key !== 'expenses');
   const stockAccount = accountKeys.find(key => key === 'stock');
 
 
@@ -190,19 +190,19 @@ export default function Home() {
                         balance={balances[party]}
                       />
                     ))}
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                     <BalanceCard
-                        party={getPartyDetails('total')}
-                        balance={totalBalance}
-                      />
-                      {stockAccount && (
+                    {stockAccount && (
                         <BalanceCard
                           key={stockAccount}
                           party={getPartyDetails(stockAccount)}
                           balance={balances[stockAccount]}
                         />
-                      )}
+                    )}
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 pt-4">
+                     <BalanceCard
+                        party={getPartyDetails('total')}
+                        balance={totalBalance}
+                      />
                   </div>
               </div>
             )}
