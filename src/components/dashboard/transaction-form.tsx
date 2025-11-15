@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { ArrowRight, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
+import React from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -63,6 +64,33 @@ function GeneralTransferForm({ onTransaction, balances, isSubmitting }: Transact
     defaultValues: { amount: undefined, date: new Date(), from: undefined, to: undefined },
   });
 
+  const fromValue = form.watch('from');
+
+  const toParties = React.useMemo(() => {
+    if (!fromValue) {
+      return allParties.filter(p => p !== 'expenses');
+    }
+    const fromLowerCase = fromValue.toLowerCase();
+
+    if (fromLowerCase === 'cashinhand') {
+      return allParties.filter(party => party.toLowerCase().includes('bank'));
+    }
+    
+    if (fromLowerCase.includes('bank')) {
+      return allParties.filter(party => {
+        const partyLowerCase = party.toLowerCase();
+        return (partyLowerCase.includes('bank') && partyLowerCase !== fromLowerCase) || partyLowerCase === 'tasmac';
+      });
+    }
+
+    return allParties.filter(p => p !== 'expenses' && p !== fromValue);
+  }, [fromValue, allParties]);
+  
+  React.useEffect(() => {
+    form.setValue('to', '');
+  }, [fromValue, form]);
+
+
   async function onSubmit(data: TransferSchema) {
     const success = await onTransaction(data.from, data.to, data.amount, data.date);
     if(success) {
@@ -102,14 +130,14 @@ function GeneralTransferForm({ onTransaction, balances, isSubmitting }: Transact
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>To Account</FormLabel>
-                   <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
+                   <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || !fromValue}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a destination" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {allParties.map(party => (
+                          {toParties.map(party => (
                             <SelectItem key={party} value={party}>{getPartyDetails(party).name}</SelectItem>
                           ))}
                         </SelectContent>
@@ -206,7 +234,7 @@ function DeductionForm({ onTransaction, balances, isSubmitting }: { onTransactio
   async function onSubmit(data: DeductionSchema) {
     const success = await onTransaction(data.from, 'expenses', data.amount, data.date, data.description);
     if (success) {
-      form.reset({ from: undefined, amount: undefined, description: "", date: new date() });
+      form.reset({ from: undefined, amount: undefined, description: "", date: new Date() });
     }
   }
 
