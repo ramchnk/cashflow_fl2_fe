@@ -160,8 +160,13 @@ export default function Home() {
     }
   };
 
-  const totalBalance = Object.values(balances).reduce((acc, cur) => acc + (typeof cur === 'number' ? cur : 0), 0);
+  const totalBalance = Object.entries(balances)
+    .filter(([key]) => key !== 'stock')
+    .reduce((acc, [, value]) => acc + (typeof value === 'number' ? value : 0), 0);
+
   const accountKeys = Object.keys(balances);
+  const regularAccounts = accountKeys.filter(key => key !== 'stock');
+  const stockAccount = accountKeys.find(key => key === 'stock');
 
 
   return (
@@ -176,18 +181,29 @@ export default function Home() {
                 {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[109px] rounded-lg" />)}
               </div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                <BalanceCard
-                  party={getPartyDetails('total')}
-                  balance={totalBalance}
-                />
-                {accountKeys.map((party) => (
-                  <BalanceCard
-                    key={party}
-                    party={getPartyDetails(party)}
-                    balance={balances[party]}
-                  />
-                ))}
+              <div className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                    {regularAccounts.map((party) => (
+                      <BalanceCard
+                        key={party}
+                        party={getPartyDetails(party)}
+                        balance={balances[party]}
+                      />
+                    ))}
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                     <BalanceCard
+                        party={getPartyDetails('total')}
+                        balance={totalBalance}
+                      />
+                      {stockAccount && (
+                        <BalanceCard
+                          key={stockAccount}
+                          party={getPartyDetails(stockAccount)}
+                          balance={balances[stockAccount]}
+                        />
+                      )}
+                  </div>
               </div>
             )}
           </section>
