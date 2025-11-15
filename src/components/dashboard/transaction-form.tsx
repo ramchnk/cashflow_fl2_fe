@@ -35,8 +35,9 @@ import { cn } from "@/lib/utils";
 
 
 type TransactionFormProps = {
-  onTransaction: (from: Party, to: Party, amount: number, date: Date, description?: string) => boolean;
+  onTransaction: (from: Party, to: Party, amount: number, date: Date, description?: string) => Promise<boolean>;
   balances: Balances;
+  isSubmitting: boolean;
 };
 
 
@@ -49,16 +50,16 @@ const createQuickTransferSchema = () => z.object({
 
 type QuickTransferSchema = z.infer<ReturnType<typeof createQuickTransferSchema>>;
 
-function QuickTransferForm({ from, to, onTransaction }: { from: Party, to: Party, onTransaction: TransactionFormProps['onTransaction']}) {
+function QuickTransferForm({ from, to, onTransaction, isSubmitting }: { from: Party, to: Party, onTransaction: TransactionFormProps['onTransaction'], isSubmitting: boolean}) {
   const form = useForm<QuickTransferSchema>({
     resolver: zodResolver(createQuickTransferSchema()),
-    defaultValues: { amount: 0, date: new Date() },
+    defaultValues: { amount: undefined, date: new Date() },
   });
 
-  function onSubmit(data: QuickTransferSchema) {
-    const success = onTransaction(from, to, data.amount, data.date);
+  async function onSubmit(data: QuickTransferSchema) {
+    const success = await onTransaction(from, to, data.amount, data.date);
     if(success) {
-      form.reset({ amount: 0, date: new Date() });
+      form.reset({ amount: undefined, date: new Date() });
     }
   }
 
@@ -76,7 +77,7 @@ function QuickTransferForm({ from, to, onTransaction }: { from: Party, to: Party
                 <FormItem>
                   <FormLabel>Amount</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="0.00" {...field} />
+                    <Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} disabled={isSubmitting} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -97,6 +98,7 @@ function QuickTransferForm({ from, to, onTransaction }: { from: Party, to: Party
                             "w-full pl-3 text-left font-normal",
                             !field.value && "text-muted-foreground"
                           )}
+                           disabled={isSubmitting}
                         >
                           {field.value ? (
                             format(field.value, "PPP")
@@ -124,8 +126,8 @@ function QuickTransferForm({ from, to, onTransaction }: { from: Party, to: Party
               )}
             />
         </div>
-        <Button type="submit" className="w-full">
-          Confirm Transfer <ArrowRight className="ml-2 h-4 w-4" />
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting ? 'Submitting...' : 'Confirm Transfer'} <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </form>
     </Form>
@@ -142,16 +144,16 @@ const createDeductionSchema = () => z.object({
 type DeductionSchema = z.infer<ReturnType<typeof createDeductionSchema>>;
 
 
-function DeductionForm({ onTransaction }: { onTransaction: TransactionFormProps['onTransaction'] }) {
+function DeductionForm({ onTransaction, isSubmitting }: { onTransaction: TransactionFormProps['onTransaction'], isSubmitting: boolean }) {
   const form = useForm<DeductionSchema>({
     resolver: zodResolver(createDeductionSchema()),
-    defaultValues: { amount: 0, description: "", date: new Date() },
+    defaultValues: { amount: undefined, description: "", date: new Date() },
   });
 
-  function onSubmit(data: DeductionSchema) {
-    const success = onTransaction('bank', 'expenses', data.amount, data.date, data.description);
+  async function onSubmit(data: DeductionSchema) {
+    const success = await onTransaction('bank', 'expenses', data.amount, data.date, data.description);
     if (success) {
-      form.reset({ amount: 0, description: "", date: new Date() });
+      form.reset({ amount: undefined, description: "", date: new Date() });
     }
   }
 
@@ -169,7 +171,7 @@ function DeductionForm({ onTransaction }: { onTransaction: TransactionFormProps[
                 <FormItem>
                   <FormLabel>Amount</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="0.00" {...field} />
+                    <Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} disabled={isSubmitting} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -190,6 +192,7 @@ function DeductionForm({ onTransaction }: { onTransaction: TransactionFormProps[
                                 "w-full pl-3 text-left font-normal",
                                 !field.value && "text-muted-foreground"
                             )}
+                             disabled={isSubmitting}
                             >
                             {field.value ? (
                                 format(field.value, "PPP")
@@ -224,14 +227,14 @@ function DeductionForm({ onTransaction }: { onTransaction: TransactionFormProps[
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <Textarea placeholder="e.g. Bank Annual Charges" {...field} />
+                <Textarea placeholder="e.g. Bank Annual Charges" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full">
-          Log Deduction <ArrowRight className="ml-2 h-4 w-4" />
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting ? 'Submitting...' : 'Log Deduction'} <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </form>
     </Form>
@@ -239,7 +242,7 @@ function DeductionForm({ onTransaction }: { onTransaction: TransactionFormProps[
 }
 
 
-export default function TransactionForm({ onTransaction, balances }: TransactionFormProps) {
+export default function TransactionForm({ onTransaction, balances, isSubmitting }: TransactionFormProps) {
   return (
     <Card>
       <CardHeader>
@@ -249,18 +252,18 @@ export default function TransactionForm({ onTransaction, balances }: Transaction
       <CardContent>
         <Tabs defaultValue="cash-to-bank" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="cash-to-bank">Cash to Bank</TabsTrigger>
-            <TabsTrigger value="bank-to-tasmac">Bank to Tasmac</TabsTrigger>
-            <TabsTrigger value="deduction">Deduction</TabsTrigger>
+            <TabsTrigger value="cash-to-bank" disabled={isSubmitting}>Cash to Bank</TabsTrigger>
+            <TabsTrigger value="bank-to-tasmac" disabled={isSubmitting}>Bank to Tasmac</TabsTrigger>
+            <TabsTrigger value="deduction" disabled={isSubmitting}>Deduction</TabsTrigger>
           </TabsList>
           <TabsContent value="cash-to-bank" className="pt-6">
-            <QuickTransferForm from="cashInHand" to="bank" onTransaction={onTransaction} />
+            <QuickTransferForm from="cashInHand" to="bank" onTransaction={onTransaction} isSubmitting={isSubmitting}/>
           </TabsContent>
           <TabsContent value="bank-to-tasmac" className="pt-6">
-            <QuickTransferForm from="bank" to="tasmac" onTransaction={onTransaction} />
+            <QuickTransferForm from="bank" to="tasmac" onTransaction={onTransaction} isSubmitting={isSubmitting}/>
           </TabsContent>
           <TabsContent value="deduction" className="pt-6">
-            <DeductionForm onTransaction={onTransaction} />
+            <DeductionForm onTransaction={onTransaction} isSubmitting={isSubmitting}/>
           </TabsContent>
         </Tabs>
       </CardContent>
