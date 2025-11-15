@@ -42,19 +42,22 @@ const SimpleListView = ({ transactions }: { transactions: Transaction[] }) => {
 
     return (
         <ul className="space-y-4">
-            {transactions.map(tx => {
-                const isDeduction = tx.from === tx.to;
+            {[...transactions].reverse().map(tx => {
+                const isDeduction = tx.to === 'expenses';
                 return (
                     <li key={tx.id} className="flex items-center justify-between space-x-4 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                        <div className="text-sm text-muted-foreground">
-                            {formatDate(tx.date)}
+                        <div>
+                            <div className="text-sm font-medium">{isDeduction ? `Expense from ${getPartyDetails(tx.from).name}` : `${getPartyDetails(tx.from).name} → ${getPartyDetails(tx.to).name}`}</div>
+                            <div className="text-xs text-muted-foreground">
+                                {formatDate(tx.date)}
+                            </div>
                         </div>
                         <div className={`font-bold text-lg ${isDeduction ? 'text-destructive' : 'text-foreground'}`}>
-                            {isDeduction ? '-' : ''}{formatCurrency(tx.amount)}
+                             {formatCurrency(tx.amount)}
                         </div>
                     </li>
                 )
-            }).reverse()}
+            })}
         </ul>
     )
 }
@@ -182,5 +185,3 @@ export default function TransactionHistory({ transactions, allParties, dateRange
         </Card>
     )
 }
-
-    
