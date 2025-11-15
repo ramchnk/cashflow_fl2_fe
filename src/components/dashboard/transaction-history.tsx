@@ -42,7 +42,7 @@ const SimpleListView = ({ transactions }: { transactions: Transaction[] }) => {
 
     return (
         <ul className="space-y-4">
-            {[...transactions].reverse().map(tx => {
+            {transactions.map(tx => {
                 const isDeduction = tx.to === 'expenses';
                 return (
                     <li key={tx.id} className="flex items-center justify-between space-x-4 p-2 rounded-lg hover:bg-muted/50 transition-colors">
@@ -185,3 +185,5 @@ export default function TransactionHistory({ transactions, allParties, dateRange
         </Card>
     )
 }
+
+    

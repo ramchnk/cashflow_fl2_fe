@@ -105,7 +105,7 @@ export default function Home() {
 
       if (response.ok) {
         const data = await response.json();
-        const apiTransactions: ApiTransaction[] = data.cashflows || [];
+        const apiTransactions: ApiTransaction[] = data.transactions || [];
         
         const formattedTransactions: Transaction[] = apiTransactions.map((tx) => ({
           id: tx._id.$oid,
@@ -118,7 +118,7 @@ export default function Home() {
           toAccountOpeningBalance: tx.toAccountOpeningBalance,
         }));
         
-        setTransactions(formattedTransactions.sort((a, b) => a.date.getTime() - b.date.getTime()));
+        setTransactions(formattedTransactions.sort((a, b) => b.date.getTime() - a.date.getTime()));
 
       } else {
         if(response.status === 401) {
@@ -324,5 +324,7 @@ export default function Home() {
     </div>
   );
 }
+
+    
 
     
