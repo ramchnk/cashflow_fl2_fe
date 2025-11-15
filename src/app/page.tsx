@@ -96,17 +96,23 @@ export default function Home() {
     
     setIsSubmitting(true);
 
+    const toAccount = to === 'expenses' ? from : to;
+
     const payload: {
         date: number;
         fromAccount: string;
         toAccount: string;
         amount: number;
         naration?: string;
+        fromAccountOpeningBalance: number;
+        toAccountOpeningBalance: number;
     } = {
         date: Math.floor(date.getTime() / 1000),
         fromAccount: from,
-        toAccount: to === 'expenses' ? from : to,
+        toAccount: toAccount,
         amount,
+        fromAccountOpeningBalance: balances[from] ?? 0,
+        toAccountOpeningBalance: balances[toAccount] ?? 0,
     };
 
     if (description) {
