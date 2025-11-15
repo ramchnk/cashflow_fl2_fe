@@ -5,7 +5,7 @@ import type { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import { ArrowRight, Calendar as CalendarIcon, FilterX } from 'lucide-react';
 import type { Transaction } from '@/app/lib/types';
-import { parties } from '@/app/lib/parties';
+import { getPartyDetails, type Party } from '@/app/lib/parties';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -17,9 +17,10 @@ import { Separator } from '@/components/ui/separator';
 
 interface TransactionHistoryProps {
     transactions: Transaction[];
+    allParties: Party[];
 }
 
-export default function TransactionHistory({ transactions }: TransactionHistoryProps) {
+export default function TransactionHistory({ transactions, allParties }: TransactionHistoryProps) {
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
     const [type, setType] = useState<string>('all');
 
@@ -123,17 +124,20 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Types</SelectItem>
-                                {transactionTypes.map(txType => {
-                                    if (txType === 'deduction') {
-                                        return <SelectItem key={txType} value="deduction">Deduction</SelectItem>
-                                    }
-                                    const [from, to] = txType.split('-');
-                                    return (
-                                        <SelectItem key={txType} value={txType}>
-                                            {parties[from as keyof typeof parties].name} to {parties[to as keyof typeof parties].name}
-                                        </SelectItem>
-                                    )
-                                })}
+                                <SelectItem value="deduction">Deduction</SelectItem>
+                                {allParties.flatMap(from =>
+                                    allParties.map(to => {
+                                        if (from === to) return null;
+                                        const value = `${from}-${to}`;
+                                        const fromDetails = getPartyDetails(from);
+                                        const toDetails = getPartyDetails(to);
+                                        return (
+                                            <SelectItem key={value} value={value}>
+                                                {fromDetails.name} to {toDetails.name}
+                                            </SelectItem>
+                                        )
+                                    })
+                                )}
                             </SelectContent>
                         </Select>
                     </div>
@@ -154,8 +158,10 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
                     ) : (
                         <ul className="space-y-4">
                             {filteredTransactions.map(tx => {
-                                const FromIcon = parties[tx.from].icon;
-                                const ToIcon = parties[tx.to].icon;
+                                const fromDetails = getPartyDetails(tx.from);
+                                const toDetails = getPartyDetails(tx.to);
+                                const FromIcon = fromDetails.icon;
+                                const ToIcon = toDetails.icon;
 
                                 return (
                                     <li key={tx.id} className="flex items-center space-x-4 p-2 rounded-lg hover:bg-muted/50 transition-colors">
@@ -166,7 +172,7 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
                                         </div>
                                         <div className="flex-grow">
                                             <div className="font-semibold">
-                                                {tx.to === 'expenses' ? tx.description : `${parties[tx.from].name} to ${parties[tx.to].name}`}
+                                                {tx.to === 'expenses' ? tx.description : `${fromDetails.name} to ${toDetails.name}`}
                                             </div>
                                             <div className="text-sm text-muted-foreground">{formatDate(tx.date)}</div>
                                         </div>

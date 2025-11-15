@@ -7,38 +7,21 @@ import BalanceCard from '@/components/dashboard/balance-card';
 import TransactionForm from '@/components/dashboard/transaction-form';
 import TransactionHistory from '@/components/dashboard/transaction-history';
 import { useToast } from "@/hooks/use-toast";
-import type { Party } from '@/app/lib/parties';
-import { parties } from '@/app/lib/parties';
+import { getPartyDetails, type Party } from '@/app/lib/parties';
 import type { Balances, Transaction } from '@/app/lib/types';
-
-
-type ApiAccountName = 'cashInHand' | 'bankAccount' | 'tasmac' | 'stock';
-
-const partyToApiAccountMap: Record<Party, ApiAccountName | null> = {
-  cashInHand: 'cashInHand',
-  bank: 'bankAccount',
-  tasmac: 'tasmac',
-  stock: 'stock',
-  expenses: null, // Expenses are handled differently
-  total: null,
-};
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 export default function Home() {
-  const [balances, setBalances] = useState<Balances>({
-    cashInHand: 0,
-    bank: 0,
-    tasmac: 0,
-    stock: 0,
-    expenses: 0,
-    total: 0,
-  });
+  const [balances, setBalances] = useState<Balances>({});
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchAccountInfo = async () => {
+    setIsLoading(true);
     const token = sessionStorage.getItem('accessToken');
     if (!token) {
       router.push('/login');
@@ -55,16 +38,10 @@ export default function Home() {
 
       if (response.ok) {
         const data = await response.json();
-        if (data.account) {
-          setBalances(prev => ({
-              ...prev,
-              cashInHand: data.account.cashInHand || 0,
-              bank: data.account.bankAccount || 0,
-              tasmac: data.account.tasmac || 0,
-              stock: data.account.stock || 0
-          }));
+        if (data.account && data.account.cashFlow) {
+          setBalances(data.account.cashFlow);
         } else {
-          throw new Error('Account information not found in response.');
+          throw new Error('Account cashFlow not found in response.');
         }
       } else {
           if(response.status === 401) {
@@ -85,13 +62,15 @@ export default function Home() {
         title: "An Error Occurred",
         description: error.message || "Could not fetch account information.",
       });
+    } finally {
+        setIsLoading(false);
     }
   };
 
 
   useEffect(() => {
     fetchAccountInfo();
-  }, [router, toast]);
+  }, []);
 
   const handleTransaction = async (from: Party, to: Party, amount: number, date: Date, description?: string): Promise<boolean> => {
     const token = sessionStorage.getItem('accessToken');
@@ -105,40 +84,21 @@ export default function Home() {
         return false;
     }
 
-    if (from !== 'expenses' && balances[from] < amount) {
+    if (from !== 'expenses' && (balances[from] ?? 0) < amount) {
       toast({
         variant: "destructive",
         title: "Transaction Failed",
-        description: `Insufficient funds in ${parties[from].name}.`,
+        description: `Insufficient funds in ${getPartyDetails(from).name}.`,
       });
       return false;
     }
     
     setIsSubmitting(true);
 
-    let fromAccount: ApiAccountName | 'bankAccount' = 'bankAccount';
-    let toAccount: ApiAccountName | 'bankAccount' = 'bankAccount';
-
-    if (to === 'expenses') { // Deduction
-        fromAccount = 'bankAccount';
-        toAccount = 'bankAccount';
-    } else {
-        const apiFrom = partyToApiAccountMap[from];
-        const apiTo = partyToApiAccountMap[to];
-
-        if (!apiFrom || !apiTo) {
-            toast({ variant: "destructive", title: "Invalid Transaction", description: "Invalid source or destination for transaction."});
-            setIsSubmitting(false);
-            return false;
-        }
-        fromAccount = apiFrom;
-        toAccount = apiTo;
-    }
-
     const payload = {
         date: Math.floor(date.getTime() / 1000),
-        fromAccount,
-        toAccount,
+        fromAccount: from,
+        toAccount: to,
         amount,
         ...(to === 'expenses' && description && { naration: description })
     };
@@ -158,7 +118,6 @@ export default function Home() {
             throw new Error(errorData.message || 'Transaction failed on the server.');
         }
 
-        // Only update UI on successful API call
         const newTransaction: Transaction = {
           id: crypto.randomUUID(),
           from,
@@ -168,26 +127,15 @@ export default function Home() {
           description,
         };
 
-        setBalances(prevBalances => {
-          const newBalances = { ...prevBalances };
-          if (from !== 'expenses') {
-            newBalances[from] -= amount;
-          }
-          if (to !== 'expenses') {
-            newBalances[to] += amount;
-          } else {
-            // if it is an expense, we add it to the expenses total
-            newBalances.expenses += amount;
-          }
-          return newBalances;
-        });
-
         setTransactions(prev => [newTransaction, ...prev].sort((a, b) => b.date.getTime() - a.date.getTime()));
+        
+        const fromDetails = getPartyDetails(from);
+        const toDetails = getPartyDetails(to);
 
-        let toastDescription = `Transferred ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)} from ${parties[from].name} to ${parties[to].name}.`;
+        let toastDescription = `Transferred ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)} from ${fromDetails.name} to ${toDetails.name}.`;
 
         if (to === 'expenses') {
-          toastDescription = `Logged expense of ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)} from ${parties[from].name}.`;
+          toastDescription = `Logged expense of ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)} from ${fromDetails.name}.`;
         }
 
         toast({
@@ -212,8 +160,8 @@ export default function Home() {
     }
   };
 
-  const totalBalance = balances.cashInHand + balances.bank + balances.tasmac + balances.stock;
-  const displayParties: Party[] = ['cashInHand', 'bank', 'tasmac', 'stock'];
+  const totalBalance = Object.values(balances).reduce((acc, cur) => acc + (typeof cur === 'number' ? cur : 0), 0);
+  const accountKeys = Object.keys(balances);
 
 
   return (
@@ -223,27 +171,33 @@ export default function Home() {
         <div className="grid gap-8">
           <section>
             <h2 className="text-2xl font-bold tracking-tight mb-4 text-foreground">Account Balances</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-              <BalanceCard
-                party={parties.total}
-                balance={totalBalance}
-              />
-              {displayParties.map((party) => (
+            {isLoading ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[109px] rounded-lg" />)}
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                 <BalanceCard
-                  key={party}
-                  party={parties[party]}
-                  balance={balances[party]}
+                  party={getPartyDetails('total')}
+                  balance={totalBalance}
                 />
-              ))}
-            </div>
+                {accountKeys.map((party) => (
+                  <BalanceCard
+                    key={party}
+                    party={getPartyDetails(party)}
+                    balance={balances[party]}
+                  />
+                ))}
+              </div>
+            )}
           </section>
           
-          <div className="grid grid-cols-1 lg:grid-cols-1 gap-8 items-start">
+          <div className="grid grid-cols-1 gap-8 items-start">
              <div className="lg:col-span-1">
                 <TransactionForm onTransaction={handleTransaction} balances={balances} isSubmitting={isSubmitting} />
              </div>
              <div className="lg:col-span-1">
-                <TransactionHistory transactions={transactions} />
+                <TransactionHistory transactions={transactions} allParties={accountKeys} />
             </div>
           </div>
         </div>
