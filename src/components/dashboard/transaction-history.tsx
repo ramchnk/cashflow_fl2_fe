@@ -44,9 +44,7 @@ export default function TransactionHistory({ transactions, allParties }: Transac
                 (!dateRange.to || tx.date <= dateRange.to)
             );
 
-            const isPartyMatch = partyFilter === 'all' || 
-                               (partyFilter === 'deduction' && tx.to === 'expenses') ||
-                               (partyFilter !== 'deduction' && (tx.from === partyFilter || tx.to === partyFilter));
+            const isPartyMatch = partyFilter === 'all' || tx.from === partyFilter || tx.to === partyFilter;
 
             return isDateInRange && isPartyMatch;
         });
@@ -114,7 +112,6 @@ export default function TransactionHistory({ transactions, allParties }: Transac
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Accounts</SelectItem>
-                                <SelectItem value="deduction">Deductions</SelectItem>
                                 {allParties.filter(p => p !== 'expenses').map(party => (
                                     <SelectItem key={party} value={party}>
                                         {getPartyDetails(party).name}
