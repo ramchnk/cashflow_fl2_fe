@@ -23,9 +23,10 @@ interface TransactionHistoryProps {
     partyFilter: string;
     onFiltersChange: (partyFilter: string, dateRange?: DateRange) => void;
     isLoading: boolean;
+    onGetReport: () => void;
 }
 
-export default function TransactionHistory({ transactions, allParties, dateRange, partyFilter, onFiltersChange, isLoading }: TransactionHistoryProps) {
+export default function TransactionHistory({ transactions, allParties, dateRange, partyFilter, onFiltersChange, isLoading, onGetReport }: TransactionHistoryProps) {
 
     const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', {
         style: 'currency',
@@ -60,7 +61,7 @@ export default function TransactionHistory({ transactions, allParties, dateRange
                 <CardDescription>A log of all your recent transactions.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                <div className="flex flex-col sm:flex-row gap-4 mb-4 items-end">
                     <div className="grid gap-2">
                         <label className="text-sm font-medium">Date range</label>
                         <Popover>
@@ -116,10 +117,13 @@ export default function TransactionHistory({ transactions, allParties, dateRange
                             </SelectContent>
                         </Select>
                     </div>
+                    <Button onClick={onGetReport} disabled={isLoading}>
+                        Get Report
+                    </Button>
                     {hasActiveFilters && (
                         <div className="flex items-end">
                              <Button variant="ghost" onClick={clearFilters} className="sm:ml-auto">
-                                <FilterX className="mr-2 h-4 w-4"/> Clear Filters
+                                <FilterX className="mr-2 h-4 w-4"/> Clear
                              </Button>
                         </div>
                     )}

@@ -75,7 +75,7 @@ export default function Home() {
     }
   };
 
-  const fetchTransactions = useCallback(async (filterType: string, range?: DateRange) => {
+  const fetchTransactions = useCallback(async () => {
     setIsHistoryLoading(true);
     const token = sessionStorage.getItem('accessToken');
     if (!token) {
@@ -85,14 +85,14 @@ export default function Home() {
 
     try {
       const params = new URLSearchParams();
-      if (filterType !== 'all') {
-        params.append('type', filterType);
+      if (partyFilter !== 'all') {
+        params.append('type', partyFilter);
       }
-      if (range?.from) {
-        params.append('startDate', Math.floor(range.from.getTime() / 1000).toString());
+      if (dateRange?.from) {
+        params.append('startDate', Math.floor(dateRange.from.getTime() / 1000).toString());
       }
-      if (range?.to) {
-        params.append('endDate', Math.floor(range.to.getTime() / 1000).toString());
+      if (dateRange?.to) {
+        params.append('endDate', Math.floor(dateRange.to.getTime() / 1000).toString());
       }
       
       const response = await fetch(`https://tnfl2-cb6ea45c64b3.herokuapp.com/services/cashflow?${params.toString()}`, {
@@ -139,18 +139,19 @@ export default function Home() {
     } finally {
       setIsHistoryLoading(false);
     }
-  }, [router, toast]);
+  }, [router, toast, partyFilter, dateRange]);
 
 
   useEffect(() => {
     const token = sessionStorage.getItem('accessToken');
     if (token) {
       fetchAccountInfo();
-      fetchTransactions(partyFilter, dateRange);
+      fetchTransactions();
     } else {
       router.push('/login');
     }
-  }, [partyFilter, dateRange, fetchTransactions, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]);
 
   const handleTransaction = async (from: Party, to: Party, amount: number, date: Date, description?: string): Promise<boolean> => {
     const token = sessionStorage.getItem('accessToken');
@@ -230,7 +231,7 @@ export default function Home() {
 
         // Re-fetch account info and transactions to get the latest state from the server
         await fetchAccountInfo();
-        await fetchTransactions(partyFilter, dateRange);
+        await fetchTransactions();
         
         return true;
 
@@ -311,6 +312,7 @@ export default function Home() {
                     partyFilter={partyFilter}
                     onFiltersChange={onFiltersChange}
                     isLoading={isHistoryLoading}
+                    onGetReport={fetchTransactions}
                 />
             </div>
           </div>
