@@ -3,7 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,15 +29,22 @@ import type { Party } from '@/app/lib/parties';
 import { parties } from '@/app/lib/parties';
 import type { Balances } from '@/app/lib/types';
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+
 
 type TransactionFormProps = {
-  onTransaction: (from: Party, to: Party, amount: number, description?: string) => boolean;
+  onTransaction: (from: Party, to: Party, amount: number, date: Date, description?: string) => boolean;
   balances: Balances;
 };
 
 
 const createQuickTransferSchema = () => z.object({
   amount: z.coerce.number().positive("Amount must be positive."),
+  date: z.date({
+    required_error: "A date is required.",
+  }),
 });
 
 type QuickTransferSchema = z.infer<ReturnType<typeof createQuickTransferSchema>>;
@@ -44,13 +52,13 @@ type QuickTransferSchema = z.infer<ReturnType<typeof createQuickTransferSchema>>
 function QuickTransferForm({ from, to, onTransaction }: { from: Party, to: Party, onTransaction: TransactionFormProps['onTransaction']}) {
   const form = useForm<QuickTransferSchema>({
     resolver: zodResolver(createQuickTransferSchema()),
-    defaultValues: { amount: 0 },
+    defaultValues: { amount: 0, date: new Date() },
   });
 
   function onSubmit(data: QuickTransferSchema) {
-    const success = onTransaction(from, to, data.amount);
+    const success = onTransaction(from, to, data.amount, data.date);
     if(success) {
-      form.reset({ amount: 0 });
+      form.reset({ amount: 0, date: new Date() });
     }
   }
 
@@ -60,19 +68,62 @@ function QuickTransferForm({ from, to, onTransaction }: { from: Party, to: Party
         <p className="text-sm text-muted-foreground">
             Transfer from <strong>{parties[from].name}</strong> to <strong>{parties[to].name}</strong>.
         </p>
-        <FormField
-          control={form.control}
-          name="amount"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Amount</FormLabel>
-              <FormControl>
-                <Input type="number" placeholder="0.00" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="amount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Amount</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="0.00" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="date"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Transaction Date</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date("1900-01-01")
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+        </div>
         <Button type="submit" className="w-full">
           Confirm Transfer <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
@@ -84,6 +135,9 @@ function QuickTransferForm({ from, to, onTransaction }: { from: Party, to: Party
 const createDeductionSchema = () => z.object({
   amount: z.coerce.number().positive("Amount must be positive."),
   description: z.string().min(1, "Description is required."),
+  date: z.date({
+    required_error: "A date is required.",
+  }),
 });
 type DeductionSchema = z.infer<ReturnType<typeof createDeductionSchema>>;
 
@@ -91,13 +145,13 @@ type DeductionSchema = z.infer<ReturnType<typeof createDeductionSchema>>;
 function DeductionForm({ onTransaction }: { onTransaction: TransactionFormProps['onTransaction'] }) {
   const form = useForm<DeductionSchema>({
     resolver: zodResolver(createDeductionSchema()),
-    defaultValues: { amount: 0, description: "" },
+    defaultValues: { amount: 0, description: "", date: new Date() },
   });
 
   function onSubmit(data: DeductionSchema) {
-    const success = onTransaction('bank', 'expenses', data.amount, data.description);
+    const success = onTransaction('bank', 'expenses', data.amount, data.date, data.description);
     if (success) {
-      form.reset({ amount: 0, description: "" });
+      form.reset({ amount: 0, description: "", date: new Date() });
     }
   }
 
@@ -107,19 +161,62 @@ function DeductionForm({ onTransaction }: { onTransaction: TransactionFormProps[
         <p className="text-sm text-muted-foreground">
           Deduct an expense from <strong>{parties.bank.name}</strong>.
         </p>
-        <FormField
-          control={form.control}
-          name="amount"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Amount</FormLabel>
-              <FormControl>
-                <Input type="number" placeholder="0.00" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="amount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Amount</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="0.00" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                    <FormLabel>Transaction Date</FormLabel>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <FormControl>
+                            <Button
+                            variant={"outline"}
+                            className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                            )}
+                            >
+                            {field.value ? (
+                                format(field.value, "PPP")
+                            ) : (
+                                <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                        </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) =>
+                            date > new Date() || date < new Date("1900-01-01")
+                            }
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+        </div>
         <FormField
           control={form.control}
           name="description"

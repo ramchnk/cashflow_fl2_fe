@@ -19,6 +19,7 @@ export default function Home() {
     tasmac: 0,
     stock: 0,
     expenses: 0,
+    total: 0,
   });
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const { toast } = useToast();
@@ -78,7 +79,7 @@ export default function Home() {
     fetchAccountInfo();
   }, [router, toast]);
 
-  const handleTransaction = (from: Party, to: Party, amount: number, description?: string) => {
+  const handleTransaction = (from: Party, to: Party, amount: number, date: Date, description?: string) => {
     if (from !== 'expenses' && balances[from] < amount) {
       toast({
         variant: "destructive",
@@ -93,7 +94,7 @@ export default function Home() {
       from,
       to,
       amount,
-      date: new Date(),
+      date,
       description,
     };
 
@@ -111,7 +112,7 @@ export default function Home() {
       return newBalances;
     });
 
-    setTransactions(prev => [newTransaction, ...prev]);
+    setTransactions(prev => [newTransaction, ...prev].sort((a, b) => b.date.getTime() - a.date.getTime()));
 
     let toastDescription = `Transferred ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)} from ${parties[from].name} to ${parties[to].name}.`;
 
@@ -152,10 +153,14 @@ export default function Home() {
               ))}
             </div>
           </section>
-
-          <div className="grid grid-cols-1 gap-8 items-start">
-             <TransactionForm onTransaction={handleTransaction} balances={balances} />
-             <TransactionHistory transactions={transactions} />
+          
+          <div className="grid grid-cols-1 lg:grid-cols-1 gap-8 items-start">
+             <div className="lg:col-span-1">
+                <TransactionForm onTransaction={handleTransaction} balances={balances} />
+             </div>
+             <div className="lg:col-span-1">
+                <TransactionHistory transactions={transactions} />
+            </div>
           </div>
         </div>
       </main>

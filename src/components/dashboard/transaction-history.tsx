@@ -17,9 +17,10 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
         maximumFractionDigits: 0,
     }).format(amount);
 
-    const formatDate = (date: Date) => new Intl.DateTimeFormat('en-IN', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
+    const formatDate = (date: Date) => new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
     }).format(date);
 
     return (
