@@ -170,7 +170,7 @@ export default function TransactionHistory({ transactions, allParties, dateRange
                         </div>
                     ) : transactions.length === 0 ? (
                         <div className="flex items-center justify-center h-full text-muted-foreground">
-                            No transactions match your filters.
+                           Select filters and click "Get Report" to view transactions.
                         </div>
                     ) : showLedgerView ? (
                         <LedgerView transactions={transactions} accountFilter={partyFilter} />
@@ -182,3 +182,5 @@ export default function TransactionHistory({ transactions, allParties, dateRange
         </Card>
     )
 }
+
+    

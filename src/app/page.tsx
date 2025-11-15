@@ -22,7 +22,7 @@ export default function Home() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
 
   // Filter state lifted up
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
@@ -150,7 +150,6 @@ export default function Home() {
     const token = sessionStorage.getItem('accessToken');
     if (token) {
       fetchAccountInfo();
-      fetchTransactions();
     } else {
       router.push('/login');
     }
@@ -325,3 +324,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
