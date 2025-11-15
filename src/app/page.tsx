@@ -11,7 +11,7 @@ import TransactionForm from '@/components/dashboard/transaction-form';
 import TransactionHistory from '@/components/dashboard/transaction-history';
 import { useToast } from "@/hooks/use-toast";
 import { getPartyDetails, type Party } from '@/app/lib/parties';
-import type { Balances, Transaction } from '@/app/lib/types';
+import type { Balances, Transaction, ApiTransaction } from '@/app/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 
@@ -105,18 +105,21 @@ export default function Home() {
 
       if (response.ok) {
         const data = await response.json();
-        // Assuming the API returns an array of transactions in a property, e.g., `cashflows`
-        // And that each transaction needs to be mapped to our Transaction type
-        const apiTransactions = data.cashflows || [];
-        const formattedTransactions: Transaction[] = apiTransactions.map((tx: any) => ({
-          id: tx._id || crypto.randomUUID(),
+        const apiTransactions: ApiTransaction[] = data.cashflows || [];
+        
+        const formattedTransactions: Transaction[] = apiTransactions.map((tx) => ({
+          id: tx._id.$oid,
           from: tx.fromAccount,
           to: tx.toAccount,
           amount: tx.amount,
-          date: new Date(tx.date * 1000), // Assuming date is a UNIX timestamp
+          date: new Date(tx.date * 1000),
           description: tx.naration,
+          fromAccountOpeningBalance: tx.fromAccountOpeningBalance,
+          toAccountOpeningBalance: tx.toAccountOpeningBalance,
         }));
-        setTransactions(formattedTransactions.sort((a, b) => b.date.getTime() - a.date.getTime()));
+        
+        setTransactions(formattedTransactions.sort((a, b) => a.date.getTime() - b.date.getTime()));
+
       } else {
         if(response.status === 401) {
             toast({
@@ -136,7 +139,7 @@ export default function Home() {
         title: "An Error Occurred",
         description: error.message || "Could not fetch transaction history.",
       });
-      setTransactions([]); // Clear transactions on error
+      setTransactions([]);
     } finally {
       setIsHistoryLoading(false);
     }

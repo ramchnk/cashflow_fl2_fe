@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import LedgerView from './ledger-view';
 
 interface TransactionHistoryProps {
     transactions: Transaction[];
@@ -26,8 +27,7 @@ interface TransactionHistoryProps {
     onGetReport: () => void;
 }
 
-export default function TransactionHistory({ transactions, allParties, dateRange, partyFilter, onFiltersChange, isLoading, onGetReport }: TransactionHistoryProps) {
-
+const SimpleListView = ({ transactions }: { transactions: Transaction[] }) => {
     const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: 'INR',
@@ -39,7 +39,59 @@ export default function TransactionHistory({ transactions, allParties, dateRange
         month: 'short',
         year: 'numeric'
     }).format(date);
-    
+
+    return (
+        <ul className="space-y-4">
+            {transactions.map(tx => {
+                const fromDetails = getPartyDetails(tx.from);
+                const toDetails = getPartyDetails(tx.to);
+                const FromIcon = fromDetails.icon;
+                const ToIcon = toDetails.icon;
+
+                const isDeduction = tx.from === tx.to;
+
+                let title;
+                let description = tx.description;
+
+                if (isDeduction) {
+                    title = fromDetails.name;
+                } else {
+                    title = `${fromDetails.name} to ${toDetails.name}`;
+                }
+
+
+                return (
+                    <li key={tx.id} className="flex items-center space-x-4 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center space-x-2">
+                           <div className="p-2 bg-secondary rounded-full"><FromIcon className="w-5 h-5 text-secondary-foreground" /></div>
+                           {!isDeduction && <ArrowRight className="w-4 h-4 text-muted-foreground" />}
+                           {!isDeduction && <div className="p-2 bg-secondary rounded-full"><ToIcon className="w-5 h-5 text-secondary-foreground" /></div>}
+                        </div>
+                        <div className="flex-grow">
+                            <div className="font-semibold">
+                                {title}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                                {description ? (
+                                    <p className="text-sm text-muted-foreground">{description}</p>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">{formatDate(tx.date)}</p>
+                                )}
+                            </div>
+                             {description && <div className="text-xs text-muted-foreground pt-1">{formatDate(tx.date)}</div>}
+                        </div>
+                        <div className={`font-bold text-lg ${isDeduction ? 'text-destructive' : 'text-foreground'}`}>
+                            {isDeduction ? '-' : ''}{formatCurrency(tx.amount)}
+                        </div>
+                    </li>
+                )
+            }).reverse()}
+        </ul>
+    )
+}
+
+export default function TransactionHistory({ transactions, allParties, dateRange, partyFilter, onFiltersChange, isLoading, onGetReport }: TransactionHistoryProps) {
+
     const clearFilters = () => {
         onFiltersChange('all', undefined);
     }
@@ -53,6 +105,8 @@ export default function TransactionHistory({ transactions, allParties, dateRange
     }
 
     const hasActiveFilters = dateRange !== undefined || partyFilter !== 'all';
+    
+    const showLedgerView = partyFilter !== 'all';
 
     return (
         <Card>
@@ -131,73 +185,28 @@ export default function TransactionHistory({ transactions, allParties, dateRange
                 <Separator className="my-4"/>
                 <ScrollArea className="h-96">
                     {isLoading ? (
-                         <div className="space-y-4">
+                         <div className="space-y-4 p-2">
                             {[...Array(5)].map((_, i) => (
-                                <div key={i} className="flex items-center space-x-4 p-2">
-                                    <div className="flex items-center space-x-2">
-                                        <Skeleton className="h-9 w-9 rounded-full" />
-                                        <Skeleton className="h-4 w-4" />
-                                        <Skeleton className="h-9 w-9 rounded-full" />
-                                    </div>
-                                    <div className="flex-grow space-y-2">
-                                        <Skeleton className="h-4 w-3/4" />
-                                        <Skeleton className="h-3 w-1/2" />
-                                    </div>
-                                    <Skeleton className="h-6 w-20" />
-                                </div>
+                                <div key={i} className="flex items-center space-x-4">
+                                     <Skeleton className="h-6 w-24" />
+                                     <div className="flex-grow space-y-2">
+                                         <Skeleton className="h-4 w-3/4" />
+                                     </div>
+                                     <Skeleton className="h-6 w-20" />
+                                     <Skeleton className="h-6 w-20" />
+                                     <Skeleton className="h-6 w-20" />
+                                     <Skeleton className="h-6 w-20" />
+                                 </div>
                             ))}
                         </div>
                     ) : transactions.length === 0 ? (
                         <div className="flex items-center justify-center h-full text-muted-foreground">
                             No transactions match your filters.
                         </div>
+                    ) : showLedgerView ? (
+                        <LedgerView transactions={transactions} accountFilter={partyFilter} />
                     ) : (
-                        <ul className="space-y-4">
-                            {transactions.map(tx => {
-                                const fromDetails = getPartyDetails(tx.from);
-                                const toDetails = getPartyDetails(tx.to);
-                                const FromIcon = fromDetails.icon;
-                                const ToIcon = toDetails.icon;
-                                
-                                const isDeduction = tx.from === tx.to;
-
-                                let title;
-                                let description = tx.description;
-
-                                if (isDeduction) {
-                                    title = fromDetails.name;
-                                } else {
-                                    title = `${fromDetails.name} to ${toDetails.name}`;
-                                }
-
-
-                                return (
-                                    <li key={tx.id} className="flex items-center space-x-4 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                                        <div className="flex items-center space-x-2">
-                                           <div className="p-2 bg-secondary rounded-full"><FromIcon className="w-5 h-5 text-secondary-foreground" /></div>
-                                           {!isDeduction && <ArrowRight className="w-4 h-4 text-muted-foreground" />}
-                                           {!isDeduction && <div className="p-2 bg-secondary rounded-full"><ToIcon className="w-5 h-5 text-secondary-foreground" /></div>}
-                                        </div>
-                                        <div className="flex-grow">
-                                            <div className="font-semibold">
-                                                {title}
-                                            </div>
-                                            <div className="text-sm text-muted-foreground">
-                                                {description ? (
-                                                    <p className="text-sm text-muted-foreground">{description}</p>
-                                                ) : (
-                                                    <p className="text-sm text-muted-foreground">{formatDate(tx.date)}</p>
-                                                )}
-                                            </div>
-                                             {description && <div className="text-xs text-muted-foreground pt-1">{formatDate(tx.date)}</div>}
-                                        </div>
-                                        <div className={`font-bold text-lg ${isDeduction ? 'text-destructive' : 'text-foreground'}`}>
-                                            {isDeduction ? '-' : ''}{formatCurrency(tx.amount)}
-                                        </div>
-                                    </li>
-                                )
-                            })}
-                        </ul>
+                       <SimpleListView transactions={transactions} />
                     )}
                 </ScrollArea>
             </CardContent>
