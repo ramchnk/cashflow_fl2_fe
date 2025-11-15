@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { DateRange } from 'react-day-picker';
+import { startOfDay, endOfDay } from 'date-fns';
 import Header from '@/components/layout/header';
 import BalanceCard from '@/components/dashboard/balance-card';
 import TransactionForm from '@/components/dashboard/transaction-form';
@@ -89,10 +90,10 @@ export default function Home() {
         params.append('type', partyFilter);
       }
       if (dateRange?.from) {
-        params.append('startDate', Math.floor(dateRange.from.getTime() / 1000).toString());
+        params.append('startDate', Math.floor(startOfDay(dateRange.from).getTime() / 1000).toString());
       }
       if (dateRange?.to) {
-        params.append('endDate', Math.floor(dateRange.to.getTime() / 1000).toString());
+        params.append('endDate', Math.floor(endOfDay(dateRange.to).getTime() / 1000).toString());
       }
       
       const response = await fetch(`https://tnfl2-cb6ea45c64b3.herokuapp.com/services/cashflow?${params.toString()}`, {
