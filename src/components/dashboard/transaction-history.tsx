@@ -89,12 +89,12 @@ export default function TransactionHistory({ transactions, allParties, dateRange
 
     return (
         <Card id="transaction-history-card">
-            <CardHeader>
+            <CardHeader className="print-hidden">
                 <CardTitle>Transaction History</CardTitle>
                 <CardDescription>A log of all your recent transactions.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="flex flex-col sm:flex-row gap-4 mb-4 items-end print:hidden">
+                <div className="flex flex-col sm:flex-row gap-4 mb-4 items-end print-hidden">
                     <div className="grid gap-2">
                         <label className="text-sm font-medium">Date range</label>
                         <Popover>
@@ -164,7 +164,7 @@ export default function TransactionHistory({ transactions, allParties, dateRange
                         </div>
                     )}
                 </div>
-                <Separator className="my-4 print:hidden"/>
+                <Separator className="my-4 print-hidden"/>
                 <ScrollArea className="h-96 print:h-auto print:overflow-visible">
                     {isLoading ? (
                          <div className="space-y-4 p-2">

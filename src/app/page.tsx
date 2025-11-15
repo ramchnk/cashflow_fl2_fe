@@ -269,7 +269,7 @@ export default function Home() {
       <Header />
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <div className="grid gap-8">
-          <section>
+          <section className="print-hidden">
             <h2 className="text-2xl font-bold tracking-tight mb-4 text-foreground">Account Balances</h2>
             {isLoading ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -304,7 +304,7 @@ export default function Home() {
           </section>
           
           <div className="grid grid-cols-1 gap-8 items-start">
-             <div className="lg:col-span-1">
+             <div className="lg:col-span-1 print-hidden">
                 <TransactionForm onTransaction={handleTransaction} balances={balances} isSubmitting={isSubmitting} />
              </div>
              <div className="lg:col-span-1">
@@ -324,7 +324,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
-
-    

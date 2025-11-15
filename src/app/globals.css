@@ -90,23 +90,21 @@
     background: white !important;
     color: black !important;
   }
-  .print-only {
-    display: block;
-  }
-  .print-hidden, .print\:hidden {
+
+  .print-hidden {
     display: none;
   }
-  main > div > section,
-  main > div > div > div:first-child {
-    display: none;
-  }
+  
   #transaction-history-card {
-    display: block;
-    position: absolute;
-    left: 0;
-    top: 0;
+    box-shadow: none;
+    border: none;
     width: 100%;
-    border: none !important;
-    box-shadow: none !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  #transaction-history-card .print-hidden {
+    display: none;
   }
 }
