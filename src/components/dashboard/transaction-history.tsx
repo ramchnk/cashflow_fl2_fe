@@ -3,7 +3,7 @@
 
 import type { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
-import { ArrowRight, Calendar as CalendarIcon, FilterX } from 'lucide-react';
+import { Calendar as CalendarIcon, FilterX } from 'lucide-react';
 import type { Transaction } from '@/app/lib/types';
 import { getPartyDetails, type Party } from '@/app/lib/parties';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -43,42 +43,11 @@ const SimpleListView = ({ transactions }: { transactions: Transaction[] }) => {
     return (
         <ul className="space-y-4">
             {transactions.map(tx => {
-                const fromDetails = getPartyDetails(tx.from);
-                const toDetails = getPartyDetails(tx.to);
-                const FromIcon = fromDetails.icon;
-                const ToIcon = toDetails.icon;
-
                 const isDeduction = tx.from === tx.to;
-
-                let title;
-                let description = tx.description;
-
-                if (isDeduction) {
-                    title = fromDetails.name;
-                } else {
-                    title = `${fromDetails.name} to ${toDetails.name}`;
-                }
-
-
                 return (
-                    <li key={tx.id} className="flex items-center space-x-4 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                        <div className="flex items-center space-x-2">
-                           <div className="p-2 bg-secondary rounded-full"><FromIcon className="w-5 h-5 text-secondary-foreground" /></div>
-                           {!isDeduction && <ArrowRight className="w-4 h-4 text-muted-foreground" />}
-                           {!isDeduction && <div className="p-2 bg-secondary rounded-full"><ToIcon className="w-5 h-5 text-secondary-foreground" /></div>}
-                        </div>
-                        <div className="flex-grow">
-                            <div className="font-semibold">
-                                {title}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                                {description ? (
-                                    <p className="text-sm text-muted-foreground">{description}</p>
-                                ) : (
-                                    <p className="text-sm text-muted-foreground">{formatDate(tx.date)}</p>
-                                )}
-                            </div>
-                             {description && <div className="text-xs text-muted-foreground pt-1">{formatDate(tx.date)}</div>}
+                    <li key={tx.id} className="flex items-center justify-between space-x-4 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="text-sm text-muted-foreground">
+                            {formatDate(tx.date)}
                         </div>
                         <div className={`font-bold text-lg ${isDeduction ? 'text-destructive' : 'text-foreground'}`}>
                             {isDeduction ? '-' : ''}{formatCurrency(tx.amount)}
