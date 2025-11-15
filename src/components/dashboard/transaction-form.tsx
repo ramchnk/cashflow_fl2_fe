@@ -224,7 +224,7 @@ type DeductionSchema = z.infer<ReturnType<typeof createDeductionSchema>>;
 
 function DeductionForm({ onTransaction, balances, isSubmitting }: { onTransaction: TransactionFormProps['onTransaction'], balances: Balances, isSubmitting: boolean }) {
   const allParties = Object.keys(balances);
-  const fromParties = allParties.filter(party => party.toLowerCase() !== 'stock' && party.toLowerCase() !== 'tasmac');
+  const fromParties = allParties.filter(party => party.toLowerCase().includes('bank'));
 
   const form = useForm<DeductionSchema>({
     resolver: zodResolver(createDeductionSchema(allParties)),
