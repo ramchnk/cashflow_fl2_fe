@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -95,13 +96,23 @@ export default function Home() {
     
     setIsSubmitting(true);
 
-    const payload = {
+    const payload: {
+        date: number;
+        fromAccount: string;
+        toAccount: string;
+        amount: number;
+        naration?: string;
+    } = {
         date: Math.floor(date.getTime() / 1000),
         fromAccount: from,
         toAccount: to,
         amount,
-        ...(to === 'expenses' && description && { naration: description })
     };
+
+    if (description) {
+        payload.naration = description;
+    }
+
 
     try {
         const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/cashflow', {

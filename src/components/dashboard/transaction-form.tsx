@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,13 +41,14 @@ type TransactionFormProps = {
   isSubmitting: boolean;
 };
 
-const createTransferSchema = (allParties: Party[], fromDisabled?: boolean, toDisabled?: boolean) => z.object({
+const createTransferSchema = (allParties: Party[]) => z.object({
   from: z.string().min(1, "Source account is required."),
   to: z.string().min(1, "Destination account is required."),
   amount: z.coerce.number().positive("Amount must be positive."),
   date: z.date({
     required_error: "A date is required.",
   }),
+  description: z.string().optional(),
 }).refine(data => data.from !== data.to, {
   message: "Source and destination cannot be the same.",
   path: ["to"],
@@ -61,7 +63,7 @@ function GeneralTransferForm({ onTransaction, balances, isSubmitting }: Transact
   
   const form = useForm<TransferSchema>({
     resolver: zodResolver(createTransferSchema(allParties)),
-    defaultValues: { amount: undefined, date: new Date(), from: undefined, to: undefined },
+    defaultValues: { amount: undefined, date: new Date(), from: undefined, to: undefined, description: "" },
   });
 
   const fromValue = form.watch('from');
@@ -92,9 +94,9 @@ function GeneralTransferForm({ onTransaction, balances, isSubmitting }: Transact
 
 
   async function onSubmit(data: TransferSchema) {
-    const success = await onTransaction(data.from, data.to, data.amount, data.date);
+    const success = await onTransaction(data.from, data.to, data.amount, data.date, data.description);
     if(success) {
-      form.reset({ amount: undefined, date: new Date(), from: undefined, to: undefined });
+      form.reset({ amount: undefined, date: new Date(), from: undefined, to: undefined, description: "" });
     }
   }
 
@@ -202,6 +204,19 @@ function GeneralTransferForm({ onTransaction, balances, isSubmitting }: Transact
               )}
             />
         </div>
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Remarks (Optional)</FormLabel>
+              <FormControl>
+                <Textarea placeholder="e.g. For personal use" {...field} disabled={isSubmitting} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? 'Submitting...' : 'Confirm Transfer'} <ArrowRight className="ml-2 h-4 w-4" />
         </Button>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -163,6 +164,15 @@ export default function TransactionHistory({ transactions, allParties }: Transac
                                 const FromIcon = fromDetails.icon;
                                 const ToIcon = toDetails.icon;
 
+                                const title = tx.to === 'expenses' 
+                                    ? fromDetails.name
+                                    : `${fromDetails.name} to ${toDetails.name}`;
+                                
+                                const description = tx.to === 'expenses'
+                                    ? tx.description
+                                    : tx.description;
+
+
                                 return (
                                     <li key={tx.id} className="flex items-center space-x-4 p-2 rounded-lg hover:bg-muted/50 transition-colors">
                                         <div className="flex items-center space-x-2">
@@ -172,9 +182,16 @@ export default function TransactionHistory({ transactions, allParties }: Transac
                                         </div>
                                         <div className="flex-grow">
                                             <div className="font-semibold">
-                                                {tx.to === 'expenses' ? tx.description : `${fromDetails.name} to ${toDetails.name}`}
+                                                {title}
                                             </div>
-                                            <div className="text-sm text-muted-foreground">{formatDate(tx.date)}</div>
+                                            <div className="text-sm text-muted-foreground">
+                                                {description ? (
+                                                    <p className="text-sm text-muted-foreground">{description}</p>
+                                                ) : (
+                                                    <p className="text-sm text-muted-foreground">{formatDate(tx.date)}</p>
+                                                )}
+                                            </div>
+                                             {description && <div className="text-xs text-muted-foreground pt-1">{formatDate(tx.date)}</div>}
                                         </div>
                                         <div className={`font-bold text-lg ${tx.to === 'expenses' ? 'text-destructive' : 'text-foreground'}`}>
                                             {tx.to === 'expenses' ? '-' : ''}{formatCurrency(tx.amount)}
