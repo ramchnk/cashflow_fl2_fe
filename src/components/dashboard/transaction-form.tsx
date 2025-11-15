@@ -56,6 +56,8 @@ type TransferSchema = z.infer<ReturnType<typeof createTransferSchema>>;
 
 function GeneralTransferForm({ onTransaction, balances, isSubmitting }: TransactionFormProps) {
   const allParties = Object.keys(balances);
+  const fromParties = allParties.filter(party => party.toLowerCase() !== 'stock' && party.toLowerCase() !== 'tasmac');
+  
   const form = useForm<TransferSchema>({
     resolver: zodResolver(createTransferSchema(allParties)),
     defaultValues: { amount: undefined, date: new Date(), from: undefined, to: undefined },
@@ -85,7 +87,7 @@ function GeneralTransferForm({ onTransaction, balances, isSubmitting }: Transact
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {allParties.map(party => (
+                          {fromParties.map(party => (
                             <SelectItem key={party} value={party}>{getPartyDetails(party).name}</SelectItem>
                           ))}
                         </SelectContent>
@@ -194,6 +196,8 @@ type DeductionSchema = z.infer<ReturnType<typeof createDeductionSchema>>;
 
 function DeductionForm({ onTransaction, balances, isSubmitting }: { onTransaction: TransactionFormProps['onTransaction'], balances: Balances, isSubmitting: boolean }) {
   const allParties = Object.keys(balances);
+  const fromParties = allParties.filter(party => party.toLowerCase() !== 'stock' && party.toLowerCase() !== 'tasmac');
+
   const form = useForm<DeductionSchema>({
     resolver: zodResolver(createDeductionSchema(allParties)),
     defaultValues: { from: undefined, amount: undefined, description: "", date: new Date() },
@@ -202,7 +206,7 @@ function DeductionForm({ onTransaction, balances, isSubmitting }: { onTransactio
   async function onSubmit(data: DeductionSchema) {
     const success = await onTransaction(data.from, 'expenses', data.amount, data.date, data.description);
     if (success) {
-      form.reset({ from: undefined, amount: undefined, description: "", date: new Date() });
+      form.reset({ from: undefined, amount: undefined, description: "", date: new date() });
     }
   }
 
@@ -223,7 +227,7 @@ function DeductionForm({ onTransaction, balances, isSubmitting }: { onTransactio
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {allParties.map(party => (
+                          {fromParties.map(party => (
                             <SelectItem key={party} value={party}>{getPartyDetails(party).name}</SelectItem>
                           ))}
                         </SelectContent>
