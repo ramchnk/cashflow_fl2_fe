@@ -79,6 +79,9 @@ export default function TransactionHistory({ transactions, allParties, dateRange
     const hasActiveFilters = dateRange !== undefined || partyFilter !== 'all';
     
     const showLedgerView = partyFilter !== 'all';
+    
+    const isReportButtonDisabled = isLoading || !dateRange?.from || !dateRange?.to || partyFilter === 'all';
+
 
     return (
         <Card>
@@ -143,7 +146,7 @@ export default function TransactionHistory({ transactions, allParties, dateRange
                             </SelectContent>
                         </Select>
                     </div>
-                    <Button onClick={onGetReport} disabled={isLoading}>
+                    <Button onClick={onGetReport} disabled={isReportButtonDisabled}>
                         Get Report
                     </Button>
                     {hasActiveFilters && (
@@ -185,5 +188,3 @@ export default function TransactionHistory({ transactions, allParties, dateRange
         </Card>
     )
 }
-
-    
