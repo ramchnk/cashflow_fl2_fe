@@ -23,7 +23,7 @@ interface TransactionHistoryProps {
 
 export default function TransactionHistory({ transactions, allParties }: TransactionHistoryProps) {
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-    const [type, setType] = useState<string>('all');
+    const [partyFilter, setPartyFilter] = useState<string>('all');
 
     const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', {
         style: 'currency',
@@ -37,19 +37,6 @@ export default function TransactionHistory({ transactions, allParties }: Transac
         year: 'numeric'
     }).format(date);
 
-    const transactionTypes = useMemo(() => {
-        const types = new Set<string>();
-        transactions.forEach(tx => {
-            if (tx.to === 'expenses') {
-                types.add('deduction');
-            } else {
-                types.add(`${tx.from}-${tx.to}`);
-            }
-        });
-        return Array.from(types);
-    }, [transactions]);
-
-
     const filteredTransactions = useMemo(() => {
         return transactions.filter(tx => {
             const isDateInRange = !dateRange || (
@@ -57,18 +44,20 @@ export default function TransactionHistory({ transactions, allParties }: Transac
                 (!dateRange.to || tx.date <= dateRange.to)
             );
 
-            const isTypeMatch = type === 'all' || (type === 'deduction' && tx.to === 'expenses') || type === `${tx.from}-${tx.to}`;
+            const isPartyMatch = partyFilter === 'all' || 
+                               (partyFilter === 'deduction' && tx.to === 'expenses') ||
+                               (partyFilter !== 'deduction' && (tx.from === partyFilter || tx.to === partyFilter));
 
-            return isDateInRange && isTypeMatch;
+            return isDateInRange && isPartyMatch;
         });
-    }, [transactions, dateRange, type]);
+    }, [transactions, dateRange, partyFilter]);
     
     const clearFilters = () => {
         setDateRange(undefined);
-        setType('all');
+        setPartyFilter('all');
     }
 
-    const hasActiveFilters = dateRange !== undefined || type !== 'all';
+    const hasActiveFilters = dateRange !== undefined || partyFilter !== 'all';
 
     return (
         <Card>
@@ -118,27 +107,19 @@ export default function TransactionHistory({ transactions, allParties }: Transac
                         </Popover>
                     </div>
                      <div className="grid gap-2">
-                         <label className="text-sm font-medium">Type</label>
-                        <Select value={type} onValueChange={setType}>
+                         <label className="text-sm font-medium">Account</label>
+                        <Select value={partyFilter} onValueChange={setPartyFilter}>
                             <SelectTrigger className="w-full sm:w-[220px]">
-                                <SelectValue placeholder="Filter by type" />
+                                <SelectValue placeholder="Filter by account" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All Types</SelectItem>
-                                <SelectItem value="deduction">Deduction</SelectItem>
-                                {allParties.flatMap(from =>
-                                    allParties.map(to => {
-                                        if (from === to) return null;
-                                        const value = `${from}-${to}`;
-                                        const fromDetails = getPartyDetails(from);
-                                        const toDetails = getPartyDetails(to);
-                                        return (
-                                            <SelectItem key={value} value={value}>
-                                                {fromDetails.name} to {toDetails.name}
-                                            </SelectItem>
-                                        )
-                                    })
-                                )}
+                                <SelectItem value="all">All Accounts</SelectItem>
+                                <SelectItem value="deduction">Deductions</SelectItem>
+                                {allParties.filter(p => p !== 'expenses').map(party => (
+                                    <SelectItem key={party} value={party}>
+                                        {getPartyDetails(party).name}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
