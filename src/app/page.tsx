@@ -105,7 +105,7 @@ export default function Home() {
     } = {
         date: Math.floor(date.getTime() / 1000),
         fromAccount: from,
-        toAccount: to,
+        toAccount: to === 'expenses' ? from : to,
         amount,
     };
 
