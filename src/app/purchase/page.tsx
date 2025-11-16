@@ -17,6 +17,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface PurchaseItem {
   srNo: string;
@@ -36,6 +44,8 @@ export default function PurchasePage() {
   const [productMaster, setProductMaster] = useState<any | null>(null);
   const router = useRouter();
   const { toast } = useToast();
+  const [billNumber, setBillNumber] = useState('');
+  const [billDate, setBillDate] = useState<Date | undefined>(new Date());
 
   const fetchProductMaster = async () => {
     const token = sessionStorage.getItem('accessToken');
@@ -192,6 +202,43 @@ export default function PurchasePage() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="bill-number">Bill Number</Label>
+                      <Input
+                        id="bill-number"
+                        placeholder="Enter bill number"
+                        value={billNumber}
+                        onChange={(e) => setBillNumber(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="bill-date">Bill Date</Label>
+                        <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                            id="bill-date"
+                            variant={"outline"}
+                            className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !billDate && "text-muted-foreground"
+                            )}
+                            >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {billDate ? format(billDate, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                            mode="single"
+                            selected={billDate}
+                            onSelect={setBillDate}
+                            initialFocus
+                            />
+                        </PopoverContent>
+                        </Popover>
+                    </div>
+                </div>
                  <Textarea
                     placeholder="Paste your copied data here..."
                     value={pastedData}
