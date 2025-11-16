@@ -23,6 +23,7 @@ interface PurchaseItem {
   brandName: string;
   packSize: string;
   qty: string;
+  calculatedQty: number;
   totalValue: string;
   matchStatus: 'found' | 'not found';
   apiSku?: string;
@@ -116,12 +117,23 @@ export default function PurchasePage() {
                         matchedSku = foundProduct.SKU;
                     }
                 }
+
+                let calculatedQty = 0;
+                const caseQty = parseFloat(qty);
+                if (!isNaN(caseQty)) {
+                    if (packSize.includes('180')) {
+                        calculatedQty = caseQty * 48;
+                    } else if (packSize.includes('375')) {
+                        calculatedQty = caseQty * 24;
+                    }
+                }
                 
                 items.push({
                     srNo,
                     brandName: matchedSku || brandName,
                     packSize,
                     qty,
+                    calculatedQty,
                     totalValue,
                     matchStatus,
                     apiSku: matchedSku
@@ -184,6 +196,7 @@ export default function PurchasePage() {
                                     <TableHead>Brand Name</TableHead>
                                     <TableHead>Pack Size</TableHead>
                                     <TableHead className="text-right">Case</TableHead>
+                                    <TableHead className="text-right">QTY</TableHead>
                                     <TableHead className="text-right">Total Value</TableHead>
                                     <TableHead>Status</TableHead>
                                 </TableRow>
@@ -195,6 +208,7 @@ export default function PurchasePage() {
                                     <TableCell>{item.brandName}</TableCell>
                                     <TableCell>{item.packSize}</TableCell>
                                     <TableCell className="text-right">{item.qty}</TableCell>
+                                    <TableCell className="text-right">{item.calculatedQty}</TableCell>
                                     <TableCell className="text-right">{item.totalValue}</TableCell>
                                     <TableCell>
                                         <Badge variant={item.matchStatus === 'found' ? 'default' : 'destructive'} className={item.matchStatus === 'found' ? 'bg-green-600' : ''}>
