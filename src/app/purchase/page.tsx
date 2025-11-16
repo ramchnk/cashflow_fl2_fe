@@ -183,7 +183,7 @@ export default function PurchasePage() {
                                     <TableHead>Sr.No</TableHead>
                                     <TableHead>Brand Name</TableHead>
                                     <TableHead>Pack Size</TableHead>
-                                    <TableHead className="text-right">Qty (Cases.Bottle)</TableHead>
+                                    <TableHead className="text-right">Case</TableHead>
                                     <TableHead className="text-right">Total Value</TableHead>
                                     <TableHead>Status</TableHead>
                                 </TableRow>
