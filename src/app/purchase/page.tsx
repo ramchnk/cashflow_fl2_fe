@@ -26,6 +26,13 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
+interface ProductMasterItem {
+  SKU: string;
+  stock: number;
+  purchasePrice: number;
+  [key: string]: any;
+}
+
 interface PurchaseItem {
   srNo: string;
   brandName: string;
@@ -36,16 +43,18 @@ interface PurchaseItem {
   numericTotalValue: number;
   matchStatus: 'found' | 'not found';
   apiSku?: string;
+  matchedProduct?: ProductMasterItem;
 }
 
 export default function PurchasePage() {
   const [pastedData, setPastedData] = useState('');
   const [parsedItems, setParsedItems] = useState<PurchaseItem[]>([]);
-  const [productMaster, setProductMaster] = useState<any | null>(null);
+  const [productMaster, setProductMaster] = useState<{ productList: ProductMasterItem[] } | null>(null);
   const router = useRouter();
   const { toast } = useToast();
   const [billNumber, setBillNumber] = useState('');
   const [billDate, setBillDate] = useState<Date | undefined>(new Date());
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchProductMaster = async () => {
     const token = sessionStorage.getItem('accessToken');
@@ -140,11 +149,15 @@ export default function PurchasePage() {
                 
                 let matchStatus: 'found' | 'not found' = 'not found';
                 let matchedSku: string | undefined = undefined;
+                let matchedProduct: ProductMasterItem | undefined = undefined;
+
                 if (productMaster && productMaster.productList) {
                     const foundProduct = productMaster.productList.find((product: any) => product.SKU.toUpperCase() === skuToMatch);
                     if (foundProduct) {
                         matchStatus = 'found';
                         matchedSku = foundProduct.SKU;
+                        matchedProduct = foundProduct;
+
                         if(foundProduct.purchasePrice && calculatedQty > 0) {
                            const calculatedTotal = calculatedQty * foundProduct.purchasePrice;
                             totalValue = new Intl.NumberFormat('en-IN', {
@@ -165,7 +178,8 @@ export default function PurchasePage() {
                     totalValue,
                     numericTotalValue,
                     matchStatus,
-                    apiSku: matchedSku
+                    apiSku: matchedSku,
+                    matchedProduct
                 });
             }
         }
@@ -187,6 +201,94 @@ export default function PurchasePage() {
   const totalValue = parsedItems.reduce((acc, item) => {
     return acc + item.numericTotalValue;
   }, 0);
+
+  const handleSubmitPurchase = async () => {
+    if (!billNumber || !billDate) {
+        toast({
+            variant: "destructive",
+            title: "Validation Error",
+            description: "Please enter Bill Number and Bill Date.",
+        });
+        return;
+    }
+
+    if (parsedItems.some(item => item.matchStatus === 'not found')) {
+        toast({
+            variant: "destructive",
+            title: "Validation Error",
+            description: "Some items could not be matched. Please correct them before submitting.",
+        });
+        return;
+    }
+
+    if (parsedItems.length === 0) {
+        toast({
+            variant: "destructive",
+            title: "Validation Error",
+            description: "There are no items to submit.",
+        });
+        return;
+    }
+    
+    setIsSubmitting(true);
+    
+    const token = sessionStorage.getItem('accessToken');
+    if (!token) {
+        router.push('/login');
+        setIsSubmitting(false);
+        return;
+    }
+
+    const payload = {
+        billNo: billNumber,
+        purchaseDate: Math.floor(billDate.getTime() / 1000),
+        purchaseAmount: totalValue.toFixed(2),
+        totalQuantity: totalQty,
+        productList: parsedItems.map(item => ({
+            SKU: item.apiSku,
+            openingStock: item.matchedProduct?.stock || 0,
+            purchaseStock: item.calculatedQty,
+            stock: (item.matchedProduct?.stock || 0) + item.calculatedQty,
+            purchaseAmount: item.numericTotalValue
+        }))
+    };
+
+    try {
+        const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/productmaster', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            toast({
+                title: "Purchase Submitted",
+                description: `Bill ${billNumber} has been successfully submitted.`,
+            });
+            // Reset form
+            setPastedData('');
+            setParsedItems([]);
+            setBillNumber('');
+            setBillDate(new Date());
+            await fetchProductMaster();
+        } else {
+             const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to submit purchase.');
+        }
+
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Submission Failed",
+            description: error.message || "An unexpected error occurred.",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
 
 
   return (
@@ -210,6 +312,7 @@ export default function PurchasePage() {
                         placeholder="Enter bill number"
                         value={billNumber}
                         onChange={(e) => setBillNumber(e.target.value)}
+                        disabled={isSubmitting}
                       />
                     </div>
                     <div className="space-y-2">
@@ -223,6 +326,7 @@ export default function PurchasePage() {
                                 "w-full justify-start text-left font-normal",
                                 !billDate && "text-muted-foreground"
                             )}
+                             disabled={isSubmitting}
                             >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {billDate ? format(billDate, "PPP") : <span>Pick a date</span>}
@@ -245,6 +349,7 @@ export default function PurchasePage() {
                     onChange={(e) => setPastedData(e.target.value)}
                     rows={10}
                     className="font-mono text-sm"
+                    disabled={isSubmitting}
                 />
             </CardContent>
           </Card>
@@ -254,7 +359,7 @@ export default function PurchasePage() {
                 <CardHeader>
                     <CardTitle>Purchase Order Preview</CardTitle>
                     <CardDescription>
-                        Review the parsed items below.
+                        Review the parsed items below before submitting.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -291,13 +396,18 @@ export default function PurchasePage() {
                         </Table>
                     </ScrollArea>
                 </CardContent>
-                <CardFooter className="flex justify-end gap-8 font-bold text-lg">
-                    <div>
-                        Total Quantity: {totalQty.toFixed(2)}
+                <CardFooter className="flex justify-between items-center font-bold text-lg">
+                    <div className="flex gap-8">
+                       <div>
+                            Total Cases: {totalQty.toFixed(2)}
+                        </div>
+                        <div>
+                            Total Value: {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalValue)}
+                        </div>
                     </div>
-                    <div>
-                        Total Value: {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalValue)}
-                    </div>
+                     <Button onClick={handleSubmitPurchase} disabled={isSubmitting}>
+                        {isSubmitting ? 'Submitting...' : 'Submit Purchase'}
+                    </Button>
                 </CardFooter>
             </Card>
           )}
@@ -307,3 +417,4 @@ export default function PurchasePage() {
     </div>
   );
 }
+
