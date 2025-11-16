@@ -18,7 +18,7 @@ import { useUserStore } from '@/app/lib/user-store';
 export default function Header() {
     const router = useRouter();
     const pathname = usePathname();
-    const { shopNumber } = useUserStore();
+    const { shopName } = useUserStore();
 
 
     const handleLogout = () => {
@@ -60,10 +60,10 @@ export default function Header() {
             </nav>
           </div>
           <div className="flex items-center gap-4">
-            {shopNumber && (
+            {shopName && (
                 <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                     <Store className="w-5 h-5 text-muted-foreground" />
-                    <span>Shop No: {shopNumber}</span>
+                    <span>Shop: {shopName}</span>
                 </div>
             )}
           <TooltipProvider>

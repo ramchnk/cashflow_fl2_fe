@@ -24,7 +24,7 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-  const { setShopNumber } = useUserStore();
+  const { setShopName } = useUserStore();
 
 
   // Filter state lifted up
@@ -55,8 +55,8 @@ export default function Home() {
         } else {
           throw new Error('Account cashFlow not found in response.');
         }
-         if (data.account && data.account.shopNumber) {
-          setShopNumber(data.account.shopNumber);
+         if (data.account && data.account.shopName) {
+          setShopName(data.account.shopName);
         }
       } else {
           if(response.status === 401) {

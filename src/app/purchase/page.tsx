@@ -56,7 +56,7 @@ export default function PurchasePage() {
   const [billNumber, setBillNumber] = useState('');
   const [billDate, setBillDate] = useState<Date | undefined>(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { setShopNumber } = useUserStore();
+  const { setShopName } = useUserStore();
 
   const fetchProductMaster = async () => {
     const token = sessionStorage.getItem('accessToken');
@@ -76,8 +76,8 @@ export default function PurchasePage() {
       if (response.ok) {
         const data = await response.json();
         setProductMaster(data || {});
-        if (data.shopNumber) {
-            setShopNumber(data.shopNumber);
+        if (data.shopName) {
+            setShopName(data.shopName);
         }
       } else {
         if(response.status === 401) {
