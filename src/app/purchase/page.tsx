@@ -25,6 +25,7 @@ interface PurchaseItem {
   qty: string;
   totalValue: string;
   matchStatus: 'found' | 'not found';
+  apiSku?: string;
 }
 
 export default function PurchasePage() {
@@ -107,20 +108,23 @@ export default function PurchasePage() {
                 const skuToMatch = `${brandName.trim().toUpperCase()}-${sizeValue}ML`;
                 
                 let matchStatus: 'found' | 'not found' = 'not found';
+                let matchedSku: string | undefined = undefined;
                 if (productMaster && productMaster.productList) {
-                    const found = productMaster.productList.some((product: any) => product.SKU.toUpperCase() === skuToMatch);
-                    if (found) {
+                    const foundProduct = productMaster.productList.find((product: any) => product.SKU.toUpperCase() === skuToMatch);
+                    if (foundProduct) {
                         matchStatus = 'found';
+                        matchedSku = foundProduct.SKU;
                     }
                 }
                 
                 items.push({
                     srNo,
-                    brandName,
+                    brandName: matchedSku || brandName,
                     packSize,
                     qty,
                     totalValue,
                     matchStatus,
+                    apiSku: matchedSku
                 });
             }
         }
