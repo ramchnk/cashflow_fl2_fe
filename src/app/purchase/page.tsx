@@ -125,6 +125,14 @@ export default function PurchasePage() {
                         calculatedQty = caseQty * 48;
                     } else if (packSize.includes('375')) {
                         calculatedQty = caseQty * 24;
+                    } else if (packSize.includes('750')) {
+                        calculatedQty = caseQty * 12;
+                    } else if (packSize.includes('650')) {
+                        calculatedQty = caseQty * 12;
+                    } else if (packSize.includes('500')) {
+                        calculatedQty = caseQty * 24;
+                    } else if (packSize.includes('325')) {
+                        calculatedQty = caseQty * 24;
                     }
                 }
                 
