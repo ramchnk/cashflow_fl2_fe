@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Header from '@/components/layout/header';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import {
   Table,
   TableHeader,
@@ -20,6 +20,7 @@ interface PurchaseItem {
   brandName: string;
   packSize: string;
   qty: string;
+  totalValue: string;
 }
 
 export default function PurchasePage() {
@@ -41,24 +42,32 @@ export default function PurchasePage() {
     for (let i = startIndex; i < lines.length; i++) {
         const columns = lines[i].split('\t'); // Assuming tab-separated values
 
-        if (columns.length >= 4) { // Basic validation
+        if (columns.length >= 7) { // We need at least 7 columns to get Total Value
             const srNo = columns[0];
             const brandName = columns[1];
             const packSize = columns[2];
-            const qty = columns[4]; // Qty is the 5th column based on the image
+            const qty = columns[4]; 
+            const totalValue = columns[6];
 
-            if (srNo && brandName && packSize && qty) {
+            if (srNo && brandName && packSize && qty && totalValue) {
                 items.push({
                     srNo,
                     brandName,
                     packSize,
                     qty,
+                    totalValue
                 });
             }
         }
     }
     setParsedItems(items);
   };
+
+  const grandTotal = parsedItems.reduce((acc, item) => {
+    // Sanitize totalValue by removing commas before parsing
+    const value = parseFloat(item.totalValue.replace(/,/g, ''));
+    return acc + (isNaN(value) ? 0 : value);
+  }, 0);
 
 
   return (
@@ -102,6 +111,7 @@ export default function PurchasePage() {
                                     <TableHead>Brand Name</TableHead>
                                     <TableHead>Pack Size</TableHead>
                                     <TableHead className="text-right">Qty (Cases.Bottle)</TableHead>
+                                    <TableHead className="text-right">Total Value</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -111,12 +121,16 @@ export default function PurchasePage() {
                                     <TableCell>{item.brandName}</TableCell>
                                     <TableCell>{item.packSize}</TableCell>
                                     <TableCell className="text-right">{item.qty}</TableCell>
+                                    <TableCell className="text-right">{item.totalValue}</TableCell>
                                 </TableRow>
                                 ))}
                             </TableBody>
                         </Table>
                     </ScrollArea>
                 </CardContent>
+                <CardFooter className="justify-end font-bold text-lg">
+                    Grand Total: {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(grandTotal)}
+                </CardFooter>
             </Card>
           )}
 
