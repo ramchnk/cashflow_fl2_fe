@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '@/components/layout/header';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import {
   Table,
@@ -62,6 +61,12 @@ export default function PurchasePage() {
     }
     setParsedItems(items);
   };
+  
+  useEffect(() => {
+    processData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pastedData]);
+
 
   const totalQty = parsedItems.reduce((acc, item) => {
     const value = parseFloat(item.qty);
@@ -78,7 +83,7 @@ export default function PurchasePage() {
             <CardHeader>
                 <CardTitle>Process Purchase Data</CardTitle>
                 <CardDescription>
-                    மூன்றாம் தரப்பு போர்ட்டலில் இருந்து தரவை நகலெடுத்து கீழே உள்ள டெக்ஸ்ட் ஏரியாவில் ஒட்டவும். பிறகு, வடிவமைக்கப்பட்ட அட்டவணையைக் காண, பிராசஸ் என்பதைக் கிளிக் செய்யவும்.
+                    மூன்றாம் தரப்பு போர்ட்டலில் இருந்து தரவை நகலெடுத்து கீழே உள்ள டெக்ஸ்ட் ஏரியாவில் ஒட்டவும். தரவு தானாகவே செயலாக்கப்படும்.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -89,7 +94,6 @@ export default function PurchasePage() {
                     rows={10}
                     className="font-mono text-sm"
                 />
-                <Button onClick={processData}>Process Data</Button>
             </CardContent>
           </Card>
 
