@@ -70,7 +70,7 @@ export default function PurchasePage() {
             <CardHeader>
                 <CardTitle>Process Purchase Data</CardTitle>
                 <CardDescription>
-                    Copy data from the third-party portal and paste it into the text area below. Then click process to see the formatted table.
+                    மூன்றாம் தரப்பு போர்ட்டலில் இருந்து தரவை நகலெடுத்து கீழே உள்ள டெக்ஸ்ட் ஏரியாவில் ஒட்டவும். பிறகு, வடிவமைக்கப்பட்ட அட்டவணையைக் காண, பிராசஸ் என்பதைக் கிளிக் செய்யவும்.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
