@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,6 +14,8 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useRouter } from 'next/navigation';
+import { useToast } from "@/hooks/use-toast";
 
 interface PurchaseItem {
   srNo: string;
@@ -25,6 +28,54 @@ interface PurchaseItem {
 export default function PurchasePage() {
   const [pastedData, setPastedData] = useState('');
   const [parsedItems, setParsedItems] = useState<PurchaseItem[]>([]);
+  const [productMaster, setProductMaster] = useState<any[]>([]);
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const fetchProductMaster = async () => {
+    const token = sessionStorage.getItem('accessToken');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
+    try {
+      const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/productmaster', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setProductMaster(data.products || []);
+      } else {
+        if(response.status === 401) {
+            toast({
+                variant: "destructive",
+                title: "Session Expired",
+                description: "Please login again.",
+            });
+            sessionStorage.removeItem('accessToken');
+            router.push('/login');
+        } else {
+            throw new Error('Failed to fetch product master');
+        }
+      }
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "An Error Occurred",
+            description: error.message || "Could not fetch product master data.",
+        });
+    }
+  };
+
+  useEffect(() => {
+    fetchProductMaster();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const processData = () => {
     if (!pastedData) {
