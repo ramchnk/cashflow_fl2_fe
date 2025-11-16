@@ -101,23 +101,10 @@ export default function PurchasePage() {
             const brandName = columns[1];
             const packSize = columns[2];
             const qty = columns[4]; 
-            const totalValue = columns[6];
+            let totalValue = columns[6];
 
             if (srNo && brandName && packSize && qty && totalValue) {
-
-                const sizeValue = packSize.toLowerCase().replace('ml', '').trim();
-                const skuToMatch = `${brandName.trim().toUpperCase()}-${sizeValue}ML`;
                 
-                let matchStatus: 'found' | 'not found' = 'not found';
-                let matchedSku: string | undefined = undefined;
-                if (productMaster && productMaster.productList) {
-                    const foundProduct = productMaster.productList.find((product: any) => product.SKU.toUpperCase() === skuToMatch);
-                    if (foundProduct) {
-                        matchStatus = 'found';
-                        matchedSku = foundProduct.SKU;
-                    }
-                }
-
                 let calculatedQty = 0;
                 const caseQty = parseFloat(qty);
                 if (!isNaN(caseQty)) {
@@ -133,6 +120,26 @@ export default function PurchasePage() {
                         calculatedQty = caseQty * 24;
                     } else if (packSize.includes('325')) {
                         calculatedQty = caseQty * 24;
+                    }
+                }
+
+                const sizeValue = packSize.toLowerCase().replace('ml', '').trim();
+                const skuToMatch = `${brandName.trim().toUpperCase()}-${sizeValue}ML`;
+                
+                let matchStatus: 'found' | 'not found' = 'not found';
+                let matchedSku: string | undefined = undefined;
+                if (productMaster && productMaster.productList) {
+                    const foundProduct = productMaster.productList.find((product: any) => product.SKU.toUpperCase() === skuToMatch);
+                    if (foundProduct) {
+                        matchStatus = 'found';
+                        matchedSku = foundProduct.SKU;
+                        if(foundProduct.purchasePrice && calculatedQty > 0) {
+                           const calculatedTotal = calculatedQty * foundProduct.purchasePrice;
+                            totalValue = new Intl.NumberFormat('en-IN', {
+                                style: 'currency',
+                                currency: 'INR',
+                            }).format(calculatedTotal);
+                        }
                     }
                 }
                 
