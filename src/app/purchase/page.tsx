@@ -25,6 +25,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useUserStore } from '@/app/lib/user-store';
 
 interface ProductMasterItem {
   SKU: string;
@@ -55,6 +56,7 @@ export default function PurchasePage() {
   const [billNumber, setBillNumber] = useState('');
   const [billDate, setBillDate] = useState<Date | undefined>(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { setShopNumber } = useUserStore();
 
   const fetchProductMaster = async () => {
     const token = sessionStorage.getItem('accessToken');
@@ -74,6 +76,9 @@ export default function PurchasePage() {
       if (response.ok) {
         const data = await response.json();
         setProductMaster(data || {});
+        if (data.shopNumber) {
+            setShopNumber(data.shopNumber);
+        }
       } else {
         if(response.status === 401) {
             toast({
@@ -145,14 +150,19 @@ export default function PurchasePage() {
                 }
 
                 const sizeValue = packSize.toLowerCase().replace('ml', '').trim();
-                const skuToMatch = `${brandName.trim().toUpperCase()}-${sizeValue}ML`;
+                const normalizedBrandName = brandName.trim().replace(/-/g, ' ');
+                const skuToMatch = `${normalizedBrandName.toUpperCase()}-${sizeValue}ML`;
                 
                 let matchStatus: 'found' | 'not found' = 'not found';
                 let matchedSku: string | undefined = undefined;
                 let matchedProduct: ProductMasterItem | undefined = undefined;
 
                 if (productMaster && productMaster.productList) {
-                    const foundProduct = productMaster.productList.find((product: any) => product.SKU.toUpperCase() === skuToMatch);
+                    const foundProduct = productMaster.productList.find((product: any) => {
+                        const normalizedApiSku = product.SKU.replace(/-/g, ' ');
+                        return normalizedApiSku.toUpperCase() === skuToMatch.replace(/-/g, ' ');
+                    });
+
                     if (foundProduct) {
                         matchStatus = 'found';
                         matchedSku = foundProduct.SKU;
@@ -417,4 +427,3 @@ export default function PurchasePage() {
     </div>
   );
 }
-

@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getPartyDetails, type Party } from '@/app/lib/parties';
 import type { Balances, Transaction, ApiTransaction } from '@/app/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useUserStore } from '@/app/lib/user-store';
 
 
 export default function Home() {
@@ -23,6 +24,8 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const { setShopNumber } = useUserStore();
+
 
   // Filter state lifted up
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
@@ -51,6 +54,9 @@ export default function Home() {
           setBalances(data.account.cashFlow);
         } else {
           throw new Error('Account cashFlow not found in response.');
+        }
+         if (data.account && data.account.shopNumber) {
+          setShopNumber(data.account.shopNumber);
         }
       } else {
           if(response.status === 401) {

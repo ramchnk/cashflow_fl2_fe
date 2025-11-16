@@ -1,6 +1,7 @@
+
 'use client';
 
-import { Wallet, LogOut } from 'lucide-react';
+import { Wallet, LogOut, Store } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -11,10 +12,14 @@ import {
     TooltipProvider,
     TooltipTrigger,
   } from "@/components/ui/tooltip"
+import { useUserStore } from '@/app/lib/user-store';
+
 
 export default function Header() {
     const router = useRouter();
     const pathname = usePathname();
+    const { shopNumber } = useUserStore();
+
 
     const handleLogout = () => {
         sessionStorage.removeItem('accessToken');
@@ -54,7 +59,13 @@ export default function Header() {
               ))}
             </nav>
           </div>
-          <div>
+          <div className="flex items-center gap-4">
+            {shopNumber && (
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Store className="w-5 h-5 text-muted-foreground" />
+                    <span>Shop No: {shopNumber}</span>
+                </div>
+            )}
           <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
