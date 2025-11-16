@@ -25,6 +25,7 @@ interface PurchaseItem {
   qty: string;
   calculatedQty: number;
   totalValue: string;
+  numericTotalValue: number;
   matchStatus: 'found' | 'not found';
   apiSku?: string;
 }
@@ -102,6 +103,7 @@ export default function PurchasePage() {
             const packSize = columns[2];
             const qty = columns[4]; 
             let totalValue = columns[6];
+            let numericTotalValue = 0;
 
             if (srNo && brandName && packSize && qty && totalValue) {
                 
@@ -139,6 +141,7 @@ export default function PurchasePage() {
                                 style: 'currency',
                                 currency: 'INR',
                             }).format(calculatedTotal);
+                            numericTotalValue = calculatedTotal;
                         }
                     }
                 }
@@ -150,6 +153,7 @@ export default function PurchasePage() {
                     qty,
                     calculatedQty,
                     totalValue,
+                    numericTotalValue,
                     matchStatus,
                     apiSku: matchedSku
                 });
@@ -168,6 +172,10 @@ export default function PurchasePage() {
   const totalQty = parsedItems.reduce((acc, item) => {
     const value = parseFloat(item.qty);
     return acc + (isNaN(value) ? 0 : value);
+  }, 0);
+  
+  const totalValue = parsedItems.reduce((acc, item) => {
+    return acc + item.numericTotalValue;
   }, 0);
 
 
@@ -236,8 +244,13 @@ export default function PurchasePage() {
                         </Table>
                     </ScrollArea>
                 </CardContent>
-                <CardFooter className="justify-end font-bold text-lg">
-                    Total Quantity: {totalQty.toFixed(2)}
+                <CardFooter className="flex justify-end gap-8 font-bold text-lg">
+                    <div>
+                        Total Quantity: {totalQty.toFixed(2)}
+                    </div>
+                    <div>
+                        Total Value: {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalValue)}
+                    </div>
                 </CardFooter>
             </Card>
           )}
