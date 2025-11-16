@@ -63,9 +63,8 @@ export default function PurchasePage() {
     setParsedItems(items);
   };
 
-  const grandTotal = parsedItems.reduce((acc, item) => {
-    // Sanitize totalValue by removing commas before parsing
-    const value = parseFloat(item.totalValue.replace(/,/g, ''));
+  const totalQty = parsedItems.reduce((acc, item) => {
+    const value = parseFloat(item.qty);
     return acc + (isNaN(value) ? 0 : value);
   }, 0);
 
@@ -129,7 +128,7 @@ export default function PurchasePage() {
                     </ScrollArea>
                 </CardContent>
                 <CardFooter className="justify-end font-bold text-lg">
-                    Grand Total: {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(grandTotal)}
+                    Total Quantity: {totalQty.toFixed(2)}
                 </CardFooter>
             </Card>
           )}
