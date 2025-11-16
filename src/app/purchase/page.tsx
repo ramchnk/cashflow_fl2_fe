@@ -103,10 +103,12 @@ export default function PurchasePage() {
 
             if (srNo && brandName && packSize && qty && totalValue) {
 
-                const skuToMatch = `${brandName.toUpperCase()}-${packSize}ML`;
+                const sizeValue = packSize.toLowerCase().replace('ml', '').trim();
+                const skuToMatch = `${brandName.trim().toUpperCase()}-${sizeValue}ML`;
+                
                 let matchStatus: 'found' | 'not found' = 'not found';
                 if (productMaster && productMaster.productList) {
-                    const found = productMaster.productList.some((product: any) => product.SKU === skuToMatch);
+                    const found = productMaster.productList.some((product: any) => product.SKU.toUpperCase() === skuToMatch);
                     if (found) {
                         matchStatus = 'found';
                     }
