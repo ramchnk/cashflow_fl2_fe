@@ -16,6 +16,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from '@/components/ui/badge';
 
 interface PurchaseItem {
   srNo: string;
@@ -23,12 +24,13 @@ interface PurchaseItem {
   packSize: string;
   qty: string;
   totalValue: string;
+  matchStatus: 'found' | 'not found';
 }
 
 export default function PurchasePage() {
   const [pastedData, setPastedData] = useState('');
   const [parsedItems, setParsedItems] = useState<PurchaseItem[]>([]);
-  const [productMaster, setProductMaster] = useState<any[]>([]);
+  const [productMaster, setProductMaster] = useState<any | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -49,7 +51,7 @@ export default function PurchasePage() {
 
       if (response.ok) {
         const data = await response.json();
-        setProductMaster(data.products || []);
+        setProductMaster(data || {});
       } else {
         if(response.status === 401) {
             toast({
@@ -100,12 +102,23 @@ export default function PurchasePage() {
             const totalValue = columns[6];
 
             if (srNo && brandName && packSize && qty && totalValue) {
+
+                const skuToMatch = `${brandName.toUpperCase()}-${packSize}ML`;
+                let matchStatus: 'found' | 'not found' = 'not found';
+                if (productMaster && productMaster.productList) {
+                    const found = productMaster.productList.some((product: any) => product.SKU === skuToMatch);
+                    if (found) {
+                        matchStatus = 'found';
+                    }
+                }
+                
                 items.push({
                     srNo,
                     brandName,
                     packSize,
                     qty,
-                    totalValue
+                    totalValue,
+                    matchStatus,
                 });
             }
         }
@@ -116,7 +129,7 @@ export default function PurchasePage() {
   useEffect(() => {
     processData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pastedData]);
+  }, [pastedData, productMaster]);
 
 
   const totalQty = parsedItems.reduce((acc, item) => {
@@ -166,6 +179,7 @@ export default function PurchasePage() {
                                     <TableHead>Pack Size</TableHead>
                                     <TableHead className="text-right">Qty (Cases.Bottle)</TableHead>
                                     <TableHead className="text-right">Total Value</TableHead>
+                                    <TableHead>Status</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -176,6 +190,11 @@ export default function PurchasePage() {
                                     <TableCell>{item.packSize}</TableCell>
                                     <TableCell className="text-right">{item.qty}</TableCell>
                                     <TableCell className="text-right">{item.totalValue}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={item.matchStatus === 'found' ? 'default' : 'destructive'} className={item.matchStatus === 'found' ? 'bg-green-600' : ''}>
+                                            {item.matchStatus === 'found' ? 'Found' : 'Not Found'}
+                                        </Badge>
+                                    </TableCell>
                                 </TableRow>
                                 ))}
                             </TableBody>
