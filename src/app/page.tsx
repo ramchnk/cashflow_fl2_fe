@@ -257,7 +257,7 @@ export default function Home() {
   };
 
   const totalBalance = Object.entries(balances)
-    .filter(([key]) => key !== 'stock')
+    .filter(([key]) => key !== 'expenses')
     .reduce((acc, [, value]) => acc + (typeof value === 'number' ? value : 0), 0);
 
   const accountKeys = Object.keys(balances);
