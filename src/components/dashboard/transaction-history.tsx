@@ -171,7 +171,7 @@ export default function TransactionHistory({ transactions, allParties, dateRange
                     )}
                 </div>
                 <Separator className="my-4 print-hidden"/>
-                <ScrollArea className="h-96 print:h-auto print:overflow-visible">
+                <ScrollArea className="h-[70vh] print:h-auto print:overflow-visible">
                     {isLoading ? (
                          <div className="space-y-4 p-2">
                             {[...Array(5)].map((_, i) => (
