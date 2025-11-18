@@ -148,7 +148,7 @@ export default function TransactionHistory({ transactions, allParties, dateRange
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Accounts</SelectItem>
-                                {allParties.filter(p => p !== 'expenses').map(party => (
+                                {allParties.filter(p => p !== 'expenses' && p !== 'stock').map(party => (
                                     <SelectItem key={party} value={party}>
                                         {getPartyDetails(party).name}
                                     </SelectItem>
