@@ -1,3 +1,4 @@
+
 import type { Transaction } from '@/app/lib/types';
 import { getPartyDetails } from '@/app/lib/parties';
 import {
@@ -7,6 +8,7 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  TableFooter,
 } from '@/components/ui/table';
 
 interface LedgerViewProps {
@@ -36,6 +38,15 @@ const formatDate = (date: Date) => {
 
 export default function LedgerView({ transactions, accountFilter }: LedgerViewProps) {
   if (accountFilter === 'all') return null;
+
+  const totals = transactions.reduce((acc, tx) => {
+    if (tx.to === accountFilter) {
+      acc.credit += tx.amount;
+    } else if (tx.from === accountFilter) {
+      acc.debit += tx.amount;
+    }
+    return acc;
+  }, { credit: 0, debit: 0 });
   
   return (
     <Table>
@@ -91,6 +102,14 @@ export default function LedgerView({ transactions, accountFilter }: LedgerViewPr
                 )
             })}
         </TableBody>
+        <TableFooter>
+            <TableRow>
+                <TableCell colSpan={3} className="text-right font-bold text-lg">Total</TableCell>
+                <TableCell className="text-right font-bold text-lg text-green-600">{formatCurrency(totals.credit)}</TableCell>
+                <TableCell className="text-right font-bold text-lg text-red-600">{formatCurrency(totals.debit)}</TableCell>
+                <TableCell />
+            </TableRow>
+        </TableFooter>
     </Table>
   );
 }
