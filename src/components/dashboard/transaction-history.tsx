@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useState } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon, FilterX, Printer } from 'lucide-react';
@@ -63,6 +64,7 @@ const SimpleListView = ({ transactions }: { transactions: Transaction[] }) => {
 }
 
 export default function TransactionHistory({ transactions, allParties, dateRange, partyFilter, onFiltersChange, isLoading, onGetReport }: TransactionHistoryProps) {
+    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
     const clearFilters = () => {
         onFiltersChange('all', undefined);
@@ -70,6 +72,10 @@ export default function TransactionHistory({ transactions, allParties, dateRange
     
     const handleDateChange = (newDateRange?: DateRange) => {
         onFiltersChange(partyFilter, newDateRange);
+        // Close the popover once a range is selected
+        if (newDateRange?.from && newDateRange?.to) {
+            setIsDatePickerOpen(false);
+        }
     }
 
     const handlePartyChange = (newPartyFilter: string) => {
@@ -97,7 +103,7 @@ export default function TransactionHistory({ transactions, allParties, dateRange
                 <div className="flex flex-col sm:flex-row gap-4 mb-4 items-end print-hidden">
                     <div className="grid gap-2">
                         <label className="text-sm font-medium">Date range</label>
-                        <Popover>
+                        <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                             <PopoverTrigger asChild>
                                 <Button
                                     id="date"
