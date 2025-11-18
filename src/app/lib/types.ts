@@ -1,3 +1,4 @@
+
 import type { Party } from './parties';
 
 export type Balances = Record<Party, number>;
@@ -18,7 +19,7 @@ export interface ApiTransaction {
     fromAccount: Party;
     toAccount: Party;
     amount: number;
-    date: number;
+    date: number | { '$numberLong': string };
     naration?: string;
     fromAccountOpeningBalance: number;
     toAccountOpeningBalance: number;

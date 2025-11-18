@@ -113,16 +113,21 @@ export default function Home() {
         const data = await response.json();
         const apiTransactions: ApiTransaction[] = data.transactions || [];
         
-        const formattedTransactions: Transaction[] = apiTransactions.map((tx) => ({
-          id: tx._id.$oid,
-          from: tx.fromAccount,
-          to: tx.toAccount,
-          amount: tx.amount,
-          date: new Date(tx.date * 1000),
-          description: tx.naration,
-          fromAccountOpeningBalance: tx.fromAccountOpeningBalance,
-          toAccountOpeningBalance: tx.toAccountOpeningBalance,
-        }));
+        const formattedTransactions: Transaction[] = apiTransactions.map((tx) => {
+            const rawDate = typeof tx.date === 'object' && tx.date !== null && '$numberLong' in tx.date ? tx.date.$numberLong : tx.date;
+            const timestamp = typeof rawDate === 'string' ? parseInt(rawDate, 10) : rawDate;
+
+            return {
+                id: tx._id.$oid,
+                from: tx.fromAccount,
+                to: tx.toAccount,
+                amount: tx.amount,
+                date: new Date(timestamp * 1000),
+                description: tx.naration,
+                fromAccountOpeningBalance: tx.fromAccountOpeningBalance,
+                toAccountOpeningBalance: tx.toAccountOpeningBalance,
+            };
+        });
         
         setTransactions(formattedTransactions.sort((a, b) => b.date.getTime() - a.date.getTime()));
 
