@@ -23,11 +23,16 @@ const formatCurrency = (amount: number | null) => {
     }).format(amount);
 };
 
-const formatDate = (date: Date) => new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-}).format(date);
+const formatDate = (date: Date) => {
+    if (!date || isNaN(date.getTime())) {
+        return '-';
+    }
+    return new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+    }).format(date);
+};
 
 export default function LedgerView({ transactions, accountFilter }: LedgerViewProps) {
   if (accountFilter === 'all') return null;
