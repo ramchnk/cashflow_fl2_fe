@@ -115,7 +115,7 @@ export default function Home() {
         
         const formattedTransactions: Transaction[] = apiTransactions.map((tx) => {
             const rawDate = typeof tx.date === 'object' && tx.date !== null && '$numberLong' in tx.date ? tx.date.$numberLong : tx.date;
-            const timestamp = typeof rawDate === 'string' ? parseInt(rawDate, 10) : rawDate;
+            const timestamp = typeof rawDate === 'string' ? parseInt(rawDate, 10) : Number(rawDate);
 
             return {
                 id: tx._id.$oid,
@@ -129,7 +129,7 @@ export default function Home() {
             };
         });
         
-        setTransactions(formattedTransactions.sort((a, b) => b.date.getTime() - a.date.getTime()));
+        setTransactions(formattedTransactions);
 
       } else {
         if(response.status === 401) {
@@ -154,7 +154,7 @@ export default function Home() {
     } finally {
       setIsHistoryLoading(false);
     }
-  }, [router, toast, partyFilter, dateRange]);
+  }, [router, toast, partyFilter, dateRange, setShopName]);
 
 
   useEffect(() => {
@@ -262,7 +262,6 @@ export default function Home() {
   };
 
   const totalBalance = Object.entries(balances)
-    .filter(([key]) => key !== 'expenses')
     .reduce((acc, [, value]) => acc + (typeof value === 'number' ? value : 0), 0);
 
   const accountKeys = Object.keys(balances);
