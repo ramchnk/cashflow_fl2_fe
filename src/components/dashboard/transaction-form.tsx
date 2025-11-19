@@ -368,7 +368,13 @@ export default function TransactionForm({ onTransaction, balances, isSubmitting 
         <Tabs defaultValue="transfer" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="transfer" disabled={isSubmitting}>Transfer</TabsTrigger>
-            <TabsTrigger value="deduction" disabled={isSubmitting}>Deduction</TabsTrigger>
+            <TabsTrigger 
+              value="deduction" 
+              disabled={isSubmitting}
+              className="data-[state=active]:bg-destructive data-[state=active]:text-destructive-foreground data-[state=inactive]:text-red-500"
+            >
+              Deduction
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="transfer" className="pt-6">
             <GeneralTransferForm onTransaction={onTransaction} balances={balances} isSubmitting={isSubmitting}/>
