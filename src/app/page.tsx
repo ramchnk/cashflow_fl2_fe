@@ -165,6 +165,7 @@ export default function Home() {
     const token = sessionStorage.getItem('accessToken');
     if (token) {
       fetchAccountInfo();
+      fetchTransactions();
     } else {
       router.push('/login');
     }
@@ -309,7 +310,7 @@ export default function Home() {
                         />
                     )}
                   </div>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 pt-4">
+                  <div className="grid gap-4 md:grid-cols-2 pt-4">
                      <BalanceCard
                         party={getPartyDetails('total')}
                         balance={totalBalance}
