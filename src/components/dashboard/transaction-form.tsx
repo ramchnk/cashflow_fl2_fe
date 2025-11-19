@@ -59,7 +59,7 @@ type TransferSchema = z.infer<ReturnType<typeof createTransferSchema>>;
 
 function GeneralTransferForm({ onTransaction, balances, isSubmitting }: TransactionFormProps) {
   const allParties = Object.keys(balances);
-  const fromParties = allParties.filter(party => party.toLowerCase() !== 'stock' && party.toLowerCase() !== 'tasmac');
+  const fromParties = allParties.filter(party => party.toLowerCase() !== 'stock' && party.toLowerCase() !== 'tasmac' && party.toLowerCase() !== 'readytocollect');
   
   const form = useForm<TransferSchema>({
     resolver: zodResolver(createTransferSchema(allParties)),
