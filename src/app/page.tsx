@@ -19,6 +19,7 @@ import { useUserStore } from '@/app/lib/user-store';
 export default function Home() {
   const [balances, setBalances] = useState<Balances>({});
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [investAmount, setInvestAmount] = useState(0);
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,6 +55,9 @@ export default function Home() {
           setBalances(data.account.cashFlow);
         } else {
           throw new Error('Account cashFlow not found in response.');
+        }
+        if (data.account && data.account.investAmount) {
+            setInvestAmount(data.account.investAmount);
         }
          if (data.account && data.account.shopName) {
           setShopName(data.account.shopName);
@@ -264,6 +268,8 @@ export default function Home() {
   const totalBalance = Object.entries(balances)
     .reduce((acc, [, value]) => acc + (typeof value === 'number' ? value : 0), 0);
 
+  const profit = totalBalance - investAmount;
+
   const accountKeys = Object.keys(balances);
   const regularAccounts = accountKeys.filter(key => key !== 'stock' && key !== 'expenses');
   const stockAccount = accountKeys.find(key => key === 'stock');
@@ -307,6 +313,10 @@ export default function Home() {
                      <BalanceCard
                         party={getPartyDetails('total')}
                         balance={totalBalance}
+                      />
+                     <BalanceCard
+                        party={getPartyDetails('profit')}
+                        balance={profit}
                       />
                   </div>
               </div>

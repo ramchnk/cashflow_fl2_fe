@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Landmark, HandCoins, Store, Boxes, ReceiptText, Wallet, PiggyBank, Building2 } from 'lucide-react';
+import { Landmark, HandCoins, Store, Boxes, ReceiptText, Wallet, PiggyBank, Building2, TrendingUp } from 'lucide-react';
 
 export type Party = string;
 
@@ -27,6 +27,9 @@ export function getPartyDetails(party: Party): PartyDetails {
   }
   if (lowerCaseParty === 'total') {
     return { name: 'Total', icon: Wallet };
+  }
+   if (lowerCaseParty === 'profit') {
+    return { name: 'Profit', icon: TrendingUp };
   }
 
   // Handle dynamic bank accounts
