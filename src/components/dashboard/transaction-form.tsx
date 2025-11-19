@@ -59,7 +59,9 @@ type TransferSchema = z.infer<ReturnType<typeof createTransferSchema>>;
 
 function GeneralTransferForm({ onTransaction, balances, isSubmitting }: TransactionFormProps) {
   const allParties = Object.keys(balances);
-  const fromParties = allParties.filter(party => party.toLowerCase() !== 'stock' && party.toLowerCase() !== 'tasmac' && party.toLowerCase() !== 'readytocollect');
+  const fromParties = allParties.filter(party => !['stock', 'tasmac', 'expenses', 'readytocollect'].includes(party.toLowerCase()));
+  const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
+
   
   const form = useForm<TransferSchema>({
     resolver: zodResolver(createTransferSchema(allParties)),
@@ -186,7 +188,7 @@ function GeneralTransferForm({ onTransaction, balances, isSubmitting }: Transact
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>Date</FormLabel>
-                <Popover>
+                <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                   <PopoverTrigger asChild>
                     <FormControl>
                       <Button
@@ -209,7 +211,10 @@ function GeneralTransferForm({ onTransaction, balances, isSubmitting }: Transact
                     <Calendar
                       mode="single"
                       selected={field.value}
-                      onSelect={field.onChange}
+                      onSelect={(date) => {
+                        field.onChange(date);
+                        setIsDatePickerOpen(false);
+                      }}
                       disabled={(date) =>
                         date > new Date() || date < new Date("1900-01-01")
                       }
@@ -247,6 +252,7 @@ type DeductionSchema = z.infer<ReturnType<typeof createDeductionSchema>>;
 function DeductionForm({ onTransaction, balances, isSubmitting }: TransactionFormProps) {
   const allParties = Object.keys(balances);
   const fromParties = allParties.filter(party => !['stock', 'tasmac', 'expenses'].includes(party.toLowerCase()));
+  const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
 
   const form = useForm<DeductionSchema>({
     resolver: zodResolver(createDeductionSchema(fromParties)),
@@ -322,7 +328,7 @@ function DeductionForm({ onTransaction, balances, isSubmitting }: TransactionFor
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>Date</FormLabel>
-                <Popover>
+                <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                   <PopoverTrigger asChild>
                     <FormControl>
                       <Button
@@ -345,7 +351,10 @@ function DeductionForm({ onTransaction, balances, isSubmitting }: TransactionFor
                     <Calendar
                       mode="single"
                       selected={field.value}
-                      onSelect={field.onChange}
+                      onSelect={(date) => {
+                        field.onChange(date);
+                        setIsDatePickerOpen(false);
+                      }}
                       disabled={(date) =>
                         date > new Date() || date < new Date("1900-01-01")
                       }
@@ -377,6 +386,8 @@ const createCollectedSchema = () => z.object({
 type CollectedSchema = z.infer<ReturnType<typeof createCollectedSchema>>;
 
 function CollectedForm({ onTransaction, isSubmitting }: TransactionFormProps) {
+    const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
+
     const form = useForm<CollectedSchema>({
         resolver: zodResolver(createCollectedSchema()),
         defaultValues: { amount: undefined, date: new Date(), description: "" },
@@ -426,7 +437,7 @@ function CollectedForm({ onTransaction, isSubmitting }: TransactionFormProps) {
                     render={({ field }) => (
                         <FormItem className="flex flex-col">
                             <FormLabel>Date</FormLabel>
-                            <Popover>
+                            <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                                 <PopoverTrigger asChild>
                                     <FormControl>
                                         <Button
@@ -449,7 +460,10 @@ function CollectedForm({ onTransaction, isSubmitting }: TransactionFormProps) {
                                     <Calendar
                                         mode="single"
                                         selected={field.value}
-                                        onSelect={field.onChange}
+                                        onSelect={(date) => {
+                                            field.onChange(date);
+                                            setIsDatePickerOpen(false);
+                                        }}
                                         disabled={(date) =>
                                             date > new Date() || date < new Date("1900-01-01")
                                         }
