@@ -54,7 +54,7 @@ export default function Home() {
         const data = await response.json();
         if (data.account && data.account.cashFlow) {
           setBalances(data.account.cashFlow);
-          if (data.account.cashFlow.readyToCollect) {
+           if (data.account.cashFlow.readyToCollect) {
             setReadyToCollect(data.account.cashFlow.readyToCollect);
           }
         } else {
@@ -198,7 +198,7 @@ export default function Home() {
     
     setIsSubmitting(true);
 
-    const toAccount = to === 'expenses' ? from : to;
+    const toAccount = to === 'expenses' || to === 'collected' ? from : to;
 
     const payload: {
         date: number;
@@ -244,6 +244,10 @@ export default function Home() {
 
         if (to === 'expenses') {
           toastDescription = `Logged expense of ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)} from ${fromDetails.name}.`;
+        }
+        
+        if (to === 'collected') {
+          toastDescription = `Logged collection of ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)} from ${fromDetails.name}.`;
         }
 
         toast({
@@ -357,5 +361,7 @@ export default function Home() {
     </div>
   );
 }
+
+    
 
     

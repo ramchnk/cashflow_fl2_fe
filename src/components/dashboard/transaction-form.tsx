@@ -383,7 +383,7 @@ function CollectedForm({ onTransaction, isSubmitting }: TransactionFormProps) {
     });
 
     const onSubmit = async (values: CollectedSchema) => {
-        const success = await onTransaction('readyToCollect', 'cashInHand', values.amount, values.date, values.description);
+        const success = await onTransaction('readyToCollect', 'collected', values.amount, values.date, values.description);
         if (success) {
             form.reset({ amount: undefined, date: new Date(), description: "" });
         }
@@ -517,3 +517,5 @@ export default function TransactionForm(props: TransactionFormProps) {
     </Card>
   );
 }
+
+    
