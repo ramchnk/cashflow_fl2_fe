@@ -366,6 +366,110 @@ function DeductionForm({ onTransaction, balances, isSubmitting }: TransactionFor
   );
 }
 
+const createCollectedSchema = () => z.object({
+    amount: z.coerce.number().positive("Amount must be positive."),
+    date: z.date({
+        required_error: "A date is required.",
+    }),
+    description: z.string().optional(),
+});
+
+type CollectedSchema = z.infer<ReturnType<typeof createCollectedSchema>>;
+
+function CollectedForm({ onTransaction, isSubmitting }: TransactionFormProps) {
+    const form = useForm<CollectedSchema>({
+        resolver: zodResolver(createCollectedSchema()),
+        defaultValues: { amount: undefined, date: new Date(), description: "" },
+    });
+
+    const onSubmit = async (values: CollectedSchema) => {
+        const success = await onTransaction('readyToCollect', 'cashInHand', values.amount, values.date, values.description);
+        if (success) {
+            form.reset({ amount: undefined, date: new Date(), description: "" });
+        }
+    };
+
+    return (
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                    control={form.control}
+                    name="amount"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Amount Collected</FormLabel>
+                            <FormControl>
+                                <Input type="number" placeholder="0.00" {...field} onChange={event => field.onChange(event.target.value === '' ? undefined : +event.target.value)} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Description (Optional)</FormLabel>
+                            <FormControl>
+                                <Textarea placeholder="Add a note for this collection..." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <FormField
+                    control={form.control}
+                    name="date"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                            <FormLabel>Date</FormLabel>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <FormControl>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "w-full pl-3 text-left font-normal",
+                                                !field.value && "text-muted-foreground"
+                                            )}
+                                        >
+                                            {field.value ? (
+                                                format(field.value, "PPP")
+                                            ) : (
+                                                <span>Pick a date</span>
+                                            )}
+                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={field.value}
+                                        onSelect={field.onChange}
+                                        disabled={(date) =>
+                                            date > new Date() || date < new Date("1900-01-01")
+                                        }
+                                        initialFocus
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={isSubmitting}>
+                    {isSubmitting ? 'Submitting...' : 'Submit Collection'}
+                </Button>
+            </form>
+        </Form>
+    );
+}
+
 
 export default function TransactionForm(props: TransactionFormProps) {
   return (
@@ -373,13 +477,19 @@ export default function TransactionForm(props: TransactionFormProps) {
       <CardHeader>
         <CardTitle>Log a Transaction</CardTitle>
         <CardDescription>
-          Record a new transfer or expense.
+          Record a new transfer, expense, or collection.
         </CardDescription>
       </CardHeader>
       <CardContent>
          <Tabs defaultValue="transfer" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="transfer">Transfer</TabsTrigger>
+                <TabsTrigger 
+                    value="collected"
+                    className="data-[state=active]:bg-green-600 data-[state=active]:text-white"
+                >
+                Collected
+                </TabsTrigger>
                 <TabsTrigger 
                     value="deduction"
                     className="data-[state=active]:bg-destructive data-[state=active]:text-destructive-foreground"
@@ -391,6 +501,11 @@ export default function TransactionForm(props: TransactionFormProps) {
                 <div className="pt-4">
                     <GeneralTransferForm {...props} />
                 </div>
+            </TabsContent>
+            <TabsContent value="collected">
+                 <div className="pt-4">
+                    <CollectedForm {...props} />
+                 </div>
             </TabsContent>
             <TabsContent value="deduction">
                  <div className="pt-4">
