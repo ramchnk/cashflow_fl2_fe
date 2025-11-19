@@ -462,7 +462,7 @@ function CollectedForm({ onTransaction, isSubmitting }: TransactionFormProps) {
                     )}
                 />
 
-                <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={isSubmitting}>
+                <Button type="submit" className="w-full bg-yellow-500 hover:bg-yellow-600 text-yellow-900" disabled={isSubmitting}>
                     {isSubmitting ? 'Submitting...' : 'Submit Collection'}
                 </Button>
             </form>
@@ -485,16 +485,16 @@ export default function TransactionForm(props: TransactionFormProps) {
             <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="transfer">Transfer</TabsTrigger>
                 <TabsTrigger 
-                    value="collected"
-                    className="data-[state=active]:bg-green-600 data-[state=active]:text-white"
-                >
-                Collected
-                </TabsTrigger>
-                <TabsTrigger 
                     value="deduction"
                     className="data-[state=active]:bg-destructive data-[state=active]:text-destructive-foreground"
                 >
                 Deduction
+                </TabsTrigger>
+                <TabsTrigger 
+                    value="collected"
+                    className="data-[state=active]:bg-yellow-400 data-[state=active]:text-yellow-900"
+                >
+                Collected
                 </TabsTrigger>
             </TabsList>
             <TabsContent value="transfer">
@@ -502,14 +502,14 @@ export default function TransactionForm(props: TransactionFormProps) {
                     <GeneralTransferForm {...props} />
                 </div>
             </TabsContent>
+             <TabsContent value="deduction">
+                 <div className="pt-4">
+                    <DeductionForm {...props} />
+                 </div>
+            </TabsContent>
             <TabsContent value="collected">
                  <div className="pt-4">
                     <CollectedForm {...props} />
-                 </div>
-            </TabsContent>
-            <TabsContent value="deduction">
-                 <div className="pt-4">
-                    <DeductionForm {...props} />
                  </div>
             </TabsContent>
         </Tabs>
