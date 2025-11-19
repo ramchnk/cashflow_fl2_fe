@@ -158,14 +158,13 @@ export default function Home() {
     } finally {
       setIsHistoryLoading(false);
     }
-  }, [router, toast, partyFilter, dateRange, setShopName]);
+  }, [router, toast, partyFilter, dateRange]);
 
 
   useEffect(() => {
     const token = sessionStorage.getItem('accessToken');
     if (token) {
       fetchAccountInfo();
-      fetchTransactions();
     } else {
       router.push('/login');
     }
@@ -248,9 +247,11 @@ export default function Home() {
           description: toastDescription,
         });
 
-        // Re-fetch account info and transactions to get the latest state from the server
+        // Re-fetch account info to get the latest state from the server
         await fetchAccountInfo();
-        await fetchTransactions();
+        if (dateRange || partyFilter !== 'all') {
+            await fetchTransactions();
+        }
         
         return true;
 
@@ -345,3 +346,5 @@ export default function Home() {
     </div>
   );
 }
+
+    

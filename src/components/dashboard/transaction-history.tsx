@@ -65,6 +65,7 @@ const SimpleListView = ({ transactions }: { transactions: Transaction[] }) => {
 
 export default function TransactionHistory({ transactions, allParties, dateRange, partyFilter, onFiltersChange, isLoading, onGetReport }: TransactionHistoryProps) {
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+    const [initialLoad, setInitialLoad] = useState(true);
 
     const clearFilters = () => {
         onFiltersChange('all', undefined);
@@ -81,6 +82,11 @@ export default function TransactionHistory({ transactions, allParties, dateRange
     const handlePartyChange = (newPartyFilter: string) => {
         onFiltersChange(newPartyFilter, dateRange);
     }
+
+    const handleGetReport = () => {
+        setInitialLoad(false);
+        onGetReport();
+    }
     
     const handlePrint = () => {
         window.print();
@@ -90,7 +96,7 @@ export default function TransactionHistory({ transactions, allParties, dateRange
     
     const showLedgerView = partyFilter !== 'all';
     
-    const isReportButtonDisabled = isLoading || !dateRange?.from || !dateRange?.to || partyFilter === 'all';
+    const isReportButtonDisabled = isLoading || !dateRange?.from || !dateRange?.to;
 
 
     return (
@@ -156,7 +162,7 @@ export default function TransactionHistory({ transactions, allParties, dateRange
                             </SelectContent>
                         </Select>
                     </div>
-                    <Button onClick={onGetReport} disabled={isReportButtonDisabled}>
+                    <Button onClick={handleGetReport} disabled={isReportButtonDisabled}>
                         Get Report
                     </Button>
                      <Button onClick={handlePrint} variant="outline" disabled={isLoading || transactions.length === 0}>
@@ -174,22 +180,23 @@ export default function TransactionHistory({ transactions, allParties, dateRange
                 <ScrollArea className="h-[70vh] print:h-auto print:overflow-visible">
                     {isLoading ? (
                          <div className="space-y-4 p-2">
-                            {[...Array(5)].map((_, i) => (
+                            {[...Array(10)].map((_, i) => (
                                 <div key={i} className="flex items-center space-x-4">
                                      <Skeleton className="h-6 w-24" />
                                      <div className="flex-grow space-y-2">
                                          <Skeleton className="h-4 w-3/4" />
                                      </div>
                                      <Skeleton className="h-6 w-20" />
-                                     <Skeleton className="h-6 w-20" />
-                                     <Skeleton className="h-6 w-20" />
-                                     <Skeleton className="h-6 w-20" />
                                  </div>
                             ))}
                         </div>
-                    ) : transactions.length === 0 ? (
+                    ) : initialLoad ? (
                         <div className="flex items-center justify-center h-full text-muted-foreground">
                            Select filters and click "Get Report" to view transactions.
+                        </div>
+                    ) : transactions.length === 0 ? (
+                        <div className="flex items-center justify-center h-full text-muted-foreground">
+                           No transactions found for the selected filters.
                         </div>
                     ) : showLedgerView ? (
                         <LedgerView transactions={transactions} accountFilter={partyFilter} />
@@ -201,3 +208,5 @@ export default function TransactionHistory({ transactions, allParties, dateRange
         </Card>
     )
 }
+
+    
