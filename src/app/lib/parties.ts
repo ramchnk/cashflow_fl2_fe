@@ -31,9 +31,6 @@ export function getPartyDetails(party: Party): PartyDetails {
    if (lowerCaseParty === 'profit') {
     return { name: 'Profit', icon: TrendingUp };
   }
-  if (lowerCaseParty === 'readytocollect') {
-    return { name: 'Ready to Collect', icon: PackageCheck };
-  }
 
   // Handle dynamic bank accounts
   if (lowerCaseParty.includes('bank')) {

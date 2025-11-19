@@ -20,7 +20,6 @@ export default function Home() {
   const [balances, setBalances] = useState<Balances>({});
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [investAmount, setInvestAmount] = useState(0);
-  const [readyToCollect, setReadyToCollect] = useState(0);
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,9 +61,6 @@ export default function Home() {
         }
          if (data.account && data.account.shopName) {
           setShopName(data.account.shopName);
-        }
-        if (data.account && data.account.readyToCollect) {
-          setReadyToCollect(data.account.readyToCollect);
         }
       } else {
           if(response.status === 401) {
@@ -318,7 +314,7 @@ export default function Home() {
                         />
                     )}
                   </div>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 pt-4">
+                  <div className="grid gap-4 md:grid-cols-2 pt-4">
                      <BalanceCard
                         party={getPartyDetails('total')}
                         balance={totalBalance}
@@ -326,10 +322,6 @@ export default function Home() {
                       <BalanceCard
                         party={getPartyDetails('profit')}
                         balance={profit}
-                      />
-                      <BalanceCard
-                        party={getPartyDetails('readytocollect')}
-                        balance={readyToCollect}
                       />
                   </div>
               </div>
