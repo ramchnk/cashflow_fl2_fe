@@ -20,6 +20,7 @@ export default function Home() {
   const [balances, setBalances] = useState<Balances>({});
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [investAmount, setInvestAmount] = useState(0);
+  const [readyToCollect, setReadyToCollect] = useState(0);
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,6 +54,9 @@ export default function Home() {
         const data = await response.json();
         if (data.account && data.account.cashFlow) {
           setBalances(data.account.cashFlow);
+          if (data.account.cashFlow.readyToCollect) {
+            setReadyToCollect(data.account.cashFlow.readyToCollect);
+          }
         } else {
           throw new Error('Account cashFlow not found in response.');
         }
@@ -158,7 +162,7 @@ export default function Home() {
     } finally {
       setIsHistoryLoading(false);
     }
-  }, [router, toast, setShopName, partyFilter, dateRange]);
+  }, [router, toast, partyFilter, dateRange]);
 
 
   useEffect(() => {
@@ -269,14 +273,14 @@ export default function Home() {
 
   const totalBalance = Object.entries(balances)
     .reduce((acc, [key, value]) => {
-        if (key.toLowerCase() === 'expenses') return acc;
+        if (key.toLowerCase() === 'expenses' || key.toLowerCase() === 'readytocollect') return acc;
         return acc + (typeof value === 'number' ? value : 0)
     }, 0);
 
   const profit = totalBalance - investAmount;
 
   const accountKeys = Object.keys(balances);
-  const regularAccounts = accountKeys.filter(key => key !== 'stock' && key !== 'expenses');
+  const regularAccounts = accountKeys.filter(key => key !== 'stock' && key !== 'expenses' && key !== 'readyToCollect');
   const stockAccount = accountKeys.find(key => key === 'stock');
 
   const onFiltersChange = (newPartyFilter: string, newDateRange?: DateRange) => {
@@ -314,7 +318,7 @@ export default function Home() {
                         />
                     )}
                   </div>
-                  <div className="grid gap-4 md:grid-cols-2 pt-4">
+                  <div className="grid gap-4 md:grid-cols-3 pt-4">
                      <BalanceCard
                         party={getPartyDetails('total')}
                         balance={totalBalance}
@@ -322,6 +326,10 @@ export default function Home() {
                       <BalanceCard
                         party={getPartyDetails('profit')}
                         balance={profit}
+                      />
+                      <BalanceCard
+                        party={getPartyDetails('readyToCollect')}
+                        balance={readyToCollect}
                       />
                   </div>
               </div>
