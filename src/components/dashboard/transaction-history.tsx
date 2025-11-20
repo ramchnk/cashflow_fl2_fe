@@ -17,6 +17,12 @@ import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import LedgerView from './ledger-view';
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+  } from "@/components/ui/accordion";
 
 interface TransactionHistoryProps {
     transactions: Transaction[];
@@ -100,111 +106,115 @@ export default function TransactionHistory({ transactions, allParties, dateRange
 
 
     return (
-        <Card id="transaction-history-card">
-            <CardHeader className="print-hidden">
-                <CardTitle>Transaction History</CardTitle>
-                <CardDescription>A log of all your recent transactions.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="flex flex-col sm:flex-row gap-4 mb-4 items-end print-hidden">
-                    <div className="grid gap-2">
-                        <label className="text-sm font-medium">Date range</label>
-                        <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    id="date"
-                                    variant={"outline"}
-                                    className={cn(
-                                        "w-full sm:w-[300px] justify-start text-left font-normal",
-                                        !dateRange && "text-muted-foreground"
-                                    )}
-                                >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {dateRange?.from ? (
-                                        dateRange.to ? (
-                                            <>
-                                                {format(dateRange.from, "LLL dd, y")} -{" "}
-                                                {format(dateRange.to, "LLL dd, y")}
-                                            </>
+        <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="transaction-history" className="border-none">
+                <AccordionTrigger>
+                    <div className="flex flex-col items-start">
+                        <CardTitle>Transaction History</CardTitle>
+                        <CardDescription className="text-left">A log of all your recent transactions.</CardDescription>
+                    </div>
+                </AccordionTrigger>
+                <AccordionContent id="transaction-history-card" className="pt-4">
+                    <div className="flex flex-col sm:flex-row gap-4 mb-4 items-end print-hidden">
+                        <div className="grid gap-2">
+                            <label className="text-sm font-medium">Date range</label>
+                            <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        id="date"
+                                        variant={"outline"}
+                                        className={cn(
+                                            "w-full sm:w-[300px] justify-start text-left font-normal",
+                                            !dateRange && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {dateRange?.from ? (
+                                            dateRange.to ? (
+                                                <>
+                                                    {format(dateRange.from, "LLL dd, y")} -{" "}
+                                                    {format(dateRange.to, "LLL dd, y")}
+                                                </>
+                                            ) : (
+                                                format(dateRange.from, "LLL dd, y")
+                                            )
                                         ) : (
-                                            format(dateRange.from, "LLL dd, y")
-                                        )
-                                    ) : (
-                                        <span>Pick a date range</span>
-                                    )}
+                                            <span>Pick a date range</span>
+                                        )}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        initialFocus
+                                        mode="range"
+                                        defaultMonth={dateRange?.from}
+                                        selected={dateRange}
+                                        onSelect={handleDateChange}
+                                        numberOfMonths={2}
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        <div className="grid gap-2">
+                            <label className="text-sm font-medium">Account</label>
+                            <Select value={partyFilter} onValueChange={handlePartyChange}>
+                                <SelectTrigger className="w-full sm:w-[220px]">
+                                    <SelectValue placeholder="Filter by account" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Accounts</SelectItem>
+                                    {allParties.filter(p => p !== 'expenses' && p !== 'stock').map(party => (
+                                        <SelectItem key={party} value={party}>
+                                            {getPartyDetails(party).name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <Button onClick={handleGetReport} disabled={isReportButtonDisabled}>
+                            Get Report
+                        </Button>
+                        <Button onClick={handlePrint} variant="outline" disabled={isLoading || transactions.length === 0}>
+                            <Printer className="mr-2 h-4 w-4"/> Print
+                        </Button>
+                        {hasActiveFilters && (
+                            <div className="flex items-end">
+                                <Button variant="ghost" onClick={clearFilters} className="sm:ml-auto">
+                                    <FilterX className="mr-2 h-4 w-4"/> Clear
                                 </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                    initialFocus
-                                    mode="range"
-                                    defaultMonth={dateRange?.from}
-                                    selected={dateRange}
-                                    onSelect={handleDateChange}
-                                    numberOfMonths={2}
-                                />
-                            </PopoverContent>
-                        </Popover>
+                            </div>
+                        )}
                     </div>
-                     <div className="grid gap-2">
-                         <label className="text-sm font-medium">Account</label>
-                        <Select value={partyFilter} onValueChange={handlePartyChange}>
-                            <SelectTrigger className="w-full sm:w-[220px]">
-                                <SelectValue placeholder="Filter by account" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Accounts</SelectItem>
-                                {allParties.filter(p => p !== 'expenses' && p !== 'stock').map(party => (
-                                    <SelectItem key={party} value={party}>
-                                        {getPartyDetails(party).name}
-                                    </SelectItem>
+                    <Separator className="my-4 print-hidden"/>
+                    <ScrollArea className="h-[70vh] print:h-auto print:overflow-visible">
+                        {isLoading ? (
+                            <div className="space-y-4 p-2">
+                                {[...Array(10)].map((_, i) => (
+                                    <div key={i} className="flex items-center space-x-4">
+                                        <Skeleton className="h-6 w-24" />
+                                        <div className="flex-grow space-y-2">
+                                            <Skeleton className="h-4 w-3/4" />
+                                        </div>
+                                        <Skeleton className="h-6 w-20" />
+                                    </div>
                                 ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <Button onClick={handleGetReport} disabled={isReportButtonDisabled}>
-                        Get Report
-                    </Button>
-                     <Button onClick={handlePrint} variant="outline" disabled={isLoading || transactions.length === 0}>
-                        <Printer className="mr-2 h-4 w-4"/> Print
-                    </Button>
-                    {hasActiveFilters && (
-                        <div className="flex items-end">
-                             <Button variant="ghost" onClick={clearFilters} className="sm:ml-auto">
-                                <FilterX className="mr-2 h-4 w-4"/> Clear
-                             </Button>
-                        </div>
-                    )}
-                </div>
-                <Separator className="my-4 print-hidden"/>
-                <ScrollArea className="h-[70vh] print:h-auto print:overflow-visible">
-                    {isLoading ? (
-                         <div className="space-y-4 p-2">
-                            {[...Array(10)].map((_, i) => (
-                                <div key={i} className="flex items-center space-x-4">
-                                     <Skeleton className="h-6 w-24" />
-                                     <div className="flex-grow space-y-2">
-                                         <Skeleton className="h-4 w-3/4" />
-                                     </div>
-                                     <Skeleton className="h-6 w-20" />
-                                 </div>
-                            ))}
-                        </div>
-                    ) : initialLoad ? (
-                        <div className="flex items-center justify-center h-full text-muted-foreground">
-                           Select filters and click "Get Report" to view transactions.
-                        </div>
-                    ) : transactions.length === 0 ? (
-                        <div className="flex items-center justify-center h-full text-muted-foreground">
-                           No transactions found for the selected filters.
-                        </div>
-                    ) : showLedgerView ? (
-                        <LedgerView transactions={transactions} accountFilter={partyFilter} />
-                    ) : (
-                       <SimpleListView transactions={transactions} />
-                    )}
-                </ScrollArea>
-            </CardContent>
-        </Card>
+                            </div>
+                        ) : initialLoad ? (
+                            <div className="flex items-center justify-center h-full text-muted-foreground">
+                            Select filters and click "Get Report" to view transactions.
+                            </div>
+                        ) : transactions.length === 0 ? (
+                            <div className="flex items-center justify-center h-full text-muted-foreground">
+                            No transactions found for the selected filters.
+                            </div>
+                        ) : showLedgerView ? (
+                            <LedgerView transactions={transactions} accountFilter={partyFilter} />
+                        ) : (
+                        <SimpleListView transactions={transactions} />
+                        )}
+                    </ScrollArea>
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
     )
 }
