@@ -115,9 +115,9 @@ export default function LedgerView({ transactions, accountFilter }: LedgerViewPr
         <TableFooter>
           {accountFilter.toLowerCase() === 'readytocollect' ? (
               <TableRow>
-                  <TableCell colSpan={3} className="text-right font-bold text-lg">Total Credit</TableCell>
-                  <TableCell className="text-right font-bold text-lg text-green-600">{formatCurrency(totalCredit)}</TableCell>
-                  <TableCell colSpan={2}></TableCell>
+                  <TableCell colSpan={4} className="text-right font-bold text-lg">Total Debit</TableCell>
+                  <TableCell className="text-right font-bold text-lg text-red-600">{formatCurrency(totalDebit)}</TableCell>
+                  <TableCell></TableCell>
               </TableRow>
           ) : (
               <TableRow>
