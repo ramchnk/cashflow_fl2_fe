@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Header from '@/components/layout/header';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -19,6 +19,7 @@ import {
   TableFooter
 } from '@/components/ui/table';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -33,6 +34,7 @@ export default function ExpensesPage() {
   const [toDate, setToDate] = useState<Date | undefined>();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
   const router = useRouter();
 
@@ -94,8 +96,12 @@ export default function ExpensesPage() {
         setIsLoading(false);
     }
   };
+  
+  const filteredExpenses = expenses.filter(expense =>
+    expense.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const totalAmount = expenses.reduce((acc, expense) => acc + expense.amount, 0);
+  const totalAmount = filteredExpenses.reduce((acc, expense) => acc + expense.amount, 0);
   
   const formattedTotal = new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -107,19 +113,9 @@ export default function ExpensesPage() {
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
       <main className="flex-1 container mx-auto p-4 md:p-8">
-        <div className="grid gap-8">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>All Expenses List</CardTitle>
-                <Button>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add New Expense
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4 mb-6 items-end">
-                <div className="grid gap-2 w-full sm:w-auto">
+        <div className="space-y-6">
+            <div className="flex flex-wrap gap-4 items-end">
+                <div className="grid gap-2">
                   <Label htmlFor="from-date">From Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -127,12 +123,12 @@ export default function ExpensesPage() {
                         id="from-date"
                         variant={"outline"}
                         className={cn(
-                          "w-full sm:w-[240px] justify-start text-left font-normal",
+                          "w-[240px] justify-start text-left font-normal",
                           !fromDate && "text-muted-foreground"
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {fromDate ? format(fromDate, "PPP") : <span>Select Date</span>}
+                        {fromDate ? format(fromDate, "yyyy-MM-dd") : <span>Select Date</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -145,7 +141,7 @@ export default function ExpensesPage() {
                     </PopoverContent>
                   </Popover>
                 </div>
-                <div className="grid gap-2 w-full sm:w-auto">
+                <div className="grid gap-2">
                    <Label htmlFor="to-date">To Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -153,12 +149,12 @@ export default function ExpensesPage() {
                         id="to-date"
                         variant={"outline"}
                         className={cn(
-                          "w-full sm:w-[240px] justify-start text-left font-normal",
+                          "w-[240px] justify-start text-left font-normal",
                           !toDate && "text-muted-foreground"
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {toDate ? format(toDate, "PPP") : <span>Select Date</span>}
+                        {toDate ? format(toDate, "yyyy-MM-dd") : <span>Select Date</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -175,52 +171,72 @@ export default function ExpensesPage() {
                 <Button onClick={handleGetExpenses} disabled={isLoading || !fromDate || !toDate}>
                   {isLoading ? 'Getting Expenses...' : 'Get Expenses'}
                 </Button>
-              </div>
-
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">#</TableHead>
-                    <TableHead>Expense Detail</TableHead>
-                    <TableHead className="text-right">Total Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                     <TableRow>
-                        <TableCell colSpan={3} className="h-24 text-center">
-                            Loading...
-                        </TableCell>
-                    </TableRow>
-                  ) : expenses.length > 0 ? (
-                    expenses.map((expense, index) => (
-                      <TableRow key={expense._id}>
-                        <TableCell className="font-medium">{index + 1}</TableCell>
-                        <TableCell>{expense.name}</TableCell>
-                        <TableCell className="text-right">
-                           {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(expense.amount)}
-                        </TableCell>
+            </div>
+            
+            <Card>
+                <CardHeader>
+                    <div className="flex flex-wrap gap-4 justify-between items-center">
+                        <div className="flex gap-2">
+                            <Button variant="outline" disabled>Copy</Button>
+                            <Button variant="outline" disabled>CSV</Button>
+                            <Button variant="outline" disabled>Print</Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Label htmlFor="search">Search:</Label>
+                            <Input 
+                                id="search"
+                                className="w-auto"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[100px]">#</TableHead>
+                        <TableHead>Expense Detail</TableHead>
+                        <TableHead className="text-right">Total Amount</TableHead>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                        <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
-                            No expenses found.
-                        </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-                {expenses.length > 0 && (
-                    <TableFooter>
-                        <TableRow>
-                            <TableCell colSpan={2} className="text-right text-lg font-bold">Total:</TableCell>
-                            <TableCell className="text-right text-lg font-bold">{formattedTotal}</TableCell>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoading ? (
+                         <TableRow>
+                            <TableCell colSpan={3} className="h-24 text-center">
+                                Loading...
+                            </TableCell>
                         </TableRow>
-                    </TableFooter>
-                )}
-              </Table>
-            </CardContent>
-          </Card>
+                      ) : filteredExpenses.length > 0 ? (
+                        filteredExpenses.map((expense, index) => (
+                          <TableRow key={expense._id}>
+                            <TableCell className="font-medium">{index + 1}</TableCell>
+                            <TableCell>{expense.name}</TableCell>
+                            <TableCell className="text-right">
+                               {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(expense.amount)}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                            <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                                No expenses found.
+                            </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                    {filteredExpenses.length > 0 && (
+                        <TableFooter>
+                            <TableRow>
+                                <TableCell colSpan={2} className="text-right text-lg font-bold">Total:</TableCell>
+                                <TableCell className="text-right text-lg font-bold">{formattedTotal}</TableCell>
+                            </TableRow>
+                        </TableFooter>
+                    )}
+                  </Table>
+                </CardContent>
+            </Card>
         </div>
       </main>
     </div>
