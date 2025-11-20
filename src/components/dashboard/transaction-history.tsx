@@ -107,14 +107,14 @@ export default function TransactionHistory({ transactions, allParties, dateRange
 
     return (
         <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="transaction-history" className="border-none">
+            <AccordionItem value="transaction-history" className="border-none" id="transaction-history-card">
                 <AccordionTrigger>
                     <div className="flex flex-col items-start">
                         <CardTitle>Transaction History</CardTitle>
                         <CardDescription className="text-left">A log of all your recent transactions.</CardDescription>
                     </div>
                 </AccordionTrigger>
-                <AccordionContent id="transaction-history-card" className="pt-4">
+                <AccordionContent className="pt-4">
                     <div className="flex flex-col sm:flex-row gap-4 mb-4 items-end print-hidden">
                         <div className="grid gap-2">
                             <label className="text-sm font-medium">Date range</label>

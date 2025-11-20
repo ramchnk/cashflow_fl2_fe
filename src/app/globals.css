@@ -98,13 +98,5 @@
   #transaction-history-card {
     box-shadow: none;
     border: none;
-    width: 100%;
-    position: absolute;
-    top: 0;
-    left: 0;
-  }
-
-  #transaction-history-card .print-hidden {
-    display: none;
   }
 }
