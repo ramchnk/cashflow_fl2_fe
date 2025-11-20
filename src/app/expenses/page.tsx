@@ -48,9 +48,8 @@ interface Expense {
 }
 
 interface DetailedItem {
-  date: number;
-  brandName: string;
-  amount: number;
+  saleDate: number;
+  amount: string;
 }
 
 export default function ExpensesPage() {
@@ -385,18 +384,17 @@ export default function ExpensesPage() {
                           <TableHeader>
                               <TableRow>
                                   <TableHead>Date</TableHead>
-                                  <TableHead>Brand Name</TableHead>
                                   <TableHead className="text-right">Amount</TableHead>
                               </TableRow>
                           </TableHeader>
                           <TableBody>
                               {detailedItems.map((item, index) => {
-                                const date = new Date(item.date * 1000);
+                                const date = new Date(item.saleDate * 1000);
+                                const itemAmount = parseFloat(item.amount);
                                 return (
                                   <TableRow key={index}>
                                       <TableCell>{!isNaN(date.getTime()) ? format(date, 'yyyy-MM-dd') : 'Invalid Date'}</TableCell>
-                                      <TableCell>{item.brandName}</TableCell>
-                                      <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.amount)}</TableCell>
+                                      <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(isNaN(itemAmount) ? 0 : itemAmount)}</TableCell>
                                   </TableRow>
                                 )
                               })}
@@ -417,3 +415,5 @@ export default function ExpensesPage() {
       </main>
     </div>
   );
+
+    
