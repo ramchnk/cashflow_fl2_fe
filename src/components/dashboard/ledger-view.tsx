@@ -41,7 +41,7 @@ export default function LedgerView({ transactions, accountFilter }: LedgerViewPr
 
   let openingBalance: number | null = null;
   if (transactions.length > 0) {
-      const firstTx = transactions[transactions.length - 1]; // API returns in descending order
+      const firstTx = transactions[transactions.length - 1]; // API returns in descending order, so the last item is the oldest in the filtered set
       if (firstTx.to.toLowerCase() === accountFilter.toLowerCase()) {
         openingBalance = firstTx.toAccountOpeningBalance;
       } else if (firstTx.from.toLowerCase() === accountFilter.toLowerCase()) {
@@ -56,11 +56,16 @@ export default function LedgerView({ transactions, accountFilter }: LedgerViewPr
     } else if (tx.from.toLowerCase() === accountFilter.toLowerCase()) {
       acc.totalDebit += tx.amount;
     }
-    // Special handling for 'ReadyToCollect' to correctly sum debits when it's the `fromAccount`.
-    // The `toAccount` might have been changed to `collected` by the backend.
+    
+    // This logic handles cases where ReadyToCollect is debited but the toAccount is changed to `collected`
     if (accountFilter.toLowerCase() === 'readytocollect' && tx.from.toLowerCase() === 'readytocollect') {
-        acc.totalDebit += tx.amount;
+        // This transaction is a debit from ReadyToCollect, but it might not be caught above if toAccount is not ReadyToCollect.
+        const isAlreadyCounted = tx.to.toLowerCase() === accountFilter.toLowerCase();
+        if (!isAlreadyCounted) {
+             acc.totalDebit += tx.amount;
+        }
     }
+
     return acc;
   }, { totalCredit: 0, totalDebit: 0 });
 
@@ -79,7 +84,7 @@ export default function LedgerView({ transactions, accountFilter }: LedgerViewPr
             </TableRow>
         </TableHeader>
         <TableBody>
-            {[...transactions].reverse().map(tx => { // Reverse to show chronological order
+            {transactions.map(tx => {
                 let currentOpeningBalance, credit, debit, closingBalance, particulars;
 
                 if (tx.from.toLowerCase() === accountFilter.toLowerCase()) {
@@ -120,7 +125,8 @@ export default function LedgerView({ transactions, accountFilter }: LedgerViewPr
         <TableFooter>
           {accountFilter.toLowerCase() === 'readytocollect' ? (
               <TableRow>
-                  <TableCell colSpan={4} className="text-right font-bold text-lg">Total Debit</TableCell>
+                  <TableCell colSpan={3} className="text-right font-bold text-lg">Total</TableCell>
+                  <TableCell className="text-right font-bold text-lg text-green-600">{formatCurrency(totalCredit)}</TableCell>
                   <TableCell className="text-right font-bold text-lg text-red-600">{formatCurrency(totalDebit)}</TableCell>
                   <TableCell></TableCell>
               </TableRow>
