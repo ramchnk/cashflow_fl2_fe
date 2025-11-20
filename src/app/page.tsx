@@ -5,7 +5,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { DateRange } from 'react-day-picker';
 import { startOfDay, endOfDay } from 'date-fns';
-import Header from '@/components/layout/header';
 import BalanceCard from '@/components/dashboard/balance-card';
 import TransactionForm from '@/components/dashboard/transaction-form';
 import TransactionHistory from '@/components/dashboard/transaction-history';
@@ -295,7 +294,6 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <Header />
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <div className="grid gap-8">
           <section className="print-hidden">

@@ -2,7 +2,6 @@
 'use client';
 
 import { useState } from 'react';
-import Header from '@/components/layout/header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -227,7 +226,6 @@ export default function ExpensesPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <Header />
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <div className="space-y-6">
             <div className="flex flex-wrap gap-4 items-end print-hidden">
