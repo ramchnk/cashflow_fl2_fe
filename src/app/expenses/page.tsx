@@ -383,6 +383,7 @@ export default function ExpensesPage() {
                       <Table>
                           <TableHeader>
                               <TableRow>
+                                  <TableHead>Particulars</TableHead>
                                   <TableHead>Date</TableHead>
                                   <TableHead className="text-right">Amount</TableHead>
                               </TableRow>
@@ -393,6 +394,7 @@ export default function ExpensesPage() {
                                 const itemAmount = parseFloat(item.amount);
                                 return (
                                   <TableRow key={index}>
+                                      <TableCell>{selectedExpense.name}</TableCell>
                                       <TableCell>{!isNaN(date.getTime()) ? format(date, 'yyyy-MM-dd') : 'Invalid Date'}</TableCell>
                                       <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(isNaN(itemAmount) ? 0 : itemAmount)}</TableCell>
                                   </TableRow>
