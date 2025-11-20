@@ -56,6 +56,11 @@ export default function LedgerView({ transactions, accountFilter }: LedgerViewPr
     } else if (tx.from.toLowerCase() === accountFilter.toLowerCase()) {
       acc.totalDebit += tx.amount;
     }
+    // Special handling for 'ReadyToCollect' to correctly sum debits when it's the `fromAccount`.
+    // The `toAccount` might have been changed to `collected` by the backend.
+    if (accountFilter.toLowerCase() === 'readytocollect' && tx.from.toLowerCase() === 'readytocollect') {
+        acc.totalDebit += tx.amount;
+    }
     return acc;
   }, { totalCredit: 0, totalDebit: 0 });
 
