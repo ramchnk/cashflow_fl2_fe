@@ -387,7 +387,6 @@ export default function ExpensesPage() {
                               <TableRow>
                                   <TableHead>Date</TableHead>
                                   <TableHead>Brand Name</TableHead>
-                                  <TableHead className="text-right">Quantity</TableHead>
                                   <TableHead className="text-right">Amount</TableHead>
                               </TableRow>
                           </TableHeader>
@@ -398,7 +397,6 @@ export default function ExpensesPage() {
                                   <TableRow key={index}>
                                       <TableCell>{!isNaN(date.getTime()) ? format(date, 'yyyy-MM-dd') : 'Invalid Date'}</TableCell>
                                       <TableCell>{item.brandName}</TableCell>
-                                      <TableCell className="text-right">{item.quantity}</TableCell>
                                       <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.amount)}</TableCell>
                                   </TableRow>
                                 )
@@ -421,5 +419,3 @@ export default function ExpensesPage() {
     </div>
   );
 }
-
-    
