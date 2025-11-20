@@ -208,5 +208,3 @@ export default function TransactionHistory({ transactions, allParties, dateRange
         </Card>
     )
 }
-
-    

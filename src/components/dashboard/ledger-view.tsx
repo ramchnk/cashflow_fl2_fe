@@ -40,9 +40,9 @@ export default function LedgerView({ transactions, accountFilter }: LedgerViewPr
   if (accountFilter === 'all') return null;
 
   const totals = transactions.reduce((acc, tx) => {
-    if (tx.to === accountFilter) {
+    if (tx.to.toLowerCase() === accountFilter.toLowerCase()) {
       acc.credit += tx.amount;
-    } else if (tx.from === accountFilter) {
+    } else if (tx.from.toLowerCase() === accountFilter.toLowerCase()) {
       acc.debit += tx.amount;
     }
     return acc;
@@ -64,7 +64,7 @@ export default function LedgerView({ transactions, accountFilter }: LedgerViewPr
             {transactions.map(tx => {
                 let openingBalance, credit, debit, closingBalance, particulars;
 
-                if (tx.from === accountFilter) {
+                if (tx.from.toLowerCase() === accountFilter.toLowerCase()) {
                     // It's a debit from the selected account
                     openingBalance = tx.fromAccountOpeningBalance;
                     credit = null;
@@ -73,7 +73,7 @@ export default function LedgerView({ transactions, accountFilter }: LedgerViewPr
                     particulars = `To: ${getPartyDetails(tx.to).name}`;
                     if(tx.description) particulars += ` (${tx.description})`;
                     
-                } else if (tx.to === accountFilter) {
+                } else if (tx.to.toLowerCase() === accountFilter.toLowerCase()) {
                     // It's a credit to the selected account
                     openingBalance = tx.toAccountOpeningBalance;
                     credit = tx.amount;
@@ -90,7 +90,7 @@ export default function LedgerView({ transactions, accountFilter }: LedgerViewPr
                         <TableCell className="text-muted-foreground">{formatDate(tx.date)}</TableCell>
                         <TableCell>
                             <div className="font-medium">{particulars}</div>
-                            {tx.description && tx.from !== accountFilter && (
+                            {tx.description && tx.from.toLowerCase() !== accountFilter.toLowerCase() && (
                                <div className="text-sm text-muted-foreground">{tx.description}</div>
                             )}
                         </TableCell>
