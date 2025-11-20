@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon, PlusCircle } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -19,10 +19,12 @@ import {
   TableFooter
 } from '@/components/ui/table';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 interface Expense {
-  id: number;
-  detail: string;
+  _id: string;
+  name: string;
   amount: number;
 }
 
@@ -31,17 +33,65 @@ export default function ExpensesPage() {
   const [toDate, setToDate] = useState<Date | undefined>();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
 
-  const handleGetExpenses = () => {
-    // This is where you would fetch data from an API
-    // For now, it just shows an empty state.
+
+  const handleGetExpenses = async () => {
+    if (!fromDate || !toDate) {
+      toast({
+        variant: 'destructive',
+        title: 'Please select a date range.',
+      });
+      return;
+    }
+    
     setIsLoading(true);
-    console.log('Fetching expenses from', fromDate, 'to', toDate);
-    // Simulating API call
-    setTimeout(() => {
-      setExpenses([]); 
-      setIsLoading(false);
-    }, 1000);
+    const token = sessionStorage.getItem('accessToken');
+    if (!token) {
+        router.push('/login');
+        return;
+    }
+
+    try {
+      const fromTime = Math.floor(startOfDay(fromDate).getTime() / 1000);
+      const toTime = Math.floor(endOfDay(toDate).getTime() / 1000);
+      const url = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/expenses/expensesReport?fromTime=${fromTime}&toTime=${toTime}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setExpenses(data.expenses || []);
+      } else {
+        if(response.status === 401) {
+            toast({
+                variant: "destructive",
+                title: "Session Expired",
+                description: "Please login again.",
+            });
+            sessionStorage.removeItem('accessToken');
+            router.push('/login');
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to fetch expenses');
+        }
+      }
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'An Error Occurred',
+            description: error.message || 'Could not fetch expenses.',
+        });
+        setExpenses([]);
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   const totalAmount = expenses.reduce((acc, expense) => acc + expense.amount, 0);
@@ -121,7 +171,7 @@ export default function ExpensesPage() {
                     </PopoverContent>
                   </Popover>
                 </div>
-                <Button onClick={handleGetExpenses} disabled={isLoading}>
+                <Button onClick={handleGetExpenses} disabled={isLoading || !fromDate || !toDate}>
                   {isLoading ? 'Getting Expenses...' : 'Get Expenses'}
                 </Button>
               </div>
@@ -143,9 +193,9 @@ export default function ExpensesPage() {
                     </TableRow>
                   ) : expenses.length > 0 ? (
                     expenses.map((expense, index) => (
-                      <TableRow key={expense.id}>
+                      <TableRow key={expense._id}>
                         <TableCell className="font-medium">{index + 1}</TableCell>
-                        <TableCell>{expense.detail}</TableCell>
+                        <TableCell>{expense.name}</TableCell>
                         <TableCell className="text-right">
                            {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(expense.amount)}
                         </TableCell>
