@@ -47,6 +47,13 @@ interface Expense {
   shopNumber: string;
 }
 
+interface DetailedItem {
+  date: number;
+  brandName: string;
+  quantity: number;
+  amount: number;
+}
+
 export default function ExpensesPage() {
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
@@ -54,6 +61,9 @@ export default function ExpensesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [detailedItems, setDetailedItems] = useState<DetailedItem[]>([]);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+
   const { toast } = useToast();
   const router = useRouter();
 
@@ -124,6 +134,56 @@ export default function ExpensesPage() {
         setIsLoading(false);
     }
   };
+
+  const handleViewDetails = async (expense: Expense) => {
+    setSelectedExpense(expense);
+    setIsDetailLoading(true);
+    setDetailedItems([]);
+
+    const token = sessionStorage.getItem('accessToken');
+    if (!token) {
+        router.push('/login');
+        return;
+    }
+    
+    try {
+        const url = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/expenses/expensesReport/item?expenseItem=${encodeURIComponent(expense.name)}`;
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            setDetailedItems(data.data || []);
+        } else {
+            if(response.status === 401) {
+                toast({
+                    variant: "destructive",
+                    title: "Session Expired",
+                    description: "Please login again.",
+                });
+                sessionStorage.removeItem('accessToken');
+                router.push('/login');
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to fetch expense details');
+            }
+        }
+
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'An Error Occurred',
+            description: error.message || 'Could not fetch expense details.',
+        });
+        setDetailedItems([]);
+    } finally {
+        setIsDetailLoading(false);
+    }
+  }
   
   const filteredExpenses = expenses.filter(expense =>
     expense.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -278,7 +338,7 @@ export default function ExpensesPage() {
                             <TableCell className="text-right">
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" onClick={() => setSelectedExpense(expense)}>
+                                    <Button variant="ghost" size="icon" onClick={() => handleViewDetails(expense)}>
                                         <Eye className="h-4 w-4" />
                                     </Button>
                                   </AlertDialogTrigger>
@@ -297,7 +357,7 @@ export default function ExpensesPage() {
                     {filteredExpenses.length > 0 && (
                         <TableFooter>
                             <TableRow>
-                                <TableCell colSpan={2} className="text-right text-lg font-bold">Total:</TableCell>
+                                <TableCell colSpan={3} className="text-right text-lg font-bold">Total:</TableCell>
                                 <TableCell className="text-right text-lg font-bold">{formattedTotal}</TableCell>
                                 <TableCell />
                             </TableRow>
@@ -309,26 +369,44 @@ export default function ExpensesPage() {
         </div>
          {selectedExpense && (
           <AlertDialog open={!!selectedExpense} onOpenChange={(isOpen) => !isOpen && setSelectedExpense(null)}>
-            <AlertDialogContent>
+            <AlertDialogContent className="max-w-3xl">
               <AlertDialogHeader>
-                <AlertDialogTitle>Expense Details</AlertDialogTitle>
+                <AlertDialogTitle>{selectedExpense.name}</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Detailed view of the selected expense.
+                    Detailed breakdown for this expense.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <div className="space-y-4">
-                  <div>
-                      <p className="text-sm text-muted-foreground">Expense Detail</p>
-                      <p className="font-semibold">{selectedExpense.name}</p>
-                  </div>
-                   <div>
-                      <p className="text-sm text-muted-foreground">Total Amount</p>
-                      <p className="font-semibold">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(selectedExpense.amount)}</p>
-                  </div>
-                   <div>
-                      <p className="text-sm text-muted-foreground">Shop Number</p>
-                      <p className="font-semibold">{selectedExpense.shopNumber}</p>
-                  </div>
+              <div className="max-h-96 overflow-y-auto">
+                  {isDetailLoading ? (
+                      <div className="flex justify-center items-center h-40">
+                          <p>Loading details...</p>
+                      </div>
+                  ) : detailedItems.length > 0 ? (
+                      <Table>
+                          <TableHeader>
+                              <TableRow>
+                                  <TableHead>Date</TableHead>
+                                  <TableHead>Brand Name</TableHead>
+                                  <TableHead className="text-right">Quantity</TableHead>
+                                  <TableHead className="text-right">Amount</TableHead>
+                              </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                              {detailedItems.map((item, index) => (
+                                  <TableRow key={index}>
+                                      <TableCell>{format(new Date(item.date * 1000), 'yyyy-MM-dd')}</TableCell>
+                                      <TableCell>{item.brandName}</TableCell>
+                                      <TableCell className="text-right">{item.quantity}</TableCell>
+                                      <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.amount)}</TableCell>
+                                  </TableRow>
+                              ))}
+                          </TableBody>
+                      </Table>
+                  ) : (
+                    <div className="flex justify-center items-center h-40">
+                        <p>No detailed items found.</p>
+                    </div>
+                  )}
               </div>
               <AlertDialogFooter>
                 <AlertDialogAction onClick={() => setSelectedExpense(null)}>Close</AlertDialogAction>
@@ -340,3 +418,5 @@ export default function ExpensesPage() {
     </div>
   );
 }
+
+    
