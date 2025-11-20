@@ -357,7 +357,7 @@ export default function ExpensesPage() {
                     {filteredExpenses.length > 0 && (
                         <TableFooter>
                             <TableRow>
-                                <TableCell colSpan={3} className="text-right text-lg font-bold">Total:</TableCell>
+                                <TableCell colSpan={2} className="text-right text-lg font-bold">Total:</TableCell>
                                 <TableCell className="text-right text-lg font-bold">{formattedTotal}</TableCell>
                                 <TableCell />
                             </TableRow>
@@ -418,4 +418,5 @@ export default function ExpensesPage() {
       </main>
     </div>
   );
-}
+
+    
