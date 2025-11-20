@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -22,6 +23,12 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+
+interface ApiResponseExpense {
+  expenseDetail: string;
+  totalAmount: string;
+  shopNumber: string;
+}
 
 interface Expense {
   _id: string;
@@ -69,8 +76,16 @@ export default function ExpensesPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setExpenses(data.expenses || []);
+        const responseData = await response.json();
+        const apiExpenses: ApiResponseExpense[] = responseData.data || [];
+        
+        const formattedExpenses: Expense[] = apiExpenses.map((item, index) => ({
+            _id: `${item.shopNumber}-${index}-${new Date().getTime()}`,
+            name: item.expenseDetail,
+            amount: parseFloat(item.totalAmount)
+        }));
+
+        setExpenses(formattedExpenses);
       } else {
         if(response.status === 401) {
             toast({
