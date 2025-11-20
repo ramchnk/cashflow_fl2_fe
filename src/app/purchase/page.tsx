@@ -25,6 +25,7 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useUserStore } from '@/app/lib/user-store';
+import Header from '@/components/layout/header';
 
 interface ProductMasterItem {
   SKU: string;
@@ -304,6 +305,7 @@ export default function PurchasePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
+      <Header />
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <div className="grid gap-8">
           <Card>

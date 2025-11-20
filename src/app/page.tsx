@@ -13,6 +13,7 @@ import { getPartyDetails, type Party } from '@/app/lib/parties';
 import type { Balances, Transaction, ApiTransaction } from '@/app/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserStore } from '@/app/lib/user-store';
+import Header from '@/components/layout/header';
 
 
 export default function Home() {
@@ -294,6 +295,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
+      <Header />
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <div className="grid gap-8">
           <section className="print-hidden">

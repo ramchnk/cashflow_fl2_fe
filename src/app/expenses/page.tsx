@@ -32,6 +32,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import Header from '@/components/layout/header';
 
 interface ApiResponseExpense {
   expenseDetail: string;
@@ -226,6 +227,7 @@ export default function ExpensesPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
+      <Header />
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <div className="space-y-6">
             <div className="flex flex-wrap gap-4 items-end print-hidden">
