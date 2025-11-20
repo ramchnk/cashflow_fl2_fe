@@ -23,6 +23,16 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface ApiResponseExpense {
   expenseDetail: string;
@@ -34,6 +44,7 @@ interface Expense {
   _id: string;
   name: string;
   amount: number;
+  shopNumber: string;
 }
 
 export default function ExpensesPage() {
@@ -42,6 +53,7 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -82,7 +94,8 @@ export default function ExpensesPage() {
         const formattedExpenses: Expense[] = apiExpenses.map((item, index) => ({
             _id: `${item.shopNumber}-${index}-${new Date().getTime()}`,
             name: item.expenseDetail,
-            amount: parseFloat(item.totalAmount)
+            amount: parseFloat(item.totalAmount),
+            shopNumber: item.shopNumber,
         }));
 
         setExpenses(formattedExpenses);
@@ -263,9 +276,13 @@ export default function ExpensesPage() {
                                {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(expense.amount)}
                             </TableCell>
                             <TableCell className="text-right">
-                                <Button variant="ghost" size="icon">
-                                    <Eye className="h-4 w-4" />
-                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" onClick={() => setSelectedExpense(expense)}>
+                                        <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                </AlertDialog>
                             </TableCell>
                           </TableRow>
                         ))
@@ -290,6 +307,35 @@ export default function ExpensesPage() {
                 </CardContent>
             </Card>
         </div>
+         {selectedExpense && (
+          <AlertDialog open={!!selectedExpense} onOpenChange={(isOpen) => !isOpen && setSelectedExpense(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Expense Details</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Detailed view of the selected expense.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="space-y-4">
+                  <div>
+                      <p className="text-sm text-muted-foreground">Expense Detail</p>
+                      <p className="font-semibold">{selectedExpense.name}</p>
+                  </div>
+                   <div>
+                      <p className="text-sm text-muted-foreground">Total Amount</p>
+                      <p className="font-semibold">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(selectedExpense.amount)}</p>
+                  </div>
+                   <div>
+                      <p className="text-sm text-muted-foreground">Shop Number</p>
+                      <p className="font-semibold">{selectedExpense.shopNumber}</p>
+                  </div>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogAction onClick={() => setSelectedExpense(null)}>Close</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        )}
       </main>
     </div>
   );
