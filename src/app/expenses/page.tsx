@@ -47,6 +47,7 @@ export default function ExpensesPage() {
     }
     
     setIsLoading(true);
+    setExpenses([]); // Clear previous expenses
     const token = sessionStorage.getItem('accessToken');
     if (!token) {
         router.push('/login');
@@ -209,12 +210,14 @@ export default function ExpensesPage() {
                     </TableRow>
                   )}
                 </TableBody>
-                <TableFooter>
-                    <TableRow>
-                        <TableCell colSpan={2} className="text-right text-lg font-bold">Total:</TableCell>
-                        <TableCell className="text-right text-lg font-bold">{formattedTotal}</TableCell>
-                    </TableRow>
-                </TableFooter>
+                {expenses.length > 0 && (
+                    <TableFooter>
+                        <TableRow>
+                            <TableCell colSpan={2} className="text-right text-lg font-bold">Total:</TableCell>
+                            <TableCell className="text-right text-lg font-bold">{formattedTotal}</TableCell>
+                        </TableRow>
+                    </TableFooter>
+                )}
               </Table>
             </CardContent>
           </Card>
