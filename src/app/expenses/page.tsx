@@ -357,7 +357,7 @@ export default function ExpensesPage() {
                     {filteredExpenses.length > 0 && (
                         <TableFooter>
                             <TableRow>
-                                <TableCell colSpan={3} className="text-right text-lg font-bold">Total:</TableCell>
+                                <TableCell colSpan={2} className="text-right text-lg font-bold">Total:</TableCell>
                                 <TableCell className="text-right text-lg font-bold">{formattedTotal}</TableCell>
                                 <TableCell />
                             </TableRow>
@@ -392,14 +392,17 @@ export default function ExpensesPage() {
                               </TableRow>
                           </TableHeader>
                           <TableBody>
-                              {detailedItems.map((item, index) => (
+                              {detailedItems.map((item, index) => {
+                                const date = new Date(item.date * 1000);
+                                return (
                                   <TableRow key={index}>
-                                      <TableCell>{format(new Date(item.date * 1000), 'yyyy-MM-dd')}</TableCell>
+                                      <TableCell>{!isNaN(date.getTime()) ? format(date, 'yyyy-MM-dd') : 'Invalid Date'}</TableCell>
                                       <TableCell>{item.brandName}</TableCell>
                                       <TableCell className="text-right">{item.quantity}</TableCell>
                                       <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.amount)}</TableCell>
                                   </TableRow>
-                              ))}
+                                )
+                              })}
                           </TableBody>
                       </Table>
                   ) : (
@@ -418,5 +421,3 @@ export default function ExpensesPage() {
     </div>
   );
 }
-
-    
