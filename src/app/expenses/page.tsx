@@ -123,13 +123,43 @@ export default function ExpensesPage() {
     currency: 'INR',
   }).format(totalAmount);
 
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleCopy = () => {
+    if (filteredExpenses.length === 0) return;
+    const header = "Expense Detail\tTotal Amount";
+    const rows = filteredExpenses.map(e => `${e.name}\t${e.amount.toFixed(2)}`);
+    const tsv = [header, ...rows].join('\n');
+    navigator.clipboard.writeText(tsv).then(() => {
+        toast({ title: "Copied to clipboard!" });
+    }, () => {
+        toast({ variant: 'destructive', title: "Failed to copy." });
+    });
+  };
+
+  const handleCSV = () => {
+      if (filteredExpenses.length === 0) return;
+      const header = "Expense Detail,Total Amount";
+      const rows = filteredExpenses.map(e => `"${e.name.replace(/"/g, '""')}",${e.amount}`);
+      let csvContent = "data:text/csv;charset=utf-8," + header + "\n" + rows.join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `expenses_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
+
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <div className="space-y-6">
-            <div className="flex flex-wrap gap-4 items-end">
+            <div className="flex flex-wrap gap-4 items-end print-hidden">
                 <div className="grid gap-2">
                   <Label htmlFor="from-date">From Date</Label>
                   <Popover>
@@ -189,12 +219,12 @@ export default function ExpensesPage() {
             </div>
             
             <Card>
-                <CardHeader>
+                <CardHeader className="print-hidden">
                     <div className="flex flex-wrap gap-4 justify-between items-center">
                         <div className="flex gap-2">
-                            <Button variant="outline" disabled>Copy</Button>
-                            <Button variant="outline" disabled>CSV</Button>
-                            <Button variant="outline" disabled>Print</Button>
+                            <Button variant="outline" onClick={handleCopy} disabled={filteredExpenses.length === 0}>Copy</Button>
+                            <Button variant="outline" onClick={handleCSV} disabled={filteredExpenses.length === 0}>CSV</Button>
+                            <Button variant="outline" onClick={handlePrint} disabled={filteredExpenses.length === 0}>Print</Button>
                         </div>
                         <div className="flex items-center gap-2">
                             <Label htmlFor="search">Search:</Label>
