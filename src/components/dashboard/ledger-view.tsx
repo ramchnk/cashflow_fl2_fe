@@ -121,10 +121,10 @@ export default function LedgerView({ transactions, accountFilter }: LedgerViewPr
               </TableRow>
           ) : (
               <TableRow>
-                  <TableCell colSpan={3} className="text-right font-bold text-lg">Total / Closing Balance</TableCell>
+                  <TableCell colSpan={3} className="text-right font-bold text-lg">Total</TableCell>
                   <TableCell className="text-right font-bold text-lg text-green-600">{formatCurrency(totalCredit)}</TableCell>
                   <TableCell className="text-right font-bold text-lg text-red-600">{formatCurrency(totalDebit)}</TableCell>
-                  <TableCell className="text-right font-bold text-lg">{formatCurrency(finalBalance)}</TableCell>
+                  <TableCell></TableCell>
               </TableRow>
           )}
         </TableFooter>
