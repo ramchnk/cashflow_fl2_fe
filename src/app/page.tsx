@@ -14,6 +14,7 @@ import type { Balances, Transaction, ApiTransaction } from '@/app/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserStore } from '@/app/lib/user-store';
 import Header from '@/components/layout/header';
+import { Card, CardContent } from '@/components/ui/card';
 
 
 export default function Home() {
@@ -340,22 +341,24 @@ export default function Home() {
             )}
           </section>
           
-          <div className="grid grid-cols-1 gap-8 items-start">
-             <div className="lg:col-span-1 print-hidden">
-                <TransactionForm onTransaction={handleTransaction} balances={balances} isSubmitting={isSubmitting} />
-             </div>
-             <div className="lg:col-span-1">
-                <TransactionHistory 
-                    transactions={transactions} 
-                    allParties={accountKeys}
-                    dateRange={dateRange}
-                    partyFilter={partyFilter}
-                    onFiltersChange={onFiltersChange}
-                    isLoading={isHistoryLoading}
-                    onGetReport={fetchTransactions}
-                />
-            </div>
-          </div>
+          <Card>
+            <CardContent className="p-0">
+               <div className="p-6 border-b">
+                 <TransactionForm onTransaction={handleTransaction} balances={balances} isSubmitting={isSubmitting} />
+               </div>
+               <div className="p-6">
+                 <TransactionHistory 
+                      transactions={transactions} 
+                      allParties={accountKeys}
+                      dateRange={dateRange}
+                      partyFilter={partyFilter}
+                      onFiltersChange={onFiltersChange}
+                      isLoading={isHistoryLoading}
+                      onGetReport={fetchTransactions}
+                  />
+               </div>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>

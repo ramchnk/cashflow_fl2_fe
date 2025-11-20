@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardDescription, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getPartyDetails, type Party } from '@/app/lib/parties';
 import type { Balances } from '@/app/lib/types';
@@ -33,6 +33,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 
 type TransactionFormProps = {
@@ -487,48 +493,52 @@ function CollectedForm({ onTransaction, isSubmitting }: TransactionFormProps) {
 
 export default function TransactionForm(props: TransactionFormProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Log a Transaction</CardTitle>
-        <CardDescription>
-          Record a new transfer, expense, or collection.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-         <Tabs defaultValue="transfer" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="transfer">Transfer</TabsTrigger>
-                <TabsTrigger 
-                    value="deduction"
-                    className="data-[state=active]:bg-destructive data-[state=active]:text-destructive-foreground"
-                >
-                Deduction
-                </TabsTrigger>
-                <TabsTrigger 
-                    value="collected"
-                    className="data-[state=active]:bg-yellow-400 data-[state=active]:text-yellow-900"
-                >
-                Collected
-                </TabsTrigger>
-            </TabsList>
-            <TabsContent value="transfer">
-                <div className="pt-4">
-                    <GeneralTransferForm {...props} />
-                </div>
-            </TabsContent>
-             <TabsContent value="deduction">
-                 <div className="pt-4">
-                    <DeductionForm {...props} />
-                 </div>
-            </TabsContent>
-            <TabsContent value="collected">
-                 <div className="pt-4">
-                    <CollectedForm {...props} />
-                 </div>
-            </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+    <Accordion type="single" collapsible className="w-full">
+      <AccordionItem value="log-transaction" className="border-none">
+        <AccordionTrigger>
+          <div className="flex flex-col items-start">
+             <CardTitle>Log a Transaction</CardTitle>
+             <CardDescription className="text-left">
+                Record a new transfer, expense, or collection.
+            </CardDescription>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="pt-4">
+            <Tabs defaultValue="transfer" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="transfer">Transfer</TabsTrigger>
+                    <TabsTrigger 
+                        value="deduction"
+                        className="data-[state=active]:bg-destructive data-[state=active]:text-destructive-foreground"
+                    >
+                    Deduction
+                    </TabsTrigger>
+                    <TabsTrigger 
+                        value="collected"
+                        className="data-[state=active]:bg-yellow-400 data-[state=active]:text-yellow-900"
+                    >
+                    Collected
+                    </TabsTrigger>
+                </TabsList>
+                <TabsContent value="transfer">
+                    <div className="pt-4">
+                        <GeneralTransferForm {...props} />
+                    </div>
+                </TabsContent>
+                <TabsContent value="deduction">
+                    <div className="pt-4">
+                        <DeductionForm {...props} />
+                    </div>
+                </TabsContent>
+                <TabsContent value="collected">
+                    <div className="pt-4">
+                        <CollectedForm {...props} />
+                    </div>
+                </TabsContent>
+            </Tabs>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 }
 
