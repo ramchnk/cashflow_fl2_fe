@@ -66,7 +66,7 @@ export default function Header() {
             </TooltipProvider>
           </div>
         </div>
-        <div className="flex items-center h-14 border-b">
+        <div className="flex items-center justify-center h-14 border-b">
              <nav className="flex items-center gap-2">
                  {navLinks.map((link) => (
                     <Button key={link.href} variant={pathname === link.href ? 'secondary' : 'ghost'} asChild>
