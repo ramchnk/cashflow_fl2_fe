@@ -113,12 +113,20 @@ export default function LedgerView({ transactions, accountFilter }: LedgerViewPr
             })}
         </TableBody>
         <TableFooter>
-            <TableRow>
-                <TableCell colSpan={3} className="text-right font-bold text-lg">Total / Closing Balance</TableCell>
-                <TableCell className="text-right font-bold text-lg text-green-600">{formatCurrency(totalCredit)}</TableCell>
-                <TableCell className="text-right font-bold text-lg text-red-600">{formatCurrency(totalDebit)}</TableCell>
-                <TableCell className="text-right font-bold text-lg">{formatCurrency(finalBalance)}</TableCell>
-            </TableRow>
+          {accountFilter.toLowerCase() === 'readytocollect' ? (
+              <TableRow>
+                  <TableCell colSpan={3} className="text-right font-bold text-lg">Total Credit</TableCell>
+                  <TableCell className="text-right font-bold text-lg text-green-600">{formatCurrency(totalCredit)}</TableCell>
+                  <TableCell colSpan={2}></TableCell>
+              </TableRow>
+          ) : (
+              <TableRow>
+                  <TableCell colSpan={3} className="text-right font-bold text-lg">Total / Closing Balance</TableCell>
+                  <TableCell className="text-right font-bold text-lg text-green-600">{formatCurrency(totalCredit)}</TableCell>
+                  <TableCell className="text-right font-bold text-lg text-red-600">{formatCurrency(totalDebit)}</TableCell>
+                  <TableCell className="text-right font-bold text-lg">{formatCurrency(finalBalance)}</TableCell>
+              </TableRow>
+          )}
         </TableFooter>
     </Table>
   );
