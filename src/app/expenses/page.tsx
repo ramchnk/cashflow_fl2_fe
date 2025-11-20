@@ -31,7 +31,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
 interface ApiResponseExpense {
@@ -50,7 +49,6 @@ interface Expense {
 interface DetailedItem {
   date: number;
   brandName: string;
-  quantity: number;
   amount: number;
 }
 
@@ -418,5 +416,7 @@ export default function ExpensesPage() {
       </main>
     </div>
   );
+
+    
 
     
