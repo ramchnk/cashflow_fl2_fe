@@ -31,6 +31,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
 interface ApiResponseExpense {
@@ -416,7 +417,3 @@ export default function ExpensesPage() {
       </main>
     </div>
   );
-
-    
-
-    
