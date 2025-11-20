@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Eye } from 'lucide-react';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
@@ -244,12 +244,13 @@ export default function ExpensesPage() {
                         <TableHead className="w-[100px]">#</TableHead>
                         <TableHead>Expense Detail</TableHead>
                         <TableHead className="text-right">Total Amount</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {isLoading ? (
                          <TableRow>
-                            <TableCell colSpan={3} className="h-24 text-center">
+                            <TableCell colSpan={4} className="h-24 text-center">
                                 Loading...
                             </TableCell>
                         </TableRow>
@@ -261,11 +262,16 @@ export default function ExpensesPage() {
                             <TableCell className="text-right">
                                {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(expense.amount)}
                             </TableCell>
+                            <TableCell className="text-right">
+                                <Button variant="ghost" size="icon">
+                                    <Eye className="h-4 w-4" />
+                                </Button>
+                            </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                            <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                            <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                                 No expenses found.
                             </TableCell>
                         </TableRow>
@@ -276,6 +282,7 @@ export default function ExpensesPage() {
                             <TableRow>
                                 <TableCell colSpan={2} className="text-right text-lg font-bold">Total:</TableCell>
                                 <TableCell className="text-right text-lg font-bold">{formattedTotal}</TableCell>
+                                <TableCell />
                             </TableRow>
                         </TableFooter>
                     )}
