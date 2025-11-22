@@ -150,7 +150,7 @@ export default function PurchaseEstimatePage() {
                     totalSalesQty: item.totalSalesQty,
                     avgSalesPerDay: dailyAvg,
                     inHand: inHandStock,
-                    estimatedQuantity,
+                    estimatedQuantity: estimatedQuantity,
                     purchasePrice: item.purchasePrice,
                     totalValue: estimatedQuantity * item.purchasePrice,
                 }
@@ -321,5 +321,4 @@ export default function PurchaseEstimatePage() {
     </div>
   );
 }
-
     
