@@ -17,7 +17,13 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/layout/header';
-import { Trash2 } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import type { DateRange } from 'react-day-picker';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
+
 
 interface EstimateItem {
   id: number;
@@ -28,38 +34,41 @@ interface EstimateItem {
 
 export default function PurchaseEstimatePage() {
   const [items, setItems] = useState<EstimateItem[]>([]);
-  const [itemName, setItemName] = useState('');
-  const [quantity, setQuantity] = useState<number | ''>('');
-  const [price, setPrice] = useState<number | ''>('');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [purchaseDays, setPurchaseDays] = useState<number | ''>('');
   const { toast } = useToast();
 
-  const handleAddItem = () => {
-    if (!itemName || quantity === '' || price === '' || +quantity <= 0 || +price <= 0) {
+  const handleGenerateEstimate = () => {
+    if (!dateRange || !dateRange.from || !dateRange.to || purchaseDays === '' || +purchaseDays <= 0) {
       toast({
         variant: 'destructive',
         title: 'Invalid Input',
-        description: 'Please provide a valid item name, positive quantity, and positive price.',
+        description: 'Please select a valid date range and enter a positive number of days for purchase.',
       });
       return;
     }
 
-    const newItem: EstimateItem = {
-      id: Date.now(),
-      name: itemName,
-      quantity: +quantity,
-      price: +price,
-    };
+    // In a real application, you would fetch sales data for the date range
+    // and calculate the estimate. For now, we'll use mock data.
+    const mockItems: EstimateItem[] = [
+      { id: 1, name: 'Brand ABC 750ml', quantity: Math.ceil(Math.random() * 20), price: 1200 },
+      { id: 2, name: 'Brand XYZ 375ml', quantity: Math.ceil(Math.random() * 50), price: 650 },
+      { id: 3, name: 'Beer Brand 500ml', quantity: Math.ceil(Math.random() * 100), price: 150 },
+    ];
+    
+    // Adjust quantity based on purchase days
+    const daysInRange = (dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 3600 * 24) + 1;
+    const estimatedItems = mockItems.map(item => ({
+        ...item,
+        quantity: Math.ceil((item.quantity / daysInRange) * +purchaseDays)
+    }))
 
-    setItems([...items, newItem]);
+    setItems(estimatedItems);
 
-    // Reset form
-    setItemName('');
-    setQuantity('');
-    setPrice('');
-  };
-
-  const handleRemoveItem = (id: number) => {
-    setItems(items.filter(item => item.id !== id));
+    toast({
+        title: 'Estimate Generated',
+        description: `Purchase estimate created for ${purchaseDays} days based on selected sales data.`
+    })
   };
 
   const totalAmount = items.reduce((acc, item) => acc + item.quantity * item.price, 0);
@@ -71,43 +80,63 @@ export default function PurchaseEstimatePage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Add Item to Estimate</CardTitle>
+              <CardTitle>Generate Purchase Estimate</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="item-name">Item Name</Label>
-                  <Input
-                    id="item-name"
-                    placeholder="e.g., Brand ABC 750ml"
-                    value={itemName}
-                    onChange={(e) => setItemName(e.target.value)}
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                <div className="space-y-2">
+                  <Label htmlFor="date-range">Sales Date Range</Label>
+                   <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                id="date"
+                                variant={"outline"}
+                                className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !dateRange && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {dateRange?.from ? (
+                                    dateRange.to ? (
+                                        <>
+                                            {format(dateRange.from, "LLL dd, y")} -{" "}
+                                            {format(dateRange.to, "LLL dd, y")}
+                                        </>
+                                    ) : (
+                                        format(dateRange.from, "LLL dd, y")
+                                    )
+                                ) : (
+                                    <span>Pick a date range</span>
+                                )}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                initialFocus
+                                mode="range"
+                                defaultMonth={dateRange?.from}
+                                selected={dateRange}
+                                onSelect={setDateRange}
+                                numberOfMonths={2}
+                            />
+                        </PopoverContent>
+                    </Popover>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="quantity">Quantity</Label>
+                  <Label htmlFor="purchase-days">No. of Days for Purchase</Label>
                   <Input
-                    id="quantity"
+                    id="purchase-days"
                     type="number"
-                    placeholder="0"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value === '' ? '' : Number(e.target.value))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price">Price per Item</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    placeholder="0.00"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="e.g., 7"
+                    value={purchaseDays}
+                    onChange={(e) => setPurchaseDays(e.target.value === '' ? '' : Number(e.target.value))}
                   />
                 </div>
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={handleAddItem}>Add Item</Button>
+              <Button onClick={handleGenerateEstimate}>Generate Estimate</Button>
             </CardFooter>
           </Card>
           
@@ -120,10 +149,9 @@ export default function PurchaseEstimatePage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Item Name</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
+                    <TableHead className="text-right">Estimated Quantity</TableHead>
                     <TableHead className="text-right">Price</TableHead>
                     <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -134,17 +162,12 @@ export default function PurchaseEstimatePage() {
                         <TableCell className="text-right">{item.quantity}</TableCell>
                         <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.price)}</TableCell>
                         <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.quantity * item.price)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                        No items added to the estimate yet.
+                      <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                        Generate an estimate to see results.
                       </TableCell>
                     </TableRow>
                   )}
@@ -154,7 +177,6 @@ export default function PurchaseEstimatePage() {
                     <TableRow>
                       <TableCell colSpan={3} className="text-right text-lg font-bold">Grand Total:</TableCell>
                       <TableCell className="text-right text-lg font-bold">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalAmount)}</TableCell>
-                      <TableCell />
                     </TableRow>
                   </TableFooter>
                 )}
