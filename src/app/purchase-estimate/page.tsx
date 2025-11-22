@@ -28,6 +28,8 @@ import { useRouter } from 'next/navigation';
 
 interface EstimateItem {
   SKU: string;
+  totalSalesQty: number;
+  avgSalesPerDay: number;
   estimatedQuantity: number;
   purchasePrice: number;
   totalValue: number;
@@ -90,6 +92,8 @@ export default function PurchaseEstimatePage() {
                 const estimatedQuantity = Math.ceil(dailyAvg * +purchaseDays);
                 return {
                     SKU: item.SKU,
+                    totalSalesQty: item.saleQuantity,
+                    avgSalesPerDay: dailyAvg,
                     estimatedQuantity,
                     purchasePrice: item.purchasePrice,
                     totalValue: estimatedQuantity * item.purchasePrice,
@@ -210,6 +214,8 @@ export default function PurchaseEstimatePage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Item Name</TableHead>
+                    <TableHead className="text-right">Total Sales Qty</TableHead>
+                    <TableHead className="text-right">AVG Sales/Day</TableHead>
                     <TableHead className="text-right">Estimated Quantity</TableHead>
                     <TableHead className="text-right">Price</TableHead>
                     <TableHead className="text-right">Total</TableHead>
@@ -218,7 +224,7 @@ export default function PurchaseEstimatePage() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="h-24 text-center">
+                      <TableCell colSpan={6} className="h-24 text-center">
                         Loading estimate...
                       </TableCell>
                     </TableRow>
@@ -226,6 +232,8 @@ export default function PurchaseEstimatePage() {
                     items.map((item) => (
                       <TableRow key={item.SKU}>
                         <TableCell>{item.SKU}</TableCell>
+                        <TableCell className="text-right">{item.totalSalesQty}</TableCell>
+                        <TableCell className="text-right">{item.avgSalesPerDay.toFixed(2)}</TableCell>
                         <TableCell className="text-right">{item.estimatedQuantity}</TableCell>
                         <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.purchasePrice)}</TableCell>
                         <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.totalValue)}</TableCell>
@@ -233,7 +241,7 @@ export default function PurchaseEstimatePage() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                         Generate an estimate to see results.
                       </TableCell>
                     </TableRow>
@@ -242,7 +250,7 @@ export default function PurchaseEstimatePage() {
                 {items.length > 0 && (
                   <TableFooter>
                     <TableRow>
-                      <TableCell colSpan={3} className="text-right text-lg font-bold">Grand Total:</TableCell>
+                      <TableCell colSpan={5} className="text-right text-lg font-bold">Grand Total:</TableCell>
                       <TableCell className="text-right text-lg font-bold">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalAmount)}</TableCell>
                     </TableRow>
                   </TableFooter>
