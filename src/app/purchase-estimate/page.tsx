@@ -207,8 +207,6 @@ export default function PurchaseEstimatePage() {
     }
   };
 
-  const totalAmount = items.reduce((acc, item) => acc + item.totalValue, 0);
-
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
@@ -294,14 +292,12 @@ export default function PurchaseEstimatePage() {
                     <TableHead className="text-right">In Hand</TableHead>
                     <TableHead className="text-right">Estimated Quantity</TableHead>
                     <TableHead className="text-right">Est In Case</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="h-24 text-center">
+                      <TableCell colSpan={6} className="h-24 text-center">
                         Loading estimate...
                       </TableCell>
                     </TableRow>
@@ -314,26 +310,16 @@ export default function PurchaseEstimatePage() {
                         <TableCell className="text-right">{item.inHand}</TableCell>
                         <TableCell className="text-right">{item.estimatedQuantity}</TableCell>
                         <TableCell className="text-right">{Math.round(item.estInCase)}</TableCell>
-                        <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.purchasePrice)}</TableCell>
-                        <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.totalValue)}</TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                         Generate an estimate to see results.
                       </TableCell>
                     </TableRow>
                   )}
                 </TableBody>
-                {items.length > 0 && (
-                  <TableFooter>
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-right text-lg font-bold">Grand Total:</TableCell>
-                      <TableCell className="text-right text-lg font-bold">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalAmount)}</TableCell>
-                    </TableRow>
-                  </TableFooter>
-                )}
               </Table>
             </CardContent>
           </Card>
