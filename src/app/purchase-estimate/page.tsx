@@ -143,7 +143,9 @@ export default function PurchaseEstimatePage() {
             const estimatedItems: EstimateItem[] = apiItems.map(item => {
                 const dailyAvg = item.totalSalesQty / daysInRange;
                 const inHandStock = productMasterMap.get(item.SKU) || 0;
-                const estimatedQuantity = Math.ceil(dailyAvg * +purchaseDays);
+                const projectedNeed = dailyAvg * +purchaseDays;
+                const requiredQuantity = projectedNeed - inHandStock;
+                const estimatedQuantity = Math.ceil(Math.max(0, requiredQuantity));
                 
                 return {
                     SKU: item.SKU,
