@@ -146,7 +146,7 @@ export default function PurchaseEstimatePage() {
                 const inHandStock = productMasterMap.get(item.SKU) || 0;
                 const projectedNeed = dailyAvg * +purchaseDays;
                 const requiredQuantity = projectedNeed - inHandStock;
-                const estimatedQuantity = Math.ceil(Math.max(0, requiredQuantity));
+                const estimatedQuantity = Math.max(0, Math.ceil(requiredQuantity));
 
                 let estInCase = 0;
                 const skuParts = item.SKU.split('-');
@@ -158,6 +158,8 @@ export default function PurchaseEstimatePage() {
                         estInCase = estimatedQuantity / 24;
                     } else if (size.includes('750ML') || size.includes('650ML')) {
                         estInCase = estimatedQuantity / 12;
+                    } else if (size.includes('1000ML')) {
+                        estInCase = estimatedQuantity / 9;
                     } else if (size.includes('325ML') || size.includes('500ML')) {
                         estInCase = estimatedQuantity / 24;
                     }
@@ -206,6 +208,8 @@ export default function PurchaseEstimatePage() {
         setIsLoading(false);
     }
   };
+
+  const grandTotal = items.reduce((acc, item) => acc + item.totalValue, 0);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -292,12 +296,13 @@ export default function PurchaseEstimatePage() {
                     <TableHead className="text-right">In Hand</TableHead>
                     <TableHead className="text-right">Estimated Quantity</TableHead>
                     <TableHead className="text-right">Est In Case</TableHead>
+                    <TableHead className="text-right">Total Value</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center">
+                      <TableCell colSpan={7} className="h-24 text-center">
                         Loading estimate...
                       </TableCell>
                     </TableRow>
@@ -310,16 +315,25 @@ export default function PurchaseEstimatePage() {
                         <TableCell className="text-right">{item.inHand}</TableCell>
                         <TableCell className="text-right">{item.estimatedQuantity}</TableCell>
                         <TableCell className="text-right">{Math.round(item.estInCase)}</TableCell>
+                        <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.totalValue)}</TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                         Generate an estimate to see results.
                       </TableCell>
                     </TableRow>
                   )}
                 </TableBody>
+                 {items.length > 0 && (
+                    <TableFooter>
+                        <TableRow>
+                            <TableCell colSpan={6} className="text-right font-bold text-lg">Grand Total</TableCell>
+                            <TableCell className="text-right font-bold text-lg">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(grandTotal)}</TableCell>
+                        </TableRow>
+                    </TableFooter>
+                )}
               </Table>
             </CardContent>
           </Card>
