@@ -165,6 +165,7 @@ export default function PurchaseEstimatePage() {
                     }
                 }
                 
+                const purchasePrice = item.purchasePrice || 0;
                 return {
                     SKU: item.SKU,
                     totalSalesQty: item.totalSalesQty,
@@ -172,8 +173,8 @@ export default function PurchaseEstimatePage() {
                     inHand: inHandStock,
                     estimatedQuantity: estimatedQuantity,
                     estInCase: estInCase,
-                    purchasePrice: item.purchasePrice,
-                    totalValue: estimatedQuantity * item.purchasePrice,
+                    purchasePrice: purchasePrice,
+                    totalValue: estimatedQuantity * purchasePrice,
                 }
             });
 
@@ -390,6 +391,8 @@ export default function PurchaseEstimatePage() {
     </div>
   );
 }
+    
+
     
 
     
