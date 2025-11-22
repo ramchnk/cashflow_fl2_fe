@@ -33,7 +33,6 @@ interface EstimateItem {
   estimatedQuantity: number;
   estInCase: number;
   purchasePrice: number;
-  totalValue: number;
   inHand: number;
 }
 
@@ -180,7 +179,6 @@ export default function PurchaseEstimatePage() {
                     estimatedQuantity: estimatedQuantity,
                     estInCase: estInCase,
                     purchasePrice: purchasePrice,
-                    totalValue: estimatedQuantity * purchasePrice,
                 }
             });
 
@@ -248,14 +246,11 @@ export default function PurchaseEstimatePage() {
             ...item,
             estInCase: newEstInCase,
             estimatedQuantity: newEstimatedQuantity,
-            totalValue: newEstimatedQuantity * item.purchasePrice,
         };
 
         return newItems;
     });
   };
-
-  const grandTotal = items.reduce((acc, item) => acc + item.totalValue, 0);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -343,13 +338,12 @@ export default function PurchaseEstimatePage() {
                     <TableHead className="text-right">Purchase Price per Item</TableHead>
                     <TableHead className="text-right">Estimated Quantity</TableHead>
                     <TableHead className="text-right">Est In Case</TableHead>
-                    <TableHead className="text-right">Total Value</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="h-24 text-center">
+                      <TableCell colSpan={7} className="h-24 text-center">
                         Loading estimate...
                       </TableCell>
                     </TableRow>
@@ -370,25 +364,16 @@ export default function PurchaseEstimatePage() {
                             className="text-right h-8"
                           />
                         </TableCell>
-                        <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.totalValue)}</TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                         Generate an estimate to see results.
                       </TableCell>
                     </TableRow>
                   )}
                 </TableBody>
-                 {items.length > 0 && (
-                    <TableFooter>
-                        <TableRow>
-                            <TableCell colSpan={7} className="text-right font-bold text-lg">Grand Total</TableCell>
-                            <TableCell className="text-right font-bold text-lg">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(grandTotal)}</TableCell>
-                        </TableRow>
-                    </TableFooter>
-                )}
               </Table>
             </CardContent>
           </Card>
