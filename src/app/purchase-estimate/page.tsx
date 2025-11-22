@@ -37,7 +37,7 @@ interface EstimateItem {
 
 interface ApiResponseItem {
     SKU: string;
-    saleQuantity: number;
+    totalSalesQty: number;
     purchasePrice: number;
 }
 
@@ -88,11 +88,11 @@ export default function PurchaseEstimatePage() {
             const daysInRange = (dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 3600 * 24) + 1;
 
             const estimatedItems: EstimateItem[] = apiItems.map(item => {
-                const dailyAvg = item.saleQuantity / daysInRange;
+                const dailyAvg = item.totalSalesQty / daysInRange;
                 const estimatedQuantity = Math.ceil(dailyAvg * +purchaseDays);
                 return {
                     SKU: item.SKU,
-                    totalSalesQty: item.saleQuantity,
+                    totalSalesQty: item.totalSalesQty,
                     avgSalesPerDay: dailyAvg,
                     estimatedQuantity,
                     purchasePrice: item.purchasePrice,
