@@ -313,7 +313,7 @@ export default function PurchaseEstimatePage() {
                         <TableCell className="text-right">{Math.round(item.avgSalesPerDay)}</TableCell>
                         <TableCell className="text-right">{item.inHand}</TableCell>
                         <TableCell className="text-right">{item.estimatedQuantity}</TableCell>
-                        <TableCell className="text-right">{item.estInCase.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{Math.round(item.estInCase)}</TableCell>
                         <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.purchasePrice)}</TableCell>
                         <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.totalValue)}</TableCell>
                       </TableRow>
