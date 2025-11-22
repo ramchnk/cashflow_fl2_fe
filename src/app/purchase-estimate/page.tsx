@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,6 +33,7 @@ interface EstimateItem {
   estimatedQuantity: number;
   purchasePrice: number;
   totalValue: number;
+  inHand: number;
 }
 
 interface ApiResponseItem {
@@ -41,13 +42,63 @@ interface ApiResponseItem {
     purchasePrice: number;
 }
 
+interface ProductMasterItem {
+  SKU: string;
+  stock: number;
+  [key: string]: any;
+}
+
+
 export default function PurchaseEstimatePage() {
   const [items, setItems] = useState<EstimateItem[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [purchaseDays, setPurchaseDays] = useState<number | ''>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [productMaster, setProductMaster] = useState<ProductMasterItem[]>([]);
   const { toast } = useToast();
   const router = useRouter();
+  
+  useEffect(() => {
+    const fetchProductMaster = async () => {
+        const token = sessionStorage.getItem('accessToken');
+        if (!token) {
+            router.push('/login');
+            return;
+        }
+
+        try {
+            const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/productmaster', {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setProductMaster(data?.productList || []);
+            } else {
+                 if(response.status === 401) {
+                    toast({
+                        variant: "destructive",
+                        title: "Session Expired",
+                        description: "Please login again.",
+                    });
+                    sessionStorage.removeItem('accessToken');
+                    router.push('/login');
+                } else {
+                    throw new Error('Failed to fetch product master');
+                }
+            }
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "Error fetching products",
+                description: error.message || "Could not fetch product master data.",
+            });
+        }
+    };
+
+    fetchProductMaster();
+  }, [router, toast]);
 
   const handleGenerateEstimate = async () => {
     if (!dateRange || !dateRange.from || !dateRange.to || purchaseDays === '' || +purchaseDays <= 0) {
@@ -86,14 +137,20 @@ export default function PurchaseEstimatePage() {
             const apiItems: ApiResponseItem[] = responseData.data || [];
 
             const daysInRange = (dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 3600 * 24) + 1;
+            
+            const productMasterMap = new Map(productMaster.map(p => [p.SKU, p.stock]));
 
             const estimatedItems: EstimateItem[] = apiItems.map(item => {
                 const dailyAvg = item.totalSalesQty / daysInRange;
-                const estimatedQuantity = Math.ceil(dailyAvg * +purchaseDays);
+                const inHandStock = productMasterMap.get(item.SKU) || 0;
+                const projectedNeed = dailyAvg * +purchaseDays;
+                const estimatedQuantity = Math.max(0, Math.ceil(projectedNeed - inHandStock));
+                
                 return {
                     SKU: item.SKU,
                     totalSalesQty: item.totalSalesQty,
                     avgSalesPerDay: dailyAvg,
+                    inHand: inHandStock,
                     estimatedQuantity,
                     purchasePrice: item.purchasePrice,
                     totalValue: estimatedQuantity * item.purchasePrice,
@@ -216,6 +273,7 @@ export default function PurchaseEstimatePage() {
                     <TableHead>Item Name</TableHead>
                     <TableHead className="text-right">Total Sales Qty</TableHead>
                     <TableHead className="text-right">AVG Sales/Day</TableHead>
+                    <TableHead className="text-right">In Hand</TableHead>
                     <TableHead className="text-right">Estimated Quantity</TableHead>
                     <TableHead className="text-right">Price</TableHead>
                     <TableHead className="text-right">Total</TableHead>
@@ -224,7 +282,7 @@ export default function PurchaseEstimatePage() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center">
+                      <TableCell colSpan={7} className="h-24 text-center">
                         Loading estimate...
                       </TableCell>
                     </TableRow>
@@ -234,6 +292,7 @@ export default function PurchaseEstimatePage() {
                         <TableCell>{item.SKU}</TableCell>
                         <TableCell className="text-right">{item.totalSalesQty}</TableCell>
                         <TableCell className="text-right">{Math.round(item.avgSalesPerDay)}</TableCell>
+                        <TableCell className="text-right">{item.inHand}</TableCell>
                         <TableCell className="text-right">{item.estimatedQuantity}</TableCell>
                         <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.purchasePrice)}</TableCell>
                         <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.totalValue)}</TableCell>
@@ -241,7 +300,7 @@ export default function PurchaseEstimatePage() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                         Generate an estimate to see results.
                       </TableCell>
                     </TableRow>
@@ -250,7 +309,7 @@ export default function PurchaseEstimatePage() {
                 {items.length > 0 && (
                   <TableFooter>
                     <TableRow>
-                      <TableCell colSpan={5} className="text-right text-lg font-bold">Grand Total:</TableCell>
+                      <TableCell colSpan={6} className="text-right text-lg font-bold">Grand Total:</TableCell>
                       <TableCell className="text-right text-lg font-bold">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalAmount)}</TableCell>
                     </TableRow>
                   </TableFooter>
@@ -263,3 +322,5 @@ export default function PurchaseEstimatePage() {
     </div>
   );
 }
+
+    
