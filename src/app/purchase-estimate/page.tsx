@@ -40,12 +40,12 @@ interface EstimateItem {
 interface ApiResponseItem {
     SKU: string;
     totalSalesQty: number;
-    purchasePrice: number;
 }
 
 interface ProductMasterItem {
   SKU: string;
   stock: number;
+  purchasePrice: number;
   [key: string]: any;
 }
 
@@ -139,11 +139,14 @@ export default function PurchaseEstimatePage() {
 
             const daysInRange = (dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 3600 * 24) + 1;
             
-            const productMasterMap = new Map(productMaster.map(p => [p.SKU, p.stock]));
+            const productMasterMap = new Map(productMaster.map(p => [p.SKU, p]));
 
             const estimatedItems: EstimateItem[] = apiItems.map(item => {
                 const dailyAvg = item.totalSalesQty / daysInRange;
-                const inHandStock = productMasterMap.get(item.SKU) || 0;
+                const productInfo = productMasterMap.get(item.SKU);
+                const inHandStock = productInfo?.stock || 0;
+                const purchasePrice = productInfo?.purchasePrice || 0;
+                
                 const projectedNeed = dailyAvg * +purchaseDays;
                 const requiredQuantity = projectedNeed - inHandStock;
                 const estimatedQuantity = Math.max(0, Math.ceil(requiredQuantity));
@@ -165,7 +168,6 @@ export default function PurchaseEstimatePage() {
                     }
                 }
                 
-                const purchasePrice = item.purchasePrice || 0;
                 return {
                     SKU: item.SKU,
                     totalSalesQty: item.totalSalesQty,
@@ -334,9 +336,9 @@ export default function PurchaseEstimatePage() {
                     <TableHead className="text-right">Total Sales Qty</TableHead>
                     <TableHead className="text-right">AVG Sales/Day</TableHead>
                     <TableHead className="text-right">In Hand</TableHead>
+                    <TableHead className="text-right">Purchase Price per Item</TableHead>
                     <TableHead className="text-right">Estimated Quantity</TableHead>
                     <TableHead className="text-right">Est In Case</TableHead>
-                    <TableHead className="text-right">Purchase Price</TableHead>
                     <TableHead className="text-right">Total Value</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -354,6 +356,7 @@ export default function PurchaseEstimatePage() {
                         <TableCell className="text-right">{item.totalSalesQty}</TableCell>
                         <TableCell className="text-right">{Math.round(item.avgSalesPerDay)}</TableCell>
                         <TableCell className="text-right">{item.inHand}</TableCell>
+                        <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.purchasePrice)}</TableCell>
                         <TableCell className="text-right">{item.estimatedQuantity}</TableCell>
                         <TableCell className="text-right">
                           <Input
@@ -363,7 +366,6 @@ export default function PurchaseEstimatePage() {
                             className="text-right h-8"
                           />
                         </TableCell>
-                        <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.purchasePrice)}</TableCell>
                         <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.totalValue)}</TableCell>
                       </TableRow>
                     ))
