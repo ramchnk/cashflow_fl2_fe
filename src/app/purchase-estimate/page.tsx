@@ -20,25 +20,34 @@ import Header from '@/components/layout/header';
 import { CalendarIcon } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import type { DateRange } from 'react-day-picker';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
+import { useRouter } from 'next/navigation';
 
 
 interface EstimateItem {
-  id: number;
-  name: string;
-  quantity: number;
-  price: number;
+  SKU: string;
+  estimatedQuantity: number;
+  purchasePrice: number;
+  totalValue: number;
+}
+
+interface ApiResponseItem {
+    SKU: string;
+    saleQuantity: number;
+    purchasePrice: number;
 }
 
 export default function PurchaseEstimatePage() {
   const [items, setItems] = useState<EstimateItem[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [purchaseDays, setPurchaseDays] = useState<number | ''>('');
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
 
-  const handleGenerateEstimate = () => {
+  const handleGenerateEstimate = async () => {
     if (!dateRange || !dateRange.from || !dateRange.to || purchaseDays === '' || +purchaseDays <= 0) {
       toast({
         variant: 'destructive',
@@ -48,30 +57,78 @@ export default function PurchaseEstimatePage() {
       return;
     }
 
-    // In a real application, you would fetch sales data for the date range
-    // and calculate the estimate. For now, we'll use mock data.
-    const mockItems: EstimateItem[] = [
-      { id: 1, name: 'Brand ABC 750ml', quantity: Math.ceil(Math.random() * 20), price: 1200 },
-      { id: 2, name: 'Brand XYZ 375ml', quantity: Math.ceil(Math.random() * 50), price: 650 },
-      { id: 3, name: 'Beer Brand 500ml', quantity: Math.ceil(Math.random() * 100), price: 150 },
-    ];
-    
-    // Adjust quantity based on purchase days
-    const daysInRange = (dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 3600 * 24) + 1;
-    const estimatedItems = mockItems.map(item => ({
-        ...item,
-        quantity: Math.ceil((item.quantity / daysInRange) * +purchaseDays)
-    }))
+    setIsLoading(true);
+    setItems([]);
 
-    setItems(estimatedItems);
+    const token = sessionStorage.getItem('accessToken');
+    if (!token) {
+        router.push('/login');
+        return;
+    }
 
-    toast({
-        title: 'Estimate Generated',
-        description: `Purchase estimate created for ${purchaseDays} days based on selected sales data.`
-    })
+    try {
+        const startTimestamp = Math.floor(startOfDay(dateRange.from).getTime() / 1000);
+        const endTimestamp = Math.floor(endOfDay(dateRange.to).getTime() / 1000);
+        
+        const url = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/sales/estimate?startDate=${startTimestamp}&endDate=${endTimestamp}`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            const responseData = await response.json();
+            const apiItems: ApiResponseItem[] = responseData.data || [];
+
+            const daysInRange = (dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 3600 * 24) + 1;
+
+            const estimatedItems: EstimateItem[] = apiItems.map(item => {
+                const dailyAvg = item.saleQuantity / daysInRange;
+                const estimatedQuantity = Math.ceil(dailyAvg * +purchaseDays);
+                return {
+                    SKU: item.SKU,
+                    estimatedQuantity,
+                    purchasePrice: item.purchasePrice,
+                    totalValue: estimatedQuantity * item.purchasePrice,
+                }
+            });
+
+            setItems(estimatedItems);
+            toast({
+                title: 'Estimate Generated',
+                description: `Purchase estimate created for ${purchaseDays} days based on selected sales data.`
+            });
+
+        } else {
+            if(response.status === 401) {
+                toast({
+                    variant: "destructive",
+                    title: "Session Expired",
+                    description: "Please login again.",
+                });
+                sessionStorage.removeItem('accessToken');
+                router.push('/login');
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to fetch estimate data');
+            }
+        }
+    } catch (error: any) {
+         toast({
+            variant: 'destructive',
+            title: 'An Error Occurred',
+            description: error.message || 'Could not generate estimate.',
+        });
+        setItems([]);
+    } finally {
+        setIsLoading(false);
+    }
   };
 
-  const totalAmount = items.reduce((acc, item) => acc + item.quantity * item.price, 0);
+  const totalAmount = items.reduce((acc, item) => acc + item.totalValue, 0);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -95,6 +152,7 @@ export default function PurchaseEstimatePage() {
                                     "w-full justify-start text-left font-normal",
                                     !dateRange && "text-muted-foreground"
                                 )}
+                                disabled={isLoading}
                             >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                 {dateRange?.from ? (
@@ -131,12 +189,15 @@ export default function PurchaseEstimatePage() {
                     placeholder="e.g., 7"
                     value={purchaseDays}
                     onChange={(e) => setPurchaseDays(e.target.value === '' ? '' : Number(e.target.value))}
+                    disabled={isLoading}
                   />
                 </div>
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={handleGenerateEstimate}>Generate Estimate</Button>
+              <Button onClick={handleGenerateEstimate} disabled={isLoading}>
+                {isLoading ? 'Generating...' : 'Generate Estimate'}
+              </Button>
             </CardFooter>
           </Card>
           
@@ -155,13 +216,19 @@ export default function PurchaseEstimatePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.length > 0 ? (
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-24 text-center">
+                        Loading estimate...
+                      </TableCell>
+                    </TableRow>
+                  ) : items.length > 0 ? (
                     items.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.name}</TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
-                        <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.price)}</TableCell>
-                        <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.quantity * item.price)}</TableCell>
+                      <TableRow key={item.SKU}>
+                        <TableCell>{item.SKU}</TableCell>
+                        <TableCell className="text-right">{item.estimatedQuantity}</TableCell>
+                        <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.purchasePrice)}</TableCell>
+                        <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.totalValue)}</TableCell>
                       </TableRow>
                     ))
                   ) : (
