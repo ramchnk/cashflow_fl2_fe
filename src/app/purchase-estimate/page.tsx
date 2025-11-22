@@ -233,7 +233,7 @@ export default function PurchaseEstimatePage() {
                       <TableRow key={item.SKU}>
                         <TableCell>{item.SKU}</TableCell>
                         <TableCell className="text-right">{item.totalSalesQty}</TableCell>
-                        <TableCell className="text-right">{item.avgSalesPerDay.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{Math.round(item.avgSalesPerDay)}</TableCell>
                         <TableCell className="text-right">{item.estimatedQuantity}</TableCell>
                         <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.purchasePrice)}</TableCell>
                         <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.totalValue)}</TableCell>
