@@ -152,20 +152,24 @@ export default function PurchaseEstimatePage() {
                 const estimatedQuantity = Math.max(0, Math.ceil(requiredQuantity));
 
                 let estInCase = 0;
+                let packSize = 1;
                 const skuParts = item.SKU.split('-');
                 if (skuParts.length > 1) {
                     const size = skuParts[1].toUpperCase();
                     if (size.includes('180ML')) {
-                        estInCase = estimatedQuantity / 48;
+                        packSize = 48;
                     } else if (size.includes('375ML')) {
-                        estInCase = estimatedQuantity / 24;
+                        packSize = 24;
                     } else if (size.includes('750ML') || size.includes('650ML')) {
-                        estInCase = estimatedQuantity / 12;
+                        packSize = 12;
                     } else if (size.includes('1000ML')) {
-                        estInCase = estimatedQuantity / 9;
+                        packSize = 9;
                     } else if (size.includes('325ML') || size.includes('500ML')) {
-                        estInCase = estimatedQuantity / 24;
+                        packSize = 24;
                     }
+                }
+                if (packSize > 0) {
+                    estInCase = estimatedQuantity / packSize;
                 }
                 
                 return {
@@ -221,24 +225,24 @@ export default function PurchaseEstimatePage() {
         const item = newItems[index];
         if (!item) return prevItems;
 
-        let caseDivisor = 1;
+        let packSize = 1;
         const skuParts = item.SKU.split('-');
         if (skuParts.length > 1) {
             const size = skuParts[1].toUpperCase();
             if (size.includes('180ML')) {
-                caseDivisor = 48;
+                packSize = 48;
             } else if (size.includes('375ML')) {
-                caseDivisor = 24;
+                packSize = 24;
             } else if (size.includes('750ML') || size.includes('650ML')) {
-                caseDivisor = 12;
+                packSize = 12;
             } else if (size.includes('1000ML')) {
-                caseDivisor = 9;
+                packSize = 9;
             } else if (size.includes('325ML') || size.includes('500ML')) {
-                caseDivisor = 24;
+                packSize = 24;
             }
         }
 
-        const newEstimatedQuantity = newEstInCase * caseDivisor;
+        const newEstimatedQuantity = newEstInCase * packSize;
         
         newItems[index] = {
             ...item,
@@ -393,12 +397,3 @@ export default function PurchaseEstimatePage() {
     </div>
   );
 }
-    
-
-    
-
-    
-
-
-
-    
