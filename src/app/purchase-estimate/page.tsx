@@ -209,6 +209,45 @@ export default function PurchaseEstimatePage() {
     }
   };
 
+  const handleEstInCaseChange = (index: number, newEstInCaseStr: string) => {
+    const newEstInCase = Number(newEstInCaseStr);
+    if (isNaN(newEstInCase)) return;
+
+    setItems(prevItems => {
+        const newItems = [...prevItems];
+        const item = newItems[index];
+        if (!item) return prevItems;
+
+        let caseDivisor = 1;
+        const skuParts = item.SKU.split('-');
+        if (skuParts.length > 1) {
+            const size = skuParts[1].toUpperCase();
+            if (size.includes('180ML')) {
+                caseDivisor = 48;
+            } else if (size.includes('375ML')) {
+                caseDivisor = 24;
+            } else if (size.includes('750ML') || size.includes('650ML')) {
+                caseDivisor = 12;
+            } else if (size.includes('1000ML')) {
+                caseDivisor = 9;
+            } else if (size.includes('325ML') || size.includes('500ML')) {
+                caseDivisor = 24;
+            }
+        }
+
+        const newEstimatedQuantity = newEstInCase * caseDivisor;
+        
+        newItems[index] = {
+            ...item,
+            estInCase: newEstInCase,
+            estimatedQuantity: newEstimatedQuantity,
+            totalValue: newEstimatedQuantity * item.purchasePrice,
+        };
+
+        return newItems;
+    });
+  };
+
   const grandTotal = items.reduce((acc, item) => acc + item.totalValue, 0);
 
   return (
@@ -307,14 +346,21 @@ export default function PurchaseEstimatePage() {
                       </TableCell>
                     </TableRow>
                   ) : items.length > 0 ? (
-                    items.map((item) => (
+                    items.map((item, index) => (
                       <TableRow key={item.SKU}>
                         <TableCell>{item.SKU}</TableCell>
                         <TableCell className="text-right">{item.totalSalesQty}</TableCell>
                         <TableCell className="text-right">{Math.round(item.avgSalesPerDay)}</TableCell>
                         <TableCell className="text-right">{item.inHand}</TableCell>
                         <TableCell className="text-right">{item.estimatedQuantity}</TableCell>
-                        <TableCell className="text-right">{Math.round(item.estInCase)}</TableCell>
+                        <TableCell className="text-right">
+                          <Input
+                            type="number"
+                            value={Math.round(item.estInCase)}
+                            onChange={(e) => handleEstInCaseChange(index, e.target.value)}
+                            className="text-right h-8"
+                          />
+                        </TableCell>
                         <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.totalValue)}</TableCell>
                       </TableRow>
                     ))
@@ -342,4 +388,6 @@ export default function PurchaseEstimatePage() {
     </div>
   );
 }
+    
+
     
