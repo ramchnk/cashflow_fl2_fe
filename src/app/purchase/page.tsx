@@ -254,10 +254,12 @@ export default function PurchasePage() {
         return;
     }
 
+    const finalPurchaseAmount = parseFloat(actualBillValue) > 0 ? parseFloat(actualBillValue) : totalValue;
+
     const payload = {
         billNo: billNumber,
         purchaseDate: Math.floor(billDate.getTime() / 1000),
-        purchaseAmount: totalValue.toFixed(2),
+        purchaseAmount: finalPurchaseAmount.toFixed(2),
         totalQuantity: totalQty,
         productList: parsedItems.map(item => ({
             SKU: item.apiSku,
