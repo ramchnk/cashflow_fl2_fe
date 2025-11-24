@@ -57,6 +57,7 @@ export default function PurchasePage() {
   const [billDate, setBillDate] = useState<Date | undefined>(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { setShopName } = useUserStore();
+  const [actualBillValue, setActualBillValue] = useState<string>('');
 
   const fetchProductMaster = async () => {
     const token = sessionStorage.getItem('accessToken');
@@ -214,6 +215,8 @@ export default function PurchasePage() {
     return acc + item.numericTotalValue;
   }, 0);
 
+  const difference = (parseFloat(actualBillValue) || 0) - totalValue;
+
   const handleSubmitPurchase = async () => {
     if (!billNumber || !billDate) {
         toast({
@@ -285,6 +288,7 @@ export default function PurchasePage() {
             setParsedItems([]);
             setBillNumber('');
             setBillDate(new Date());
+            setActualBillValue('');
             await fetchProductMaster();
         } else {
              const errorData = await response.json();
@@ -408,16 +412,37 @@ export default function PurchasePage() {
                         </Table>
                     </ScrollArea>
                 </CardContent>
-                <CardFooter className="flex justify-between items-center font-bold text-lg">
-                    <div className="flex gap-8">
-                       <div>
-                            Total Cases: {totalQty.toFixed(2)}
+                <CardFooter className="flex flex-col items-start gap-4 font-bold text-lg">
+                    <div className="flex flex-wrap justify-between items-center w-full gap-4">
+                        <div className="flex gap-8">
+                            <div>
+                                Total Cases: {totalQty.toFixed(2)}
+                            </div>
+                            <div>
+                                Total Value: {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalValue)}
+                            </div>
                         </div>
-                        <div>
-                            Total Value: {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalValue)}
+                        <div className="flex items-center gap-4">
+                             <div className="space-y-2 text-base">
+                                <Label htmlFor="actual-bill-value">Actual Bill Value</Label>
+                                <Input
+                                    id="actual-bill-value"
+                                    type="number"
+                                    placeholder="Enter actual value"
+                                    value={actualBillValue}
+                                    onChange={(e) => setActualBillValue(e.target.value)}
+                                    className="w-48"
+                                />
+                             </div>
+                             <div className="text-base">
+                                <div>Difference</div>
+                                 <div className={cn("font-bold", difference > 0 ? 'text-green-600' : difference < 0 ? 'text-red-600' : '')}>
+                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(difference)}
+                                </div>
+                             </div>
                         </div>
                     </div>
-                     <Button onClick={handleSubmitPurchase} disabled={isSubmitting}>
+                     <Button onClick={handleSubmitPurchase} disabled={isSubmitting} className="self-end">
                         {isSubmitting ? 'Submitting...' : 'Submit Purchase'}
                     </Button>
                 </CardFooter>
