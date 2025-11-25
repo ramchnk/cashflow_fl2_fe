@@ -73,7 +73,7 @@ export default function LedgerView({ transactions, accountFilter }: LedgerViewPr
 
   return (
     <Table>
-        <TableHeader>
+        <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
             <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Particulars</TableHead>
