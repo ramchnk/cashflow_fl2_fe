@@ -226,6 +226,15 @@ export default function PurchasePage() {
         });
         return;
     }
+    
+    if (!actualBillValue || parseFloat(actualBillValue) <= 0) {
+        toast({
+            variant: "destructive",
+            title: "Validation Error",
+            description: "Please enter a valid Actual Bill Value.",
+        });
+        return;
+    }
 
     if (parsedItems.some(item => item.matchStatus === 'not found')) {
         toast({
