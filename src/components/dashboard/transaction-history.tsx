@@ -23,6 +23,7 @@ import {
     AccordionItem,
     AccordionTrigger,
   } from "@/components/ui/accordion";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 
 interface TransactionHistoryProps {
     transactions: Transaction[];
@@ -48,24 +49,32 @@ const SimpleListView = ({ transactions }: { transactions: Transaction[] }) => {
     }).format(date);
 
     return (
-        <ul className="space-y-4">
-            {transactions.map(tx => {
-                const isDeduction = tx.to === 'expenses';
-                return (
-                    <li key={tx.id} className="flex items-center justify-between space-x-4 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                        <div>
-                            <div className="text-sm font-medium">{isDeduction ? `Expense from ${getPartyDetails(tx.from).name}` : `${getPartyDetails(tx.from).name} → ${getPartyDetails(tx.to).name}`}</div>
-                            <div className="text-xs text-muted-foreground">
-                                {formatDate(tx.date)}
-                            </div>
-                        </div>
-                        <div className={`font-bold text-lg ${isDeduction ? 'text-destructive' : 'text-foreground'}`}>
-                             {formatCurrency(tx.amount)}
-                        </div>
-                    </li>
-                )
-            })}
-        </ul>
+        <Table>
+            <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
+                <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Particulars</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {transactions.map(tx => {
+                    const isDeduction = tx.to === 'expenses';
+                    return (
+                        <TableRow key={tx.id}>
+                            <TableCell className="text-muted-foreground w-28">{formatDate(tx.date)}</TableCell>
+                            <TableCell>
+                                 <div className="font-medium">{isDeduction ? `Expense from ${getPartyDetails(tx.from).name}` : `${getPartyDetails(tx.from).name} → ${getPartyDetails(tx.to).name}`}</div>
+                                 {tx.description && <div className="text-xs text-muted-foreground">{tx.description}</div>}
+                            </TableCell>
+                            <TableCell className={`font-bold text-right ${isDeduction ? 'text-destructive' : 'text-foreground'}`}>
+                                {formatCurrency(tx.amount)}
+                            </TableCell>
+                        </TableRow>
+                    )
+                })}
+            </TableBody>
+        </Table>
     )
 }
 
