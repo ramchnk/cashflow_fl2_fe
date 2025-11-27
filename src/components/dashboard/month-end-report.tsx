@@ -136,10 +136,10 @@ export default function MonthEndReport({ balances, investAmount, shopName, isLoa
         <Card id="report-card" className="report-card border-0 shadow-none">
             <CardHeader id="report-header">
                 <div className="flex justify-between items-start">
-                    <div>
-                        <CardTitle className="text-center text-xl text-primary font-bold">MONTHLY PROFIT CALCULATION</CardTitle>
-                        <CardDescription className="text-center text-lg font-semibold">{shopName || "Gobi's Shop"}</CardDescription>
-                        <CardDescription className="text-center text-md">{format(new Date(), 'MMMM-yyyy')}</CardDescription>
+                    <div className="flex-1 text-center">
+                        <CardTitle className="text-xl text-primary font-bold">MONTHLY PROFIT CALCULATION</CardTitle>
+                        <CardDescription className="text-lg font-semibold">{shopName || "Gobi's Shop"}</CardDescription>
+                        <CardDescription className="text-md">{format(new Date(), 'MMMM-yyyy')}</CardDescription>
                     </div>
                     <div className="flex gap-2">
                         <Button onClick={handleCapture} variant="outline" size="icon" className="print-hidden" disabled={isLoading}>
