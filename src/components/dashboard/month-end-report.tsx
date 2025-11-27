@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -203,11 +202,13 @@ interface ApiSaleItem {
     totalSalesAmount: number;
     totalExpensesAmount: number;
     basePrice: number;
+    kitchenSales?: number;
 }
 
 interface ReportData {
     salesValue: number;
     costOfSales: number;
+    kitchenIncome: number;
 }
 
 
@@ -291,8 +292,9 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
                 const result: { data: ApiSaleItem[] } = await response.json();
                 const salesValue = result.data.reduce((sum, item) => sum + item.totalSalesAmount, 0);
                 const costOfSales = result.data.reduce((sum, item) => sum + item.basePrice, 0);
+                const kitchenIncome = result.data.reduce((sum, item) => sum + (item.kitchenSales || 0), 0);
 
-                setReportData({ salesValue, costOfSales });
+                setReportData({ salesValue, costOfSales, kitchenIncome });
 
                 toast({
                     title: 'Report Generated',
@@ -352,7 +354,7 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
     const salesValue = reportData?.salesValue ?? 0;
     const costOfSales = reportData?.costOfSales ?? 0;
     const grossProfit = salesValue - costOfSales;
-    const kitchenIncome = 224000;
+    const kitchenIncome = reportData?.kitchenIncome ?? 0;
     const emptyBottleSales = 16800;
     const totalIncome = grossProfit + kitchenIncome + emptyBottleSales;
     const shopExpenses = 318250;
