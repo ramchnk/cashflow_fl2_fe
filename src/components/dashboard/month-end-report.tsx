@@ -126,7 +126,7 @@ const CashFlowReport = ({ balances, investAmount, shopName, isLoading }: MonthEn
     return (
          <Card id="report-card-cashflow" className="report-card border-0 shadow-none">
             <CardHeader id="report-header-cashflow">
-                 <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start">
                     <div className="flex-grow"></div>
                     <div className="text-center flex-shrink-0">
                         <CardTitle className="text-xl text-primary font-bold">MONTHLY PROFIT CALCULATION</CardTitle>
@@ -358,10 +358,9 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
     const emptyBottleSales = 16800;
     const totalIncome = grossProfit + kitchenIncome + emptyBottleSales;
     const shopExpenses = 318250;
-    const stockDiff = 234;
     const shortage = 119;
     const bankCharges = 866;
-    const totalExpenses = shopExpenses + stockDiff + shortage + bankCharges;
+    const totalExpenses = shopExpenses + shortage + bankCharges;
     const netProfit = totalIncome - totalExpenses;
 
 
@@ -497,18 +496,12 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
                             </TableRow>
                             <TableRow>
                                 <TableCell>2</TableCell>
-                                <TableCell>Stock or Profit Difference</TableCell>
-                                <TableCell className="text-right">{formatNumber(stockDiff)}</TableCell>
-                                <TableCell></TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell>3</TableCell>
                                 <TableCell>Shortage</TableCell>
                                 <TableCell className="text-right">{formatNumber(shortage)}</TableCell>
                                 <TableCell></TableCell>
                             </TableRow>
                             <TableRow>
-                                <TableCell>4</TableCell>
+                                <TableCell>3</TableCell>
                                 <TableCell>Bank Charges</TableCell>
                                 <TableCell className="text-right">{formatNumber(bankCharges)}</TableCell>
                                 <TableCell></TableCell>
@@ -559,5 +552,7 @@ export default function MonthEndReport(props: MonthEndReportProps) {
     </div>
   );
 }
+
+    
 
     
