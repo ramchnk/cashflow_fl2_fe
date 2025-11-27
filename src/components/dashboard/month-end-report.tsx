@@ -209,6 +209,7 @@ interface ReportData {
     salesValue: number;
     costOfSales: number;
     kitchenIncome: number;
+    shopExpenses: number;
 }
 
 
@@ -293,8 +294,9 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
                 const salesValue = result.data.reduce((sum, item) => sum + item.totalSalesAmount, 0);
                 const costOfSales = result.data.reduce((sum, item) => sum + item.basePrice, 0);
                 const kitchenIncome = result.data.reduce((sum, item) => sum + (item.kitchenSales || 0), 0);
+                const shopExpenses = result.data.reduce((sum, item) => sum + (item.totalExpensesAmount || 0), 0);
 
-                setReportData({ salesValue, costOfSales, kitchenIncome });
+                setReportData({ salesValue, costOfSales, kitchenIncome, shopExpenses });
 
                 toast({
                     title: 'Report Generated',
@@ -357,7 +359,7 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
     const kitchenIncome = reportData?.kitchenIncome ?? 0;
     const emptyBottleSales = 16800;
     const totalIncome = grossProfit + kitchenIncome + emptyBottleSales;
-    const shopExpenses = 318250;
+    const shopExpenses = reportData?.shopExpenses ?? 0;
     const bankCharges = 866;
     const totalExpenses = shopExpenses + bankCharges;
     const netProfit = totalIncome - totalExpenses;
@@ -549,3 +551,4 @@ export default function MonthEndReport(props: MonthEndReportProps) {
     
 
     
+
