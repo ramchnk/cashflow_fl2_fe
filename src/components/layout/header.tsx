@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Wallet, LogOut, Store, Home, Package, Receipt, Calculator } from 'lucide-react';
+import { Wallet, LogOut, Store, Home, Package, Receipt, Calculator, FileText } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,7 @@ export default function Header() {
         { href: "/purchase", label: "Purchase", icon: Package },
         { href: "/expenses", label: "Expenses", icon: Receipt },
         { href: "/purchase-estimate", label: "Purchase Estimate", icon: Calculator },
+        { href: "/month-end-report", label: "Month End Report", icon: FileText },
     ]
 
   return (
