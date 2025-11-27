@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -367,7 +368,7 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
     const emptyBottleSales = 0;
     const totalIncome = grossProfit + kitchenIncome + emptyBottleSales;
     const shopExpenses = reportData?.shopExpenses ?? 0;
-    const bankCharges = 866;
+    const bankCharges = 607;
     const totalExpenses = shopExpenses + bankCharges;
     const netProfit = totalIncome - totalExpenses;
 
