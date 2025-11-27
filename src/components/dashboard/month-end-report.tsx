@@ -218,6 +218,7 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
     const [reportData, setReportData] = useState<ReportData | null>(null);
     const { toast } = useToast();
     const router = useRouter();
+    const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
 
 
     const handlePrint = () => {
@@ -253,6 +254,13 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
                 link.click();
                 buttons.forEach(btn => btn.style.visibility = 'visible');
             });
+        }
+    }
+
+    const handleDateChange = (newDateRange?: DateRange) => {
+        setDateRange(newDateRange);
+        if (newDateRange?.from && newDateRange?.to) {
+            setIsDatePickerOpen(false);
         }
     }
 
@@ -388,7 +396,7 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
                     <div className="flex flex-wrap gap-4 items-end">
                         <div className="grid gap-2">
                           <Label htmlFor="date-range-pl">Date Range</Label>
-                           <Popover>
+                           <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                                 <PopoverTrigger asChild>
                                     <Button
                                         id="date-range-pl"
@@ -420,7 +428,7 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
                                         mode="range"
                                         defaultMonth={dateRange?.from}
                                         selected={dateRange}
-                                        onSelect={setDateRange}
+                                        onSelect={handleDateChange}
                                         numberOfMonths={2}
                                     />
                                 </PopoverContent>
