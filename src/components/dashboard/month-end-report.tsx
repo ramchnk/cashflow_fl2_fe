@@ -12,12 +12,18 @@ import {
   TableCell,
   TableFooter
 } from '@/components/ui/table';
-import { Printer, Camera } from 'lucide-react';
+import { Printer, Camera, CalendarIcon } from 'lucide-react';
 import { getPartyDetails } from '@/app/lib/parties';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay } from 'date-fns';
 import html2canvas from 'html2canvas';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import type { DateRange } from 'react-day-picker';
+import React, { useState } from 'react';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import { Label } from '../ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 
 interface Balances {
@@ -33,7 +39,7 @@ interface MonthEndReportProps {
 
 const CashFlowReport = ({ balances, investAmount, shopName, isLoading }: MonthEndReportProps) => {
     const handlePrint = () => {
-    const printContent = document.getElementById('report-content-m1');
+    const printContent = document.getElementById('report-content-cashflow');
     if (printContent) {
         const originalContents = document.body.innerHTML;
         const header = `
@@ -51,7 +57,7 @@ const CashFlowReport = ({ balances, investAmount, shopName, isLoading }: MonthEn
   }
 
   const handleCapture = () => {
-    const reportCard = document.getElementById('report-card-m1');
+    const reportCard = document.getElementById('report-card-cashflow');
     if (reportCard) {
       const buttons = reportCard.querySelectorAll('button');
       buttons.forEach(btn => btn.style.visibility = 'hidden');
@@ -60,14 +66,14 @@ const CashFlowReport = ({ balances, investAmount, shopName, isLoading }: MonthEn
         useCORS: true,
         scale: 2, 
         onclone: (document) => {
-            const header = document.getElementById('report-header-m1');
+            const header = document.getElementById('report-header-cashflow');
             if (header) {
                 header.classList.remove('print-hidden');
             }
         }
       }).then(canvas => {
         const link = document.createElement('a');
-        link.download = `monthly-profit-report-m1-${format(new Date(), 'yyyy-MM-dd')}.png`;
+        link.download = `monthly-profit-report-cashflow-${format(new Date(), 'yyyy-MM-dd')}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
         buttons.forEach(btn => btn.style.visibility = 'visible');
@@ -117,8 +123,8 @@ const CashFlowReport = ({ balances, investAmount, shopName, isLoading }: MonthEn
     }
 
     return (
-         <Card id="report-card-m1" className="report-card border-0 shadow-none">
-            <CardHeader id="report-header-m1">
+         <Card id="report-card-cashflow" className="report-card border-0 shadow-none">
+            <CardHeader id="report-header-cashflow">
                 <div className="flex justify-between items-start">
                      <div className="flex-grow"></div>
                      <div className="text-center">
@@ -136,7 +142,7 @@ const CashFlowReport = ({ balances, investAmount, shopName, isLoading }: MonthEn
                     </div>
                 </div>
             </CardHeader>
-            <CardContent id="report-content-m1" className="pt-0 bg-background p-6">
+            <CardContent id="report-content-cashflow" className="pt-0 bg-background p-6">
               {isLoading ? (
                   <div className="h-96 flex items-center justify-center">
                       <p>Loading Report...</p>
@@ -183,10 +189,13 @@ const CashFlowReport = ({ balances, investAmount, shopName, isLoading }: MonthEn
     );
 }
 
-const Method2Report = ({ shopName, isLoading }: Omit<MonthEndReportProps, 'balances' | 'investAmount'>) => {
+const PLStatement = ({ shopName }: Omit<MonthEndReportProps, 'balances' | 'investAmount'>) => {
+    const [dateRange, setDateRange] = useState<DateRange | undefined>();
+    const [isLoading, setIsLoading] = useState(false);
+    const { toast } = useToast();
 
     const handlePrint = () => {
-        const printContent = document.getElementById('report-content-m2');
+        const printContent = document.getElementById('report-content-pl');
         if (printContent) {
             const originalContents = document.body.innerHTML;
             const header = `
@@ -203,7 +212,7 @@ const Method2Report = ({ shopName, isLoading }: Omit<MonthEndReportProps, 'balan
     }
 
     const handleCapture = () => {
-        const reportCard = document.getElementById('report-card-m2');
+        const reportCard = document.getElementById('report-card-pl');
         if (reportCard) {
             const buttons = reportCard.querySelectorAll('button');
             buttons.forEach(btn => btn.style.visibility = 'hidden');
@@ -213,12 +222,37 @@ const Method2Report = ({ shopName, isLoading }: Omit<MonthEndReportProps, 'balan
                 scale: 2
             }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = `monthly-statement-m2-${format(new Date(), 'yyyy-MM-dd')}.png`;
+                link.download = `monthly-statement-pl-${format(new Date(), 'yyyy-MM-dd')}.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
                 buttons.forEach(btn => btn.style.visibility = 'visible');
             });
         }
+    }
+
+    const handleGetReport = async () => {
+        if (!dateRange || !dateRange.from || !dateRange.to) {
+            toast({
+                variant: 'destructive',
+                title: 'Invalid Date Range',
+                description: 'Please select a valid start and end date.',
+            });
+            return;
+        }
+
+        setIsLoading(true);
+        // TODO: API call logic will go here
+        console.log("Fetching P&L Statement for:", dateRange);
+        
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        toast({
+            title: 'Report Generated',
+            description: 'P&L statement has been fetched.',
+        });
+
+        setIsLoading(false);
     }
 
     const formatNumber = (num: number) => new Intl.NumberFormat('en-IN').format(num);
@@ -247,102 +281,155 @@ const Method2Report = ({ shopName, isLoading }: Omit<MonthEndReportProps, 'balan
     );
 
     return (
-        <Card id="report-card-m2" className="border-0 shadow-none">
-            <CardHeader id="report-header-m2" className="text-center bg-blue-900 text-white rounded-t-lg py-4">
+        <Card id="report-card-pl" className="border-0 shadow-none">
+            <CardHeader id="report-header-pl" className="text-center bg-blue-900 text-white rounded-t-lg py-4">
                  <div className="flex justify-between items-start">
                     <div className="flex-grow"></div>
                     <div className="text-center">
                         <CardTitle className="text-2xl font-bold">{shopName || 'THENDRAL CLUB THIRUMAYAM'}</CardTitle>
                         <CardDescription className="text-lg text-blue-200">Statement OCT-2025</CardDescription>
                     </div>
-                    <div className="flex-grow flex justify-end gap-2">
-                        <Button onClick={handleCapture} variant="outline" size="icon" className="print-hidden bg-transparent text-white hover:bg-white/20" disabled={isLoading}>
+                    <div className="flex-grow flex justify-end gap-2 print-hidden">
+                        <Button onClick={handleCapture} variant="outline" size="icon" className="bg-transparent text-white hover:bg-white/20" disabled={isLoading}>
                             <Camera className="h-5 w-5"/>
                         </Button>
-                        <Button onClick={handlePrint} variant="outline" size="icon" className="print-hidden bg-transparent text-white hover:bg-white/20" disabled={isLoading}>
+                        <Button onClick={handlePrint} variant="outline" size="icon" className="bg-transparent text-white hover:bg-white/20" disabled={isLoading}>
                             <Printer className="h-5 w-5"/>
                         </Button>
                     </div>
                 </div>
+                <div className="p-4 bg-background text-foreground print-hidden">
+                    <div className="flex flex-wrap gap-4 items-end">
+                        <div className="grid gap-2">
+                          <Label htmlFor="date-range-pl">Date Range</Label>
+                           <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        id="date-range-pl"
+                                        variant={"outline"}
+                                        className={cn(
+                                            "w-[240px] justify-start text-left font-normal",
+                                            !dateRange && "text-muted-foreground"
+                                        )}
+                                        disabled={isLoading}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {dateRange?.from ? (
+                                            dateRange.to ? (
+                                                <>
+                                                    {format(dateRange.from, "LLL dd, y")} -{" "}
+                                                    {format(dateRange.to, "LLL dd, y")}
+                                                </>
+                                            ) : (
+                                                format(dateRange.from, "LLL dd, y")
+                                            )
+                                        ) : (
+                                            <span>Pick a date range</span>
+                                        )}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        initialFocus
+                                        mode="range"
+                                        defaultMonth={dateRange?.from}
+                                        selected={dateRange}
+                                        onSelect={setDateRange}
+                                        numberOfMonths={2}
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        <Button onClick={handleGetReport} disabled={isLoading || !dateRange?.from || !dateRange?.to}>
+                          {isLoading ? 'Getting Report...' : 'Get Report'}
+                        </Button>
+                    </div>
+                </div>
             </CardHeader>
-            <CardContent id="report-content-m2" className="p-0">
-                <Table>
-                    <TableHeader>
-                        <TableRow className="bg-blue-200">
-                            <TableHead className="w-[5%]">S.No</TableHead>
-                            <TableHead>Particulars</TableHead>
-                            <TableHead className="text-right w-[20%]">Debit</TableHead>
-                            <TableHead className="text-right w-[20%]">Credit</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        <TableRow>
-                            <TableCell rowSpan={2} className="font-bold align-top pt-6">LIQUOR</TableCell>
-                            <TableCell>
-                                <span className="font-bold">A) Sales Value</span>
-                                <p className="text-xs text-muted-foreground">(30 DAYS SALES AMOUNT)</p>
-                            </TableCell>
-                            <TableCell></TableCell>
-                            <TableCell className="text-right">{formatNumber(11675210)}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                            <TableCell>
-                               <span className="font-bold">B) Cost of Sales</span>
-                                <p className="text-xs text-muted-foreground">(PURCHASE VALUE)</p>
-                            </TableCell>
-                            <TableCell className="text-right">{formatNumber(10497577)}</TableCell>
-                            <TableCell></TableCell>
-                        </TableRow>
-                        
-                        <SectionHeader value={1177633}>GROSS PROFIT</SectionHeader>
+            <CardContent id="report-content-pl" className="p-0">
+                 {isLoading ? (
+                    <div className="h-96 flex items-center justify-center">
+                        <p>Loading Report...</p>
+                    </div>
+                 ) : (
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="bg-blue-200">
+                                <TableHead className="w-[5%]">S.No</TableHead>
+                                <TableHead>Particulars</TableHead>
+                                <TableHead className="text-right w-[20%]">Debit</TableHead>
+                                <TableHead className="text-right w-[20%]">Credit</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell rowSpan={2} className="font-bold align-top pt-6">LIQUOR</TableCell>
+                                <TableCell>
+                                    <span className="font-bold">A) Sales Value</span>
+                                    <p className="text-xs text-muted-foreground">(30 DAYS SALES AMOUNT)</p>
+                                </TableCell>
+                                <TableCell></TableCell>
+                                <TableCell className="text-right">{formatNumber(11675210)}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>
+                                <span className="font-bold">B) Cost of Sales</span>
+                                    <p className="text-xs text-muted-foreground">(PURCHASE VALUE)</p>
+                                </TableCell>
+                                <TableCell className="text-right">{formatNumber(10497577)}</TableCell>
+                                <TableCell></TableCell>
+                            </TableRow>
+                            
+                            <SectionHeader value={1177633}>GROSS PROFIT</SectionHeader>
 
-                        <SectionHeader>C) OTHER INCOME</SectionHeader>
-                        <TableRow>
-                            <TableCell>1</TableCell>
-                            <TableCell>Kitchen Income</TableCell>
-                            <TableCell></TableCell>
-                            <TableCell className="text-right">{formatNumber(224000)}</TableCell>
-                        </TableRow>
-                         <TableRow>
-                            <TableCell>2</TableCell>
-                            <TableCell>Empty Bottle Sales</TableCell>
-                             <TableCell></TableCell>
-                            <TableCell className="text-right">{formatNumber(16800)}</TableCell>
-                        </TableRow>
-                        <TotalRow label="TOTAL INCOME" value={1418433} isCredit />
-                        
-                        <SectionHeader>D) OTHER EXPENSES</SectionHeader>
-                        <TableRow>
-                            <TableCell>1</TableCell>
-                            <TableCell>Shop Expenses</TableCell>
-                            <TableCell className="text-right">{formatNumber(318250)}</TableCell>
-                            <TableCell></TableCell>
-                        </TableRow>
-                         <TableRow>
-                            <TableCell>2</TableCell>
-                            <TableCell>Stock or Profit Difference</TableCell>
-                            <TableCell className="text-right">{formatNumber(234)}</TableCell>
-                            <TableCell></TableCell>
-                        </TableRow>
-                         <TableRow>
-                            <TableCell>3</TableCell>
-                            <TableCell>Shortage</TableCell>
-                            <TableCell className="text-right">{formatNumber(119)}</TableCell>
-                            <TableCell></TableCell>
-                        </TableRow>
-                        <TableRow>
-                            <TableCell>4</TableCell>
-                            <TableCell>Bank Charges</TableCell>
-                            <TableCell className="text-right">{formatNumber(866)}</TableCell>
-                            <TableCell></TableCell>
-                        </TableRow>
-                        <TotalRow label="TOTAL EXPENSES" value={322842} isDebit />
+                            <SectionHeader>C) OTHER INCOME</SectionHeader>
+                            <TableRow>
+                                <TableCell>1</TableCell>
+                                <TableCell>Kitchen Income</TableCell>
+                                <TableCell></TableCell>
+                                <TableCell className="text-right">{formatNumber(224000)}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>2</TableCell>
+                                <TableCell>Empty Bottle Sales</TableCell>
+                                <TableCell></TableCell>
+                                <TableCell className="text-right">{formatNumber(16800)}</TableCell>
+                            </TableRow>
+                            <TotalRow label="TOTAL INCOME" value={1418433} isCredit />
+                            
+                            <SectionHeader>D) OTHER EXPENSES</SectionHeader>
+                            <TableRow>
+                                <TableCell>1</TableCell>
+                                <TableCell>Shop Expenses</TableCell>
+                                <TableCell className="text-right">{formatNumber(318250)}</TableCell>
+                                <TableCell></TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>2</TableCell>
+                                <TableCell>Stock or Profit Difference</TableCell>
+                                <TableCell className="text-right">{formatNumber(234)}</TableCell>
+                                <TableCell></TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>3</TableCell>
+                                <TableCell>Shortage</TableCell>
+                                <TableCell className="text-right">{formatNumber(119)}</TableCell>
+                                <TableCell></TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>4</TableCell>
+                                <TableCell>Bank Charges</TableCell>
+                                <TableCell className="text-right">{formatNumber(866)}</TableCell>
+                                <TableCell></TableCell>
+                            </TableRow>
+                            <TotalRow label="TOTAL EXPENSES" value={322842} isDebit />
 
-                    </TableBody>
-                    <TableFooter>
-                        <NetProfitRow label="NET PROFIT" value={1095591} />
-                    </TableFooter>
-                </Table>
+                        </TableBody>
+                        <TableFooter>
+                            <NetProfitRow label="NET PROFIT" value={1095591} />
+                        </TableFooter>
+                    </Table>
+                 )}
             </CardContent>
         </Card>
     )
@@ -362,22 +449,24 @@ export default function MonthEndReport(props: MonthEndReportProps) {
                 }
                 .print-hidden { display: none; }
                 .report-card { box-shadow: none; border: none; }
-                #report-header-m1, #report-header-m2 { display: block !important; }
+                #report-header-cashflow, #report-header-pl { display: block !important; }
             }
             `}
         </style>
         <Tabs defaultValue="cashflow">
             <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
-                <TabsTrigger value="plstatement">P&L Statement</TabsTrigger>
+                <TabsTrigger value="plstatement">P&amp;L Statement</TabsTrigger>
             </TabsList>
             <TabsContent value="cashflow">
                 <CashFlowReport {...props} />
             </TabsContent>
             <TabsContent value="plstatement">
-                <Method2Report shopName={props.shopName} isLoading={props.isLoading} />
+                <PLStatement shopName={props.shopName} isLoading={props.isLoading} />
             </TabsContent>
         </Tabs>
     </div>
   );
 }
+
+    
