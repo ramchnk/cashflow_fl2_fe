@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -120,7 +121,7 @@ const Method1Report = ({ balances, investAmount, shopName, isLoading }: MonthEnd
          <Card id="report-card-m1" className="report-card border-0 shadow-none">
             <CardHeader id="report-header-m1">
                 <div className="flex justify-between items-start">
-                     <div className="flex-grow"></div>
+                    <div className="flex-grow"></div>
                      <div className="text-center">
                         <CardTitle className="text-xl text-primary font-bold">MONTHLY PROFIT CALCULATION</CardTitle>
                         <CardDescription className="text-lg font-semibold">{shopName || "Gobi's Shop"}</CardDescription>
@@ -183,7 +184,43 @@ const Method1Report = ({ balances, investAmount, shopName, isLoading }: MonthEnd
     );
 }
 
-const Method2Report = () => {
+const Method2Report = ({ shopName, isLoading }: Omit<MonthEndReportProps, 'balances' | 'investAmount'>) => {
+
+    const handlePrint = () => {
+        const printContent = document.getElementById('report-content-m2');
+        if (printContent) {
+            const originalContents = document.body.innerHTML;
+            const header = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h1 style="font-size: 1.5rem; font-weight: bold; color: #1E3A8A;">${shopName || 'THENDRAL CLUB THIRUMAYAM'}</h1>
+                    <p style="font-size: 1.25rem;">Statement OCT-2025</p>
+                </div>
+            `;
+            document.body.innerHTML = header + printContent.innerHTML;
+            window.print();
+            document.body.innerHTML = originalContents;
+            window.location.reload();
+        }
+    }
+
+    const handleCapture = () => {
+        const reportCard = document.getElementById('report-card-m2');
+        if (reportCard) {
+            const buttons = reportCard.querySelectorAll('button');
+            buttons.forEach(btn => btn.style.visibility = 'hidden');
+
+            html2canvas(reportCard, { 
+                useCORS: true,
+                scale: 2
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `monthly-statement-m2-${format(new Date(), 'yyyy-MM-dd')}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                buttons.forEach(btn => btn.style.visibility = 'visible');
+            });
+        }
+    }
 
     const formatNumber = (num: number) => new Intl.NumberFormat('en-IN').format(num);
 
@@ -211,12 +248,25 @@ const Method2Report = () => {
     );
 
     return (
-        <Card className="border-0 shadow-none">
-            <CardHeader className="text-center bg-blue-900 text-white rounded-t-lg py-4">
-                <CardTitle className="text-2xl font-bold">THENDRAL CLUB THIRUMAYAM</CardTitle>
-                <CardDescription className="text-lg text-blue-200">Statement OCT-2025</CardDescription>
+        <Card id="report-card-m2" className="border-0 shadow-none">
+            <CardHeader id="report-header-m2" className="text-center bg-blue-900 text-white rounded-t-lg py-4">
+                 <div className="flex justify-between items-start">
+                    <div className="flex-grow"></div>
+                    <div className="text-center">
+                        <CardTitle className="text-2xl font-bold">{shopName || 'THENDRAL CLUB THIRUMAYAM'}</CardTitle>
+                        <CardDescription className="text-lg text-blue-200">Statement OCT-2025</CardDescription>
+                    </div>
+                    <div className="flex-grow flex justify-end gap-2">
+                        <Button onClick={handleCapture} variant="outline" size="icon" className="print-hidden bg-transparent text-white hover:bg-white/20" disabled={isLoading}>
+                            <Camera className="h-5 w-5"/>
+                        </Button>
+                        <Button onClick={handlePrint} variant="outline" size="icon" className="print-hidden bg-transparent text-white hover:bg-white/20" disabled={isLoading}>
+                            <Printer className="h-5 w-5"/>
+                        </Button>
+                    </div>
+                </div>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent id="report-content-m2" className="p-0">
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-blue-200">
@@ -313,7 +363,7 @@ export default function MonthEndReport(props: MonthEndReportProps) {
                 }
                 .print-hidden { display: none; }
                 .report-card { box-shadow: none; border: none; }
-                #report-header-m1 { display: block !important; }
+                #report-header-m1, #report-header-m2 { display: block !important; }
             }
             `}
         </style>
@@ -326,7 +376,7 @@ export default function MonthEndReport(props: MonthEndReportProps) {
                 <Method1Report {...props} />
             </TabsContent>
             <TabsContent value="method2">
-                <Method2Report />
+                <Method2Report shopName={props.shopName} isLoading={props.isLoading} />
             </TabsContent>
         </Tabs>
     </div>
