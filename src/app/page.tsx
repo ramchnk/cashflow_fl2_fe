@@ -313,16 +313,18 @@ export default function Home() {
                             View Report
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-4xl">
+                    <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
                         <DialogHeader>
                             <DialogTitle>Monthly Profit Calculation</DialogTitle>
                         </DialogHeader>
-                        <MonthEndReport 
-                          balances={balances} 
-                          investAmount={investAmount}
-                          shopName={shopName}
-                          isLoading={isLoading}
-                        />
+                        <div className="overflow-y-auto">
+                            <MonthEndReport 
+                              balances={balances} 
+                              investAmount={investAmount}
+                              shopName={shopName}
+                              isLoading={isLoading}
+                            />
+                        </div>
                     </DialogContent>
                 </Dialog>
             </div>
