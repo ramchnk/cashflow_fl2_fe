@@ -120,7 +120,7 @@ const Method1Report = ({ balances, investAmount, shopName, isLoading }: MonthEnd
          <Card id="report-card-m1" className="report-card border-0 shadow-none">
             <CardHeader id="report-header-m1">
                 <div className="flex justify-between items-start">
-                    <div className="flex-grow"></div>
+                     <div className="flex-grow"></div>
                      <div className="text-center">
                         <CardTitle className="text-xl text-primary font-bold">MONTHLY PROFIT CALCULATION</CardTitle>
                         <CardDescription className="text-lg font-semibold">{shopName || "Gobi's Shop"}</CardDescription>
@@ -187,9 +187,10 @@ const Method2Report = () => {
 
     const formatNumber = (num: number) => new Intl.NumberFormat('en-IN').format(num);
 
-    const SectionHeader = ({ children }: { children: React.ReactNode }) => (
+    const SectionHeader = ({ children, value }: { children: React.ReactNode, value?: number }) => (
         <TableRow className="bg-blue-100">
-            <TableCell colSpan={4} className="font-bold text-blue-900">{children}</TableCell>
+            <TableCell colSpan={value ? 3: 4} className="font-bold text-blue-900">{children}</TableCell>
+            {value && <TableCell className="text-right font-bold text-blue-900">{formatNumber(value)}</TableCell>}
         </TableRow>
     );
     
@@ -244,11 +245,7 @@ const Method2Report = () => {
                             <TableCell></TableCell>
                         </TableRow>
                         
-                        <SectionHeader>GROSS PROFIT</SectionHeader>
-                        <TableRow>
-                            <TableCell colSpan={3}></TableCell>
-                            <TableCell className="text-right font-bold">{formatNumber(1177633)}</TableCell>
-                        </TableRow>
+                        <SectionHeader value={1177633}>GROSS PROFIT</SectionHeader>
 
                         <SectionHeader>C) OTHER INCOME</SectionHeader>
                         <TableRow>
@@ -263,7 +260,7 @@ const Method2Report = () => {
                              <TableCell></TableCell>
                             <TableCell className="text-right">{formatNumber(16800)}</TableCell>
                         </TableRow>
-                        <TotalRow label="" value={1418433} isCredit />
+                        <TotalRow label="TOTAL INCOME" value={1418433} isCredit />
                         
                         <SectionHeader>D) OTHER EXPENSES</SectionHeader>
                         <TableRow>
