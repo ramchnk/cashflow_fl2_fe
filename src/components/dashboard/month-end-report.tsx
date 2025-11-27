@@ -56,12 +56,12 @@ export default function MonthEndReport({ balances, investAmount, shopName, isLoa
     }).format(amount);
   }
   
-  const detailsOrder = ['stock', 'CashInHand'];
+  const detailsOrder = ['stock', 'CashInHand', 'CashInOffice'];
 
-  // Create a new balances object for the report to avoid mutating props
   const reportBalances = { ...balances };
-  if (reportBalances.CashInHand && reportBalances.readyToCollect) {
-    reportBalances.CashInHand += reportBalances.readyToCollect;
+
+  if (reportBalances.readyToCollect) {
+    reportBalances.CashInOffice = reportBalances.readyToCollect;
   }
 
   const reportDetails = Object.keys(reportBalances)
@@ -79,6 +79,13 @@ export default function MonthEndReport({ balances, investAmount, shopName, isLoa
 
     const closeTotal = reportDetails.reduce((acc, key) => acc + (reportBalances[key] || 0), 0);
     const profit = closeTotal - investAmount;
+
+    const getRowName = (key: string) => {
+      if (key === 'CashInOffice') {
+        return 'Cash in Office';
+      }
+      return getPartyDetails(key).name;
+    }
 
 
   return (
@@ -125,7 +132,7 @@ export default function MonthEndReport({ balances, investAmount, shopName, isLoa
                     <TableBody>
                         {reportDetails.map(key => (
                         <TableRow key={key}>
-                            <TableCell className="font-medium">{getPartyDetails(key).name}</TableCell>
+                            <TableCell className="font-medium">{getRowName(key)}</TableCell>
                             <TableCell className="text-right"></TableCell>
                             <TableCell className="text-right">{formatCurrency(reportBalances[key] || 0)}</TableCell>
                         </TableRow>
