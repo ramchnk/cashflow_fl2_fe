@@ -15,31 +15,32 @@ import {
 import { Printer } from 'lucide-react';
 import { getPartyDetails } from '@/app/lib/parties';
 import { format } from 'date-fns';
-import { useUserStore } from '@/app/lib/user-store';
 
 interface Balances {
     [key: string]: number;
 }
 
-export default function MonthEndReport() {
-  // --- Static Data ---
-  const { shopName } = useUserStore();
-  const investAmount = 250000;
-  const balances: Balances = {
-      stock: 150000,
-      CashInHand: 75000,
-      IOBBank: 50000,
-      HDFCBank: 25000,
-      'Sundry Debtors': 30000,
-  };
-  const isLoading = false;
-  // -------------------
+interface MonthEndReportProps {
+    balances: Balances;
+    investAmount: number;
+    shopName: string | null;
+    isLoading: boolean;
+}
+
+export default function MonthEndReport({ balances, investAmount, shopName, isLoading }: MonthEndReportProps) {
 
   const handlePrint = () => {
     const printContent = document.getElementById('report-content');
     if (printContent) {
         const originalContents = document.body.innerHTML;
-        document.body.innerHTML = printContent.innerHTML;
+        const header = `
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h1 style="font-size: 1.5rem; font-weight: bold; color: #3F51B5;">MONTHLY PROFIT CALCULATION</h1>
+                <h2 style="font-size: 1.25rem; font-weight: 600;">${shopName || "Gobi's Shop"}</h2>
+                <p style="font-size: 1rem;">${format(new Date(), 'MMMM-yyyy')}</p>
+            </div>
+        `;
+        document.body.innerHTML = header + printContent.innerHTML;
         window.print();
         document.body.innerHTML = originalContents;
         window.location.reload();
@@ -47,8 +48,10 @@ export default function MonthEndReport() {
   }
   
   const formatCurrency = (amount: number) => {
-    if (typeof amount !== 'number') return '';
+    if (typeof amount !== 'number' || isNaN(amount)) return '₹ 0';
     return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
         maximumFractionDigits: 0,
     }).format(amount);
   }
@@ -73,7 +76,7 @@ export default function MonthEndReport() {
 
 
   return (
-    <div className="space-y-6" id="report-content">
+    <div className="space-y-6">
         <style>
             {`
             @media print {
@@ -86,8 +89,8 @@ export default function MonthEndReport() {
             }
             `}
         </style>
-        <Card className="report-card">
-            <CardHeader>
+        <Card className="report-card border-0 shadow-none">
+            <CardHeader className="print-hidden">
                 <div className="flex justify-between items-start">
                     <div>
                         <CardTitle className="text-center text-xl text-primary font-bold">MONTHLY PROFIT CALCULATION</CardTitle>
@@ -99,7 +102,7 @@ export default function MonthEndReport() {
                     </Button>
                 </div>
             </CardHeader>
-            <CardContent>
+            <CardContent id="report-content" className="pt-0">
               {isLoading ? (
                   <div className="h-96 flex items-center justify-center">
                       <p>Loading Report...</p>

@@ -31,7 +31,7 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-  const { setShopName } = useUserStore();
+  const { shopName, setShopName } = useUserStore();
 
 
   // Filter state lifted up
@@ -317,7 +317,12 @@ export default function Home() {
                         <DialogHeader>
                             <DialogTitle>Monthly Profit Calculation</DialogTitle>
                         </DialogHeader>
-                        <MonthEndReport />
+                        <MonthEndReport 
+                          balances={balances} 
+                          investAmount={investAmount}
+                          shopName={shopName}
+                          isLoading={isLoading}
+                        />
                     </DialogContent>
                 </Dialog>
             </div>
@@ -384,4 +389,3 @@ export default function Home() {
     </div>
   );
 }
-
