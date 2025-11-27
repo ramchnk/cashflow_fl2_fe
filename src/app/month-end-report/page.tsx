@@ -1,7 +1,6 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,12 +12,9 @@ import {
   TableCell,
   TableFooter
 } from '@/components/ui/table';
-import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/layout/header';
 import { Printer } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { getPartyDetails } from '@/app/lib/parties';
-import { useUserStore } from '@/app/lib/user-store';
 import { format } from 'date-fns';
 
 interface Balances {
@@ -26,68 +22,19 @@ interface Balances {
 }
 
 export default function MonthEndReportPage() {
-  const [balances, setBalances] = useState<Balances>({});
-  const [investAmount, setInvestAmount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
-  const router = useRouter();
-  const { shopName, setShopName } = useUserStore();
+  // --- Static Data ---
+  const shopName = "Gobi's Shop";
+  const investAmount = 250000;
+  const balances: Balances = {
+      stock: 150000,
+      CashInHand: 75000,
+      IOBBank: 50000,
+      HDFCBank: 25000,
+      'Sundry Debtors': 30000,
+  };
+  const isLoading = false;
+  // -------------------
 
-  useEffect(() => {
-    const fetchReportData = async () => {
-        setIsLoading(true);
-        const token = sessionStorage.getItem('accessToken');
-        if (!token) {
-            router.push('/login');
-            return;
-        }
-
-        try {
-            const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/account/getAccountInfo', {
-                method: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.account) {
-                    setBalances(data.account.cashFlow || {});
-                    setInvestAmount(data.account.investAmount || 0);
-                    if (data.account.shopName) {
-                        setShopName(data.account.shopName);
-                    }
-                } else {
-                    throw new Error('Account data not found in response.');
-                }
-            } else {
-                if(response.status === 401) {
-                    toast({
-                        variant: "destructive",
-                        title: "Session Expired",
-                        description: "Please login again.",
-                    });
-                    sessionStorage.removeItem('accessToken');
-                    router.push('/login');
-                } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to fetch report data');
-                }
-            }
-        } catch (error: any) {
-            toast({
-                variant: 'destructive',
-                title: 'An Error Occurred',
-                description: error.message || 'Could not fetch report data.',
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    fetchReportData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router, toast]);
-  
   const handlePrint = () => {
     window.print();
   }
