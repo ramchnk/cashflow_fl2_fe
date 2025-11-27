@@ -24,6 +24,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 
 interface Balances {
@@ -189,10 +190,33 @@ const CashFlowReport = ({ balances, investAmount, shopName, isLoading }: MonthEn
     );
 }
 
-const PLStatement = ({ shopName }: Omit<MonthEndReportProps, 'balances' | 'investAmount'>) => {
+interface PLStatementProps extends Omit<MonthEndReportProps, 'balances' | 'investAmount'> {}
+
+interface ApiSaleItem {
+    profitAmount: number;
+    invoiceNumber: string;
+    finalCashSettlement: number;
+    _id: { $oid: string };
+    totalDigitalAmount: number;
+    timeCreatedAt: number;
+    totalSalesAmount: number;
+    totalExpensesAmount: number;
+    basePrice: number;
+}
+
+interface ReportData {
+    salesValue: number;
+    // Add other calculated fields here as needed
+}
+
+
+const PLStatement = ({ shopName }: PLStatementProps) => {
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const [isLoading, setIsLoading] = useState(false);
+    const [reportData, setReportData] = useState<ReportData | null>(null);
     const { toast } = useToast();
+    const router = useRouter();
+
 
     const handlePrint = () => {
         const printContent = document.getElementById('report-content-pl');
@@ -201,7 +225,7 @@ const PLStatement = ({ shopName }: Omit<MonthEndReportProps, 'balances' | 'inves
             const header = `
                 <div style="text-align: center; margin-bottom: 20px;">
                     <h1 style="font-size: 1.5rem; font-weight: bold; color: #1E3A8A;">${shopName || 'THENDRAL CLUB THIRUMAYAM'}</h1>
-                    <p style="font-size: 1.25rem;">Statement OCT-2025</p>
+                    <p style="font-size: 1.25rem;">Statement for ${dateRange?.from ? format(dateRange.from, 'MMM yyyy') : 'selected period'}</p>
                 </div>
             `;
             document.body.innerHTML = header + printContent.innerHTML;
@@ -222,7 +246,7 @@ const PLStatement = ({ shopName }: Omit<MonthEndReportProps, 'balances' | 'inves
                 scale: 2
             }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = `monthly-statement-pl-${format(new Date(), 'yyyy-MM-dd')}.png`;
+                link.download = `pl-statement-${format(new Date(), 'yyyy-MM-dd')}.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
                 buttons.forEach(btn => btn.style.visibility = 'visible');
@@ -241,18 +265,61 @@ const PLStatement = ({ shopName }: Omit<MonthEndReportProps, 'balances' | 'inves
         }
 
         setIsLoading(true);
-        // TODO: API call logic will go here
-        console.log("Fetching P&L Statement for:", dateRange);
+        setReportData(null);
         
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        toast({
-            title: 'Report Generated',
-            description: 'P&L statement has been fetched.',
-        });
+        const token = sessionStorage.getItem('accessToken');
+        if (!token) {
+            router.push('/login');
+            setIsLoading(false);
+            return;
+        }
 
-        setIsLoading(false);
+        try {
+            const fromTime = Math.floor(startOfDay(dateRange.from).getTime() / 1000);
+            const toTime = Math.floor(endOfDay(dateRange.to).getTime() / 1000);
+            const url = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/sales?startDate=${fromTime}&endDate=${toTime}`;
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const result: { data: ApiSaleItem[] } = await response.json();
+                const salesValue = result.data.reduce((sum, item) => sum + item.totalSalesAmount, 0);
+
+                setReportData({ salesValue });
+
+                toast({
+                    title: 'Report Generated',
+                    description: 'P&L statement has been fetched.',
+                });
+            } else {
+                if (response.status === 401) {
+                     toast({
+                        variant: "destructive",
+                        title: "Session Expired",
+                        description: "Please login again.",
+                    });
+                    sessionStorage.removeItem('accessToken');
+                    router.push('/login');
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to fetch P&L data');
+                }
+            }
+
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "An Error Occurred",
+                description: error.message || 'Could not fetch P&L data.',
+            });
+        } finally {
+            setIsLoading(false);
+        }
     }
 
     const formatNumber = (num: number) => new Intl.NumberFormat('en-IN').format(num);
@@ -279,6 +346,20 @@ const PLStatement = ({ shopName }: Omit<MonthEndReportProps, 'balances' | 'inves
             <TableCell className="text-right">{formatNumber(value)}</TableCell>
         </TableRow>
     );
+    
+    const salesValue = reportData?.salesValue ?? 0;
+    const costOfSales = 10497577; // Static for now
+    const grossProfit = salesValue - costOfSales;
+    const kitchenIncome = 224000;
+    const emptyBottleSales = 16800;
+    const totalIncome = grossProfit + kitchenIncome + emptyBottleSales;
+    const shopExpenses = 318250;
+    const stockDiff = 234;
+    const shortage = 119;
+    const bankCharges = 866;
+    const totalExpenses = shopExpenses + stockDiff + shortage + bankCharges;
+    const netProfit = totalIncome - totalExpenses;
+
 
     return (
         <Card id="report-card-pl" className="border-0 shadow-none">
@@ -287,13 +368,15 @@ const PLStatement = ({ shopName }: Omit<MonthEndReportProps, 'balances' | 'inves
                     <div className="flex-grow"></div>
                     <div className="text-center">
                         <CardTitle className="text-2xl font-bold">{shopName || 'THENDRAL CLUB THIRUMAYAM'}</CardTitle>
-                        <CardDescription className="text-lg text-blue-200">Statement OCT-2025</CardDescription>
+                        <CardDescription className="text-lg text-blue-200">
+                           {dateRange?.from ? `Statement for ${format(dateRange.from, 'MMM yyyy')}`: 'P&L Statement'}
+                        </CardDescription>
                     </div>
                     <div className="flex-grow flex justify-end gap-2 print-hidden">
-                        <Button onClick={handleCapture} variant="outline" size="icon" className="bg-transparent text-white hover:bg-white/20" disabled={isLoading}>
+                        <Button onClick={handleCapture} variant="outline" size="icon" className="bg-transparent text-white hover:bg-white/20" disabled={isLoading || !reportData}>
                             <Camera className="h-5 w-5"/>
                         </Button>
-                        <Button onClick={handlePrint} variant="outline" size="icon" className="bg-transparent text-white hover:bg-white/20" disabled={isLoading}>
+                        <Button onClick={handlePrint} variant="outline" size="icon" className="bg-transparent text-white hover:bg-white/20" disabled={isLoading || !reportData}>
                             <Printer className="h-5 w-5"/>
                         </Button>
                     </div>
@@ -351,6 +434,10 @@ const PLStatement = ({ shopName }: Omit<MonthEndReportProps, 'balances' | 'inves
                     <div className="h-96 flex items-center justify-center">
                         <p>Loading Report...</p>
                     </div>
+                 ) : !reportData ? (
+                    <div className="h-96 flex items-center justify-center text-muted-foreground">
+                        <p>Select a date range and click "Get Report" to view the P&L Statement.</p>
+                    </div>
                  ) : (
                     <Table>
                         <TableHeader>
@@ -366,67 +453,67 @@ const PLStatement = ({ shopName }: Omit<MonthEndReportProps, 'balances' | 'inves
                                 <TableCell rowSpan={2} className="font-bold align-top pt-6">LIQUOR</TableCell>
                                 <TableCell>
                                     <span className="font-bold">A) Sales Value</span>
-                                    <p className="text-xs text-muted-foreground">(30 DAYS SALES AMOUNT)</p>
+                                    <p className="text-xs text-muted-foreground">(TOTAL SALES AMOUNT)</p>
                                 </TableCell>
                                 <TableCell></TableCell>
-                                <TableCell className="text-right">{formatNumber(11675210)}</TableCell>
+                                <TableCell className="text-right">{formatNumber(salesValue)}</TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell>
                                 <span className="font-bold">B) Cost of Sales</span>
                                     <p className="text-xs text-muted-foreground">(PURCHASE VALUE)</p>
                                 </TableCell>
-                                <TableCell className="text-right">{formatNumber(10497577)}</TableCell>
+                                <TableCell className="text-right">{formatNumber(costOfSales)}</TableCell>
                                 <TableCell></TableCell>
                             </TableRow>
                             
-                            <SectionHeader value={1177633}>GROSS PROFIT</SectionHeader>
+                            <SectionHeader value={grossProfit}>GROSS PROFIT</SectionHeader>
 
                             <SectionHeader>C) OTHER INCOME</SectionHeader>
                             <TableRow>
                                 <TableCell>1</TableCell>
                                 <TableCell>Kitchen Income</TableCell>
                                 <TableCell></TableCell>
-                                <TableCell className="text-right">{formatNumber(224000)}</TableCell>
+                                <TableCell className="text-right">{formatNumber(kitchenIncome)}</TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell>2</TableCell>
                                 <TableCell>Empty Bottle Sales</TableCell>
                                 <TableCell></TableCell>
-                                <TableCell className="text-right">{formatNumber(16800)}</TableCell>
+                                <TableCell className="text-right">{formatNumber(emptyBottleSales)}</TableCell>
                             </TableRow>
-                            <TotalRow label="TOTAL INCOME" value={1418433} isCredit />
+                            <TotalRow label="TOTAL INCOME" value={totalIncome} isCredit />
                             
                             <SectionHeader>D) OTHER EXPENSES</SectionHeader>
                             <TableRow>
                                 <TableCell>1</TableCell>
                                 <TableCell>Shop Expenses</TableCell>
-                                <TableCell className="text-right">{formatNumber(318250)}</TableCell>
+                                <TableCell className="text-right">{formatNumber(shopExpenses)}</TableCell>
                                 <TableCell></TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell>2</TableCell>
                                 <TableCell>Stock or Profit Difference</TableCell>
-                                <TableCell className="text-right">{formatNumber(234)}</TableCell>
+                                <TableCell className="text-right">{formatNumber(stockDiff)}</TableCell>
                                 <TableCell></TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell>3</TableCell>
                                 <TableCell>Shortage</TableCell>
-                                <TableCell className="text-right">{formatNumber(119)}</TableCell>
+                                <TableCell className="text-right">{formatNumber(shortage)}</TableCell>
                                 <TableCell></TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell>4</TableCell>
                                 <TableCell>Bank Charges</TableCell>
-                                <TableCell className="text-right">{formatNumber(866)}</TableCell>
+                                <TableCell className="text-right">{formatNumber(bankCharges)}</TableCell>
                                 <TableCell></TableCell>
                             </TableRow>
-                            <TotalRow label="TOTAL EXPENSES" value={322842} isDebit />
+                            <TotalRow label="TOTAL EXPENSES" value={totalExpenses} isDebit />
 
                         </TableBody>
                         <TableFooter>
-                            <NetProfitRow label="NET PROFIT" value={1095591} />
+                            <NetProfitRow label="NET PROFIT" value={netProfit} />
                         </TableFooter>
                     </Table>
                  )}
@@ -468,5 +555,3 @@ export default function MonthEndReport(props: MonthEndReportProps) {
     </div>
   );
 }
-
-    
