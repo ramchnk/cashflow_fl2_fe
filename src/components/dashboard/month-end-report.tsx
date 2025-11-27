@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -126,9 +127,9 @@ const CashFlowReport = ({ balances, investAmount, shopName, isLoading }: MonthEn
     return (
          <Card id="report-card-cashflow" className="report-card border-0 shadow-none">
             <CardHeader id="report-header-cashflow">
-                <div className="flex justify-between items-start">
-                     <div className="flex-grow"></div>
-                     <div className="text-center">
+                 <div className="flex justify-between items-start">
+                    <div className="flex-grow"></div>
+                    <div className="text-center flex-shrink-0">
                         <CardTitle className="text-xl text-primary font-bold">MONTHLY PROFIT CALCULATION</CardTitle>
                         <CardDescription className="text-lg font-semibold">{shopName || "Gobi's Shop"}</CardDescription>
                         <CardDescription className="text-md">{format(new Date(), 'MMMM-yyyy')}</CardDescription>
@@ -206,7 +207,7 @@ interface ApiSaleItem {
 
 interface ReportData {
     salesValue: number;
-    // Add other calculated fields here as needed
+    costOfSales: number;
 }
 
 
@@ -289,8 +290,9 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
             if (response.ok) {
                 const result: { data: ApiSaleItem[] } = await response.json();
                 const salesValue = result.data.reduce((sum, item) => sum + item.totalSalesAmount, 0);
+                const costOfSales = result.data.reduce((sum, item) => sum + item.basePrice, 0);
 
-                setReportData({ salesValue });
+                setReportData({ salesValue, costOfSales });
 
                 toast({
                     title: 'Report Generated',
@@ -327,7 +329,7 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
     const SectionHeader = ({ children, value }: { children: React.ReactNode, value?: number }) => (
         <TableRow className="bg-blue-100">
             <TableCell colSpan={value ? 3: 4} className="font-bold text-blue-900">{children}</TableCell>
-            {value && <TableCell className="text-right font-bold text-blue-900">{formatNumber(value)}</TableCell>}
+            {value != null && <TableCell className="text-right font-bold text-blue-900">{formatNumber(value)}</TableCell>}
         </TableRow>
     );
     
@@ -348,7 +350,7 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
     );
     
     const salesValue = reportData?.salesValue ?? 0;
-    const costOfSales = 10497577; // Static for now
+    const costOfSales = reportData?.costOfSales ?? 0;
     const grossProfit = salesValue - costOfSales;
     const kitchenIncome = 224000;
     const emptyBottleSales = 16800;
@@ -555,3 +557,5 @@ export default function MonthEndReport(props: MonthEndReportProps) {
     </div>
   );
 }
+
+    
