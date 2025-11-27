@@ -205,11 +205,25 @@ interface ApiSaleItem {
     kitchenSales?: number;
 }
 
+interface ApiBankChargeItem {
+  date: number;
+  toAccount: string;
+  amount: number;
+  toAccountOpeningBalance: number;
+  naration: string;
+  fromAccount: string;
+  fromAccountOpeningBalance: number;
+  shopNumber: string;
+  _id: { $oid: string };
+}
+
+
 interface ReportData {
     salesValue: number;
     costOfSales: number;
     kitchenIncome: number;
     shopExpenses: number;
+    bankCharges: number;
 }
 
 
@@ -288,30 +302,19 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
         try {
             const fromTime = Math.floor(startOfDay(dateRange.from).getTime() / 1000);
             const toTime = Math.floor(endOfDay(dateRange.to).getTime() / 1000);
-            const url = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/sales?startDate=${fromTime}&endDate=${toTime}`;
             
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            const salesUrl = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/sales?startDate=${fromTime}&endDate=${toTime}`;
+            const bankChargesUrl = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/cashflow?type=IOBBank&startDate=${fromTime}&endDate=${toTime}`;
 
-            if (response.ok) {
-                const result: { data: ApiSaleItem[] } = await response.json();
-                const salesValue = result.data.reduce((sum, item) => sum + item.totalSalesAmount, 0);
-                const costOfSales = result.data.reduce((sum, item) => sum + item.basePrice, 0);
-                const kitchenIncome = result.data.reduce((sum, item) => sum + (item.kitchenSales || 0), 0);
-                const shopExpenses = result.data.reduce((sum, item) => sum + (item.totalExpensesAmount || 0), 0);
+            const headers = { 'Authorization': `Bearer ${token}` };
 
-                setReportData({ salesValue, costOfSales, kitchenIncome, shopExpenses });
+            const [salesResponse, bankChargesResponse] = await Promise.all([
+                fetch(salesUrl, { method: 'GET', headers }),
+                fetch(bankChargesUrl, { method: 'GET', headers })
+            ]);
 
-                toast({
-                    title: 'Report Generated',
-                    description: 'P&L statement has been fetched.',
-                });
-            } else {
-                if (response.status === 401) {
+            if (!salesResponse.ok || !bankChargesResponse.ok) {
+                 if (salesResponse.status === 401 || bankChargesResponse.status === 401) {
                      toast({
                         variant: "destructive",
                         title: "Session Expired",
@@ -319,11 +322,31 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
                     });
                     sessionStorage.removeItem('accessToken');
                     router.push('/login');
-                } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to fetch P&L data');
+                    return;
                 }
+                const errorData = !salesResponse.ok ? await salesResponse.json() : await bankChargesResponse.json();
+                throw new Error(errorData.message || 'Failed to fetch report data');
             }
+            
+            const salesResult: { data: ApiSaleItem[] } = await salesResponse.json();
+            const bankChargesResult: { transactions: ApiBankChargeItem[] } = await bankChargesResponse.json();
+
+            const salesValue = salesResult.data.reduce((sum, item) => sum + item.totalSalesAmount, 0);
+            const costOfSales = salesResult.data.reduce((sum, item) => sum + item.basePrice, 0);
+            const kitchenIncome = salesResult.data.reduce((sum, item) => sum + (item.kitchenSales || 0), 0);
+            const shopExpenses = salesResult.data.reduce((sum, item) => sum + (item.totalExpensesAmount || 0), 0);
+            const bankCharges = bankChargesResult.transactions
+                .filter(tx => tx.naration?.toUpperCase().includes('SERVICE CHARGE'))
+                .reduce((sum, item) => sum + item.amount, 0);
+
+
+            setReportData({ salesValue, costOfSales, kitchenIncome, shopExpenses, bankCharges });
+
+            toast({
+                title: 'Report Generated',
+                description: 'P&L statement has been fetched.',
+            });
+
 
         } catch (error: any) {
             toast({
@@ -368,7 +391,7 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
     const emptyBottleSales = 0;
     const totalIncome = grossProfit + kitchenIncome + emptyBottleSales;
     const shopExpenses = reportData?.shopExpenses ?? 0;
-    const bankCharges = 607;
+    const bankCharges = reportData?.bankCharges ?? 0;
     const totalExpenses = shopExpenses + bankCharges;
     const netProfit = totalIncome - totalExpenses;
 
@@ -555,3 +578,4 @@ export default function MonthEndReport(props: MonthEndReportProps) {
     </div>
   );
 }
+
