@@ -17,6 +17,7 @@ import { getPartyDetails } from '@/app/lib/parties';
 import { format } from 'date-fns';
 import html2canvas from 'html2canvas';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 
 
 interface Balances {
@@ -89,6 +90,7 @@ const Method1Report = ({ balances, investAmount, shopName, isLoading }: MonthEnd
 
   if (reportBalances.readyToCollect) {
     reportBalances.CashInOffice = reportBalances.readyToCollect;
+    reportBalances.CashInHand = (reportBalances.CashInHand || 0);
   }
 
   const reportDetails = Object.keys(reportBalances)
@@ -119,12 +121,12 @@ const Method1Report = ({ balances, investAmount, shopName, isLoading }: MonthEnd
             <CardHeader id="report-header-m1">
                 <div className="flex justify-between items-start">
                     <div className="flex-grow"></div>
-                    <div className="text-center">
+                     <div className="text-center">
                         <CardTitle className="text-xl text-primary font-bold">MONTHLY PROFIT CALCULATION</CardTitle>
                         <CardDescription className="text-lg font-semibold">{shopName || "Gobi's Shop"}</CardDescription>
                         <CardDescription className="text-md">{format(new Date(), 'MMMM-yyyy')}</CardDescription>
                     </div>
-                    <div className="flex-grow flex justify-end gap-2">
+                     <div className="flex-grow flex justify-end gap-2">
                         <Button onClick={handleCapture} variant="outline" size="icon" className="print-hidden" disabled={isLoading}>
                             <Camera className="h-5 w-5"/>
                         </Button>
@@ -182,33 +184,124 @@ const Method1Report = ({ balances, investAmount, shopName, isLoading }: MonthEnd
 }
 
 const Method2Report = () => {
+
+    const formatNumber = (num: number) => new Intl.NumberFormat('en-IN').format(num);
+
+    const SectionHeader = ({ children }: { children: React.ReactNode }) => (
+        <TableRow className="bg-blue-100">
+            <TableCell colSpan={4} className="font-bold text-blue-900">{children}</TableCell>
+        </TableRow>
+    );
+    
+    const TotalRow = ({ label, value, isDebit = false, isCredit = false }: { label: string, value: number, isDebit?: boolean, isCredit?: boolean }) => (
+         <TableRow className="bg-gray-200 font-bold">
+            <TableCell colSpan={isDebit ? 2 : 3} className="text-right">{label}</TableCell>
+            {isDebit && <TableCell className="text-right">{formatNumber(value)}</TableCell>}
+            {isCredit && <TableCell className="text-right">{formatNumber(value)}</TableCell>}
+            {!isDebit && !isCredit && <TableCell colSpan={1}></TableCell>}
+        </TableRow>
+    );
+
+    const NetProfitRow = ({label, value}: {label: string, value: number}) => (
+        <TableRow className="bg-blue-900 text-white font-bold text-lg">
+            <TableCell colSpan={3} className="text-right">{label}</TableCell>
+            <TableCell className="text-right">{formatNumber(value)}</TableCell>
+        </TableRow>
+    );
+
     return (
         <Card className="border-0 shadow-none">
-            <CardHeader>
-                <CardTitle>Method 2 Report</CardTitle>
-                <CardDescription>This is a static placeholder for the second method.</CardDescription>
+            <CardHeader className="text-center bg-blue-900 text-white rounded-t-lg py-4">
+                <CardTitle className="text-2xl font-bold">THENDRAL CLUB THIRUMAYAM</CardTitle>
+                <CardDescription className="text-lg text-blue-200">Statement OCT-2025</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
                 <Table>
                     <TableHeader>
-                        <TableRow>
-                            <TableHead>Column 1</TableHead>
-                            <TableHead>Column 2</TableHead>
-                            <TableHead className="text-right">Column 3</TableHead>
+                        <TableRow className="bg-blue-200">
+                            <TableHead className="w-[5%]">S.No</TableHead>
+                            <TableHead>Particulars</TableHead>
+                            <TableHead className="text-right w-[20%]">Debit</TableHead>
+                            <TableHead className="text-right w-[20%]">Credit</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         <TableRow>
-                            <TableCell>Data A</TableCell>
-                            <TableCell>Data B</TableCell>
-                            <TableCell className="text-right">100</TableCell>
+                            <TableCell rowSpan={2} className="font-bold align-top pt-6">LIQUOR</TableCell>
+                            <TableCell>
+                                <span className="font-bold">A) Sales Value</span>
+                                <p className="text-xs text-muted-foreground">(30 DAYS SALES AMOUNT)</p>
+                            </TableCell>
+                            <TableCell></TableCell>
+                            <TableCell className="text-right">{formatNumber(11675210)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                            <TableCell>
+                               <span className="font-bold">B) Cost of Sales</span>
+                                <p className="text-xs text-muted-foreground">(PURCHASE VALUE)</p>
+                            </TableCell>
+                            <TableCell className="text-right">{formatNumber(10497577)}</TableCell>
+                            <TableCell></TableCell>
+                        </TableRow>
+                        
+                        <SectionHeader>GROSS PROFIT</SectionHeader>
+                        <TableRow>
+                            <TableCell colSpan={3}></TableCell>
+                            <TableCell className="text-right font-bold">{formatNumber(1177633)}</TableCell>
+                        </TableRow>
+
+                        <SectionHeader>C) OTHER INCOME</SectionHeader>
+                        <TableRow>
+                            <TableCell>1</TableCell>
+                            <TableCell>Kitchen Income</TableCell>
+                            <TableCell></TableCell>
+                            <TableCell className="text-right">{formatNumber(224000)}</TableCell>
                         </TableRow>
                          <TableRow>
-                            <TableCell>Data C</TableCell>
-                            <TableCell>Data D</TableCell>
-                            <TableCell className="text-right">200</TableCell>
+                            <TableCell>2</TableCell>
+                            <TableCell>Malligai Things Sales Amount</TableCell>
+                             <TableCell></TableCell>
+                            <TableCell className="text-right">-</TableCell>
                         </TableRow>
+                         <TableRow>
+                            <TableCell>2</TableCell>
+                            <TableCell>Empty Bottle Sales</TableCell>
+                             <TableCell></TableCell>
+                            <TableCell className="text-right">{formatNumber(16800)}</TableCell>
+                        </TableRow>
+                        <TotalRow label="" value={1418433} isCredit />
+                        
+                        <SectionHeader>D) OTHER EXPENSES</SectionHeader>
+                        <TableRow>
+                            <TableCell>1</TableCell>
+                            <TableCell>Shop Expenses</TableCell>
+                            <TableCell className="text-right">{formatNumber(318250)}</TableCell>
+                            <TableCell></TableCell>
+                        </TableRow>
+                         <TableRow>
+                            <TableCell>2</TableCell>
+                            <TableCell>Stock or Profit Difference</TableCell>
+                            <TableCell className="text-right">{formatNumber(234)}</TableCell>
+                            <TableCell></TableCell>
+                        </TableRow>
+                         <TableRow>
+                            <TableCell>3</TableCell>
+                            <TableCell>Shortage</TableCell>
+                            <TableCell className="text-right">{formatNumber(119)}</TableCell>
+                            <TableCell></TableCell>
+                        </TableRow>
+                        <TableRow>
+                            <TableCell>4</TableCell>
+                            <TableCell>Bank Charges</TableCell>
+                            <TableCell className="text-right">{formatNumber(866)}</TableCell>
+                            <TableCell></TableCell>
+                        </TableRow>
+                        <TotalRow label="TOTAL EXPENSES" value={322842} isDebit />
+
                     </TableBody>
+                    <TableFooter>
+                        <NetProfitRow label="NET PROFIT" value={1095591} />
+                    </TableFooter>
                 </Table>
             </CardContent>
         </Card>
