@@ -358,9 +358,8 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
     const emptyBottleSales = 16800;
     const totalIncome = grossProfit + kitchenIncome + emptyBottleSales;
     const shopExpenses = 318250;
-    const shortage = 119;
     const bankCharges = 866;
-    const totalExpenses = shopExpenses + shortage + bankCharges;
+    const totalExpenses = shopExpenses + bankCharges;
     const netProfit = totalIncome - totalExpenses;
 
 
@@ -496,12 +495,6 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
                             </TableRow>
                             <TableRow>
                                 <TableCell>2</TableCell>
-                                <TableCell>Shortage</TableCell>
-                                <TableCell className="text-right">{formatNumber(shortage)}</TableCell>
-                                <TableCell></TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell>3</TableCell>
                                 <TableCell>Bank Charges</TableCell>
                                 <TableCell className="text-right">{formatNumber(bankCharges)}</TableCell>
                                 <TableCell></TableCell>
