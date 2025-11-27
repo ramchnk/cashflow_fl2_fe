@@ -563,7 +563,7 @@ export default function MonthEndReport(props: MonthEndReportProps) {
             }
             `}
         </style>
-        <Tabs defaultValue="cashflow">
+        <Tabs defaultValue="plstatement">
             <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
                 <TabsTrigger value="plstatement">P&amp;L Statement</TabsTrigger>
