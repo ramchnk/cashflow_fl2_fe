@@ -162,7 +162,7 @@ export default function MonthEndReportPage() {
         <div className="space-y-6">
           <Card className="print-hidden">
             <CardHeader>
-              <CardTitle>Generate Month End Report</CardTitle>
+              <CardTitle>Monthly Profit Calculation</CardTitle>
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
