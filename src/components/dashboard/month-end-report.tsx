@@ -58,7 +58,13 @@ export default function MonthEndReport({ balances, investAmount, shopName, isLoa
   
   const detailsOrder = ['stock', 'CashInHand'];
 
-  const reportDetails = Object.keys(balances)
+  // Create a new balances object for the report to avoid mutating props
+  const reportBalances = { ...balances };
+  if (reportBalances.CashInHand && reportBalances.readyToCollect) {
+    reportBalances.CashInHand += reportBalances.readyToCollect;
+  }
+
+  const reportDetails = Object.keys(reportBalances)
     .filter(key => key !== 'expenses' && key !== 'readyToCollect')
     .sort((a, b) => {
         const aIndex = detailsOrder.indexOf(a);
@@ -71,7 +77,7 @@ export default function MonthEndReport({ balances, investAmount, shopName, isLoa
         return a.localeCompare(b);
     });
 
-    const closeTotal = reportDetails.reduce((acc, key) => acc + (balances[key] || 0), 0);
+    const closeTotal = reportDetails.reduce((acc, key) => acc + (reportBalances[key] || 0), 0);
     const profit = closeTotal - investAmount;
 
 
@@ -121,7 +127,7 @@ export default function MonthEndReport({ balances, investAmount, shopName, isLoa
                         <TableRow key={key}>
                             <TableCell className="font-medium">{getPartyDetails(key).name}</TableCell>
                             <TableCell className="text-right"></TableCell>
-                            <TableCell className="text-right">{formatCurrency(balances[key] || 0)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(reportBalances[key] || 0)}</TableCell>
                         </TableRow>
                         ))}
                     </TableBody>
