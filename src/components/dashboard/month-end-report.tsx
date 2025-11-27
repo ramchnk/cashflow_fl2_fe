@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -563,10 +562,10 @@ export default function MonthEndReport(props: MonthEndReportProps) {
             }
             `}
         </style>
-        <Tabs defaultValue="plstatement">
+        <Tabs defaultValue="cashflow">
             <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
-                <TabsTrigger value="plstatement">P&amp;L Statement</TabsTrigger>
+                <TabsTrigger value="plstatement">P&L Statement</TabsTrigger>
             </TabsList>
             <TabsContent value="cashflow">
                 <CashFlowReport {...props} />
