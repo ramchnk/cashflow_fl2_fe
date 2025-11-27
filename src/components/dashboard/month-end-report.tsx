@@ -12,9 +12,11 @@ import {
   TableCell,
   TableFooter
 } from '@/components/ui/table';
-import { Printer } from 'lucide-react';
+import { Printer, Camera } from 'lucide-react';
 import { getPartyDetails } from '@/app/lib/parties';
 import { format } from 'date-fns';
+import html2canvas from 'html2canvas';
+
 
 interface Balances {
     [key: string]: number;
@@ -44,6 +46,21 @@ export default function MonthEndReport({ balances, investAmount, shopName, isLoa
         window.print();
         document.body.innerHTML = originalContents;
         window.location.reload();
+    }
+  }
+
+  const handleCapture = () => {
+    const reportContent = document.getElementById('report-content');
+    if (reportContent) {
+      html2canvas(reportContent, { 
+        useCORS: true,
+        scale: 2 // Increase scale for better resolution
+      }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `monthly-profit-report-${format(new Date(), 'yyyy-MM-dd')}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      });
     }
   }
   
@@ -110,12 +127,17 @@ export default function MonthEndReport({ balances, investAmount, shopName, isLoa
                         <CardDescription className="text-center text-lg font-semibold">{shopName || "Gobi's Shop"}</CardDescription>
                         <CardDescription className="text-center text-md">{format(new Date(), 'MMMM-yyyy')}</CardDescription>
                     </div>
-                    <Button onClick={handlePrint} variant="outline" size="icon" className="print-hidden" disabled={isLoading}>
-                        <Printer className="h-5 w-5"/>
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button onClick={handleCapture} variant="outline" size="icon" className="print-hidden" disabled={isLoading}>
+                            <Camera className="h-5 w-5"/>
+                        </Button>
+                        <Button onClick={handlePrint} variant="outline" size="icon" className="print-hidden" disabled={isLoading}>
+                            <Printer className="h-5 w-5"/>
+                        </Button>
+                    </div>
                 </div>
             </CardHeader>
-            <CardContent id="report-content" className="pt-0">
+            <CardContent id="report-content" className="pt-0 bg-background p-6">
               {isLoading ? (
                   <div className="h-96 flex items-center justify-center">
                       <p>Loading Report...</p>
