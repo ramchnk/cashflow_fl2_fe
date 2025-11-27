@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -357,7 +356,7 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
     const costOfSales = reportData?.costOfSales ?? 0;
     const grossProfit = salesValue - costOfSales;
     const kitchenIncome = reportData?.kitchenIncome ?? 0;
-    const emptyBottleSales = 16800;
+    const emptyBottleSales = 0;
     const totalIncome = grossProfit + kitchenIncome + emptyBottleSales;
     const shopExpenses = reportData?.shopExpenses ?? 0;
     const bankCharges = 866;
@@ -547,8 +546,3 @@ export default function MonthEndReport(props: MonthEndReportProps) {
     </div>
   );
 }
-
-    
-
-    
-
