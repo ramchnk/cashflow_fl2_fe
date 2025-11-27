@@ -16,6 +16,7 @@ import { Printer, Camera } from 'lucide-react';
 import { getPartyDetails } from '@/app/lib/parties';
 import { format } from 'date-fns';
 import html2canvas from 'html2canvas';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 
 interface Balances {
@@ -29,10 +30,9 @@ interface MonthEndReportProps {
     isLoading: boolean;
 }
 
-export default function MonthEndReport({ balances, investAmount, shopName, isLoading }: MonthEndReportProps) {
-
-  const handlePrint = () => {
-    const printContent = document.getElementById('report-content');
+const Method1Report = ({ balances, investAmount, shopName, isLoading }: MonthEndReportProps) => {
+    const handlePrint = () => {
+    const printContent = document.getElementById('report-content-m1');
     if (printContent) {
         const originalContents = document.body.innerHTML;
         const header = `
@@ -50,28 +50,25 @@ export default function MonthEndReport({ balances, investAmount, shopName, isLoa
   }
 
   const handleCapture = () => {
-    const reportCard = document.getElementById('report-card');
+    const reportCard = document.getElementById('report-card-m1');
     if (reportCard) {
-      // Temporarily hide buttons before capture
       const buttons = reportCard.querySelectorAll('button');
       buttons.forEach(btn => btn.style.visibility = 'hidden');
 
       html2canvas(reportCard, { 
         useCORS: true,
-        scale: 2, // Increase scale for better resolution
+        scale: 2, 
         onclone: (document) => {
-            // Ensure the header is visible in the clone
-            const header = document.getElementById('report-header');
+            const header = document.getElementById('report-header-m1');
             if (header) {
                 header.classList.remove('print-hidden');
             }
         }
       }).then(canvas => {
         const link = document.createElement('a');
-        link.download = `monthly-profit-report-${format(new Date(), 'yyyy-MM-dd')}.png`;
+        link.download = `monthly-profit-report-m1-${format(new Date(), 'yyyy-MM-dd')}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
-        // Restore button visibility
         buttons.forEach(btn => btn.style.visibility = 'visible');
       });
     }
@@ -117,24 +114,9 @@ export default function MonthEndReport({ balances, investAmount, shopName, isLoa
       return getPartyDetails(key).name;
     }
 
-
-  return (
-    <div className="space-y-6">
-        <style>
-            {`
-            @media print {
-                body {
-                    background: white !important;
-                    color: black !important;
-                }
-                .print-hidden { display: none; }
-                .report-card { box-shadow: none; border: none; }
-                #report-header { display: block !important; }
-            }
-            `}
-        </style>
-        <Card id="report-card" className="report-card border-0 shadow-none">
-            <CardHeader id="report-header">
+    return (
+         <Card id="report-card-m1" className="report-card border-0 shadow-none">
+            <CardHeader id="report-header-m1">
                 <div className="flex justify-between items-start">
                     <div className="flex-grow"></div>
                     <div className="text-center">
@@ -152,7 +134,7 @@ export default function MonthEndReport({ balances, investAmount, shopName, isLoa
                     </div>
                 </div>
             </CardHeader>
-            <CardContent id="report-content" className="pt-0 bg-background p-6">
+            <CardContent id="report-content-m1" className="pt-0 bg-background p-6">
               {isLoading ? (
                   <div className="h-96 flex items-center justify-center">
                       <p>Loading Report...</p>
@@ -196,7 +178,73 @@ export default function MonthEndReport({ balances, investAmount, shopName, isLoa
               )}
             </CardContent>
         </Card>
+    );
+}
+
+const Method2Report = () => {
+    return (
+        <Card className="border-0 shadow-none">
+            <CardHeader>
+                <CardTitle>Method 2 Report</CardTitle>
+                <CardDescription>This is a static placeholder for the second method.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Column 1</TableHead>
+                            <TableHead>Column 2</TableHead>
+                            <TableHead className="text-right">Column 3</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        <TableRow>
+                            <TableCell>Data A</TableCell>
+                            <TableCell>Data B</TableCell>
+                            <TableCell className="text-right">100</TableCell>
+                        </TableRow>
+                         <TableRow>
+                            <TableCell>Data C</TableCell>
+                            <TableCell>Data D</TableCell>
+                            <TableCell className="text-right">200</TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    )
+}
+
+
+export default function MonthEndReport(props: MonthEndReportProps) {
+
+  return (
+    <div className="space-y-6">
+        <style>
+            {`
+            @media print {
+                body {
+                    background: white !important;
+                    color: black !important;
+                }
+                .print-hidden { display: none; }
+                .report-card { box-shadow: none; border: none; }
+                #report-header-m1 { display: block !important; }
+            }
+            `}
+        </style>
+        <Tabs defaultValue="method1">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="method1">Method 1</TabsTrigger>
+                <TabsTrigger value="method2">Method 2</TabsTrigger>
+            </TabsList>
+            <TabsContent value="method1">
+                <Method1Report {...props} />
+            </TabsContent>
+            <TabsContent value="method2">
+                <Method2Report />
+            </TabsContent>
+        </Tabs>
     </div>
   );
 }
-
