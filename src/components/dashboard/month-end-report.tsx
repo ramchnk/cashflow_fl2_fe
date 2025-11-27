@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -32,7 +31,7 @@ interface MonthEndReportProps {
     isLoading: boolean;
 }
 
-const Method1Report = ({ balances, investAmount, shopName, isLoading }: MonthEndReportProps) => {
+const CashFlowReport = ({ balances, investAmount, shopName, isLoading }: MonthEndReportProps) => {
     const handlePrint = () => {
     const printContent = document.getElementById('report-content-m1');
     if (printContent) {
@@ -121,7 +120,7 @@ const Method1Report = ({ balances, investAmount, shopName, isLoading }: MonthEnd
          <Card id="report-card-m1" className="report-card border-0 shadow-none">
             <CardHeader id="report-header-m1">
                 <div className="flex justify-between items-start">
-                    <div className="flex-grow"></div>
+                     <div className="flex-grow"></div>
                      <div className="text-center">
                         <CardTitle className="text-xl text-primary font-bold">MONTHLY PROFIT CALCULATION</CardTitle>
                         <CardDescription className="text-lg font-semibold">{shopName || "Gobi's Shop"}</CardDescription>
@@ -367,15 +366,15 @@ export default function MonthEndReport(props: MonthEndReportProps) {
             }
             `}
         </style>
-        <Tabs defaultValue="method1">
+        <Tabs defaultValue="cashflow">
             <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="method1">Method 1</TabsTrigger>
-                <TabsTrigger value="method2">Method 2</TabsTrigger>
+                <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
+                <TabsTrigger value="plstatement">P&L Statement</TabsTrigger>
             </TabsList>
-            <TabsContent value="method1">
-                <Method1Report {...props} />
+            <TabsContent value="cashflow">
+                <CashFlowReport {...props} />
             </TabsContent>
-            <TabsContent value="method2">
+            <TabsContent value="plstatement">
                 <Method2Report shopName={props.shopName} isLoading={props.isLoading} />
             </TabsContent>
         </Tabs>
