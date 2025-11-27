@@ -259,12 +259,6 @@ const Method2Report = () => {
                         </TableRow>
                          <TableRow>
                             <TableCell>2</TableCell>
-                            <TableCell>Malligai Things Sales Amount</TableCell>
-                             <TableCell></TableCell>
-                            <TableCell className="text-right">-</TableCell>
-                        </TableRow>
-                         <TableRow>
-                            <TableCell>2</TableCell>
                             <TableCell>Empty Bottle Sales</TableCell>
                              <TableCell></TableCell>
                             <TableCell className="text-right">{formatNumber(16800)}</TableCell>
