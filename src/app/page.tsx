@@ -15,6 +15,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useUserStore } from '@/app/lib/user-store';
 import Header from '@/components/layout/header';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { FileText } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import MonthEndReport from '@/components/dashboard/month-end-report';
 
 
 export default function Home() {
@@ -300,7 +304,23 @@ export default function Home() {
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <div className="grid gap-8">
           <section className="print-hidden">
-            <h2 className="text-2xl font-bold tracking-tight mb-4 text-foreground">Account Balances</h2>
+             <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold tracking-tight text-foreground">Account Balances</h2>
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <Button variant="outline">
+                            <FileText className="mr-2 h-4 w-4" />
+                            View Report
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl">
+                        <DialogHeader>
+                            <DialogTitle>Monthly Profit Calculation</DialogTitle>
+                        </DialogHeader>
+                        <MonthEndReport />
+                    </DialogContent>
+                </Dialog>
+            </div>
             {isLoading ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                 {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-[109px] rounded-lg" />)}
@@ -364,3 +384,4 @@ export default function Home() {
     </div>
   );
 }
+
