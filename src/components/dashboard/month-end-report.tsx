@@ -336,7 +336,7 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
             const kitchenIncome = salesResult.data.reduce((sum, item) => sum + (item.kitchenSales || 0), 0);
             const shopExpenses = salesResult.data.reduce((sum, item) => sum + (item.totalExpensesAmount || 0), 0);
             const bankCharges = bankChargesResult.transactions
-                .filter(tx => tx.naration?.toUpperCase().includes('SERVICE CHARGE'))
+                .filter(tx => tx.naration?.toUpperCase().includes('CHARGE'))
                 .reduce((sum, item) => sum + item.amount, 0);
 
 
@@ -578,4 +578,3 @@ export default function MonthEndReport(props: MonthEndReportProps) {
     </div>
   );
 }
-
