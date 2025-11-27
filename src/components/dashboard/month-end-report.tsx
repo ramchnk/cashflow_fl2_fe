@@ -124,17 +124,17 @@ export default function MonthEndReport({ balances, investAmount, shopName, isLoa
                 <Table>
                     <TableHeader className="bg-yellow-300">
                     <TableRow>
-                        <TableHead className="font-bold text-black">DETAILS</TableHead>
-                        <TableHead className="text-right font-bold text-black">OPEN</TableHead>
-                        <TableHead className="text-right font-bold text-black">CLOSE</TableHead>
+                        <TableHead className="font-bold text-black text-lg">DETAILS</TableHead>
+                        <TableHead className="text-right font-bold text-black text-lg">OPEN</TableHead>
+                        <TableHead className="text-right font-bold text-black text-lg">CLOSE</TableHead>
                     </TableRow>
                     </TableHeader>
-                    <TableBody>
+                    <TableBody className="text-lg">
                         {reportDetails.map(key => (
                         <TableRow key={key}>
                             <TableCell className="font-medium">{getRowName(key)}</TableCell>
                             <TableCell className="text-right"></TableCell>
-                            <TableCell className="text-right">{formatCurrency(reportBalances[key] || 0)}</TableCell>
+                            <TableCell className="text-right font-semibold">{formatCurrency(reportBalances[key] || 0)}</TableCell>
                         </TableRow>
                         ))}
                     </TableBody>
