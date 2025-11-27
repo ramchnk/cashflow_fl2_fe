@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -416,9 +417,9 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
                     </div>
                 </div>
                 <div className="p-4 bg-background text-foreground print-hidden">
-                    <div className="flex flex-wrap gap-4 items-end">
+                     <div className="flex flex-wrap gap-4 items-center">
                         <div className="grid gap-2">
-                          <Label htmlFor="date-range-pl">Date Range</Label>
+                          <Label htmlFor="date-range-pl" className="sr-only">Date Range</Label>
                            <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                                 <PopoverTrigger asChild>
                                     <Button
@@ -577,3 +578,5 @@ export default function MonthEndReport(props: MonthEndReportProps) {
     </div>
   );
 }
+
+    
