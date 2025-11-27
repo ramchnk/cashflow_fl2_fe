@@ -50,16 +50,29 @@ export default function MonthEndReport({ balances, investAmount, shopName, isLoa
   }
 
   const handleCapture = () => {
-    const reportContent = document.getElementById('report-content');
-    if (reportContent) {
-      html2canvas(reportContent, { 
+    const reportCard = document.getElementById('report-card');
+    if (reportCard) {
+      // Temporarily hide buttons before capture
+      const buttons = reportCard.querySelectorAll('button');
+      buttons.forEach(btn => btn.style.visibility = 'hidden');
+
+      html2canvas(reportCard, { 
         useCORS: true,
-        scale: 2 // Increase scale for better resolution
+        scale: 2, // Increase scale for better resolution
+        onclone: (document) => {
+            // Ensure the header is visible in the clone
+            const header = document.getElementById('report-header');
+            if (header) {
+                header.classList.remove('print-hidden');
+            }
+        }
       }).then(canvas => {
         const link = document.createElement('a');
         link.download = `monthly-profit-report-${format(new Date(), 'yyyy-MM-dd')}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
+        // Restore button visibility
+        buttons.forEach(btn => btn.style.visibility = 'visible');
       });
     }
   }
@@ -116,11 +129,12 @@ export default function MonthEndReport({ balances, investAmount, shopName, isLoa
                 }
                 .print-hidden { display: none; }
                 .report-card { box-shadow: none; border: none; }
+                #report-header { display: block !important; }
             }
             `}
         </style>
-        <Card className="report-card border-0 shadow-none">
-            <CardHeader className="print-hidden">
+        <Card id="report-card" className="report-card border-0 shadow-none">
+            <CardHeader id="report-header">
                 <div className="flex justify-between items-start">
                     <div>
                         <CardTitle className="text-center text-xl text-primary font-bold">MONTHLY PROFIT CALCULATION</CardTitle>
