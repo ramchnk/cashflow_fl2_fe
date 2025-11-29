@@ -359,7 +359,7 @@ export default function PurchaseEstimatePage() {
                         <TableCell className="text-right">
                           <Input
                             type="number"
-                            value={Math.round(item.estInCase)}
+                            value={item.estInCase}
                             onChange={(e) => handleEstInCaseChange(index, e.target.value)}
                             className="text-right h-8"
                           />
