@@ -107,24 +107,21 @@ export default function PurchasePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const getPackSizeNumber = (packSize: string): number => {
+    const size = packSize.toUpperCase();
+    if (size.includes('180ML')) return 48;
+    if (size.includes('375ML')) return 24;
+    if (size.includes('750ML') || size.includes('650ML')) return 12;
+    if (size.includes('1000ML')) return 9;
+    if (size.includes('325ML') || size.includes('500ML')) return 24;
+    return 1;
+  }
+
   const getCalculatedQty = (packSize: string, caseQty: number): number => {
     let calculatedQty = 0;
     if (!isNaN(caseQty)) {
-        if (packSize.includes('180')) {
-            calculatedQty = caseQty * 48;
-        } else if (packSize.includes('375')) {
-            calculatedQty = caseQty * 24;
-        } else if (packSize.includes('750')) {
-            calculatedQty = caseQty * 12;
-        } else if (packSize.includes('650')) {
-            calculatedQty = caseQty * 12;
-        } else if (packSize.includes('1000')) {
-            calculatedQty = caseQty * 9;
-        } else if (packSize.includes('500')) {
-            calculatedQty = caseQty * 24;
-        } else if (packSize.includes('325')) {
-            calculatedQty = caseQty * 24;
-        }
+        const packSizeNum = getPackSizeNumber(packSize);
+        calculatedQty = caseQty * packSizeNum;
     }
     return calculatedQty;
   };
@@ -210,21 +207,23 @@ export default function PurchasePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pastedData, productMaster]);
 
-  const handleQtyChange = (index: number, newCaseQtyStr: string) => {
-    const newCaseQty = parseFloat(newCaseQtyStr);
-    if (isNaN(newCaseQty)) return;
+  const handleBottleQtyChange = (index: number, newBottleQtyStr: string) => {
+    const newBottleQty = parseFloat(newBottleQtyStr);
+    if (isNaN(newBottleQty)) return;
 
     setParsedItems(prevItems => {
         const newItems = [...prevItems];
         const item = newItems[index];
 
-        const newCalculatedQty = getCalculatedQty(item.packSize, newCaseQty);
-        const newNumericTotalValue = (item.matchedProduct?.purchasePrice || 0) * newCalculatedQty;
+        const packSizeNum = getPackSizeNumber(item.packSize);
+        const newCaseQty = packSizeNum > 0 ? newBottleQty / packSizeNum : 0;
+        
+        const newNumericTotalValue = (item.matchedProduct?.purchasePrice || 0) * newBottleQty;
 
         newItems[index] = {
             ...item,
-            qty: newCaseQtyStr,
-            calculatedQty: newCalculatedQty,
+            qty: newCaseQty.toFixed(2), // case qty
+            calculatedQty: newBottleQty, // bottle qty
             numericTotalValue: newNumericTotalValue,
             totalValue: new Intl.NumberFormat('en-IN', {
                 style: 'currency',
@@ -440,16 +439,16 @@ export default function PurchasePage() {
                                     <TableCell>{item.srNo}</TableCell>
                                     <TableCell>{item.brandName}</TableCell>
                                     <TableCell>{item.packSize}</TableCell>
+                                    <TableCell className="text-right">{item.qty}</TableCell>
                                     <TableCell className="text-right">
-                                        <Input
-                                            type="number"
-                                            value={item.qty}
-                                            onChange={(e) => handleQtyChange(index, e.target.value)}
-                                            className="text-right h-8 w-24 ml-auto"
-                                            disabled={isSubmitting}
-                                        />
+                                      <Input
+                                          type="number"
+                                          value={item.calculatedQty}
+                                          onChange={(e) => handleBottleQtyChange(index, e.target.value)}
+                                          className="text-right h-8 w-24 ml-auto"
+                                          disabled={isSubmitting}
+                                      />
                                     </TableCell>
-                                    <TableCell className="text-right">{item.calculatedQty}</TableCell>
                                     <TableCell className="text-right">{item.totalValue}</TableCell>
                                     <TableCell>
                                         <Badge variant={item.matchStatus === 'found' ? 'default' : 'destructive'} className={item.matchStatus === 'found' ? 'bg-green-600' : ''}>
