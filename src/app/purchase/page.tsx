@@ -38,8 +38,8 @@ interface PurchaseItem {
   srNo: string;
   brandName: string;
   packSize: string;
-  qty: string;
-  calculatedQty: number;
+  qty: string; // This is the case quantity
+  calculatedQty: number; // This is the bottle quantity
   totalValue: string;
   numericTotalValue: number;
   matchStatus: 'found' | 'not found';
@@ -107,6 +107,28 @@ export default function PurchasePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const getCalculatedQty = (packSize: string, caseQty: number): number => {
+    let calculatedQty = 0;
+    if (!isNaN(caseQty)) {
+        if (packSize.includes('180')) {
+            calculatedQty = caseQty * 48;
+        } else if (packSize.includes('375')) {
+            calculatedQty = caseQty * 24;
+        } else if (packSize.includes('750')) {
+            calculatedQty = caseQty * 12;
+        } else if (packSize.includes('650')) {
+            calculatedQty = caseQty * 12;
+        } else if (packSize.includes('1000')) {
+            calculatedQty = caseQty * 9;
+        } else if (packSize.includes('500')) {
+            calculatedQty = caseQty * 24;
+        } else if (packSize.includes('325')) {
+            calculatedQty = caseQty * 24;
+        }
+    }
+    return calculatedQty;
+  };
+
   const processData = () => {
     if (!pastedData) {
         setParsedItems([]);
@@ -132,25 +154,8 @@ export default function PurchasePage() {
 
             if (srNo && brandName && packSize && qty && totalValue) {
                 
-                let calculatedQty = 0;
                 const caseQty = parseFloat(qty);
-                if (!isNaN(caseQty)) {
-                    if (packSize.includes('180')) {
-                        calculatedQty = caseQty * 48;
-                    } else if (packSize.includes('375')) {
-                        calculatedQty = caseQty * 24;
-                    } else if (packSize.includes('750')) {
-                        calculatedQty = caseQty * 12;
-                    } else if (packSize.includes('650')) {
-                        calculatedQty = caseQty * 12;
-                    } else if (packSize.includes('1000')) {
-                        calculatedQty = caseQty * 9;
-                    } else if (packSize.includes('500')) {
-                        calculatedQty = caseQty * 24;
-                    } else if (packSize.includes('325')) {
-                        calculatedQty = caseQty * 24;
-                    }
-                }
+                const calculatedQty = getCalculatedQty(packSize, caseQty);
 
                 const sizeValue = packSize.toLowerCase().replace('ml', '').trim();
                 const normalizedBrandName = brandName.trim().replace(/-/g, ' ');
@@ -204,6 +209,32 @@ export default function PurchasePage() {
     processData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pastedData, productMaster]);
+
+  const handleQtyChange = (index: number, newCaseQtyStr: string) => {
+    const newCaseQty = parseFloat(newCaseQtyStr);
+    if (isNaN(newCaseQty)) return;
+
+    setParsedItems(prevItems => {
+        const newItems = [...prevItems];
+        const item = newItems[index];
+
+        const newCalculatedQty = getCalculatedQty(item.packSize, newCaseQty);
+        const newNumericTotalValue = (item.matchedProduct?.purchasePrice || 0) * newCalculatedQty;
+
+        newItems[index] = {
+            ...item,
+            qty: newCaseQtyStr,
+            calculatedQty: newCalculatedQty,
+            numericTotalValue: newNumericTotalValue,
+            totalValue: new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+            }).format(newNumericTotalValue),
+        };
+        
+        return newItems;
+    });
+  }
 
 
   const totalQty = parsedItems.reduce((acc, item) => {
@@ -409,7 +440,15 @@ export default function PurchasePage() {
                                     <TableCell>{item.srNo}</TableCell>
                                     <TableCell>{item.brandName}</TableCell>
                                     <TableCell>{item.packSize}</TableCell>
-                                    <TableCell className="text-right">{item.qty}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Input
+                                            type="number"
+                                            value={item.qty}
+                                            onChange={(e) => handleQtyChange(index, e.target.value)}
+                                            className="text-right h-8 w-24 ml-auto"
+                                            disabled={isSubmitting}
+                                        />
+                                    </TableCell>
                                     <TableCell className="text-right">{item.calculatedQty}</TableCell>
                                     <TableCell className="text-right">{item.totalValue}</TableCell>
                                     <TableCell>
@@ -465,3 +504,5 @@ export default function PurchasePage() {
     </div>
   );
 }
+
+    

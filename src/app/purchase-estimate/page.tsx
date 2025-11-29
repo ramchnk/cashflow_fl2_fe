@@ -359,7 +359,7 @@ export default function PurchaseEstimatePage() {
                         <TableCell className="text-right">
                           <Input
                             type="number"
-                            value={item.estInCase}
+                            value={item.estInCase.toFixed(2)}
                             onChange={(e) => handleEstInCaseChange(index, e.target.value)}
                             className="text-right h-8"
                           />
@@ -382,3 +382,5 @@ export default function PurchaseEstimatePage() {
     </div>
   );
 }
+
+    
