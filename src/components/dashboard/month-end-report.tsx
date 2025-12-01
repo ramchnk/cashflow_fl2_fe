@@ -190,7 +190,11 @@ const CashFlowReport = ({ balances, investAmount, shopName, isLoading }: MonthEn
     );
 }
 
-interface PLStatementProps extends Omit<MonthEndReportProps, 'balances' | 'investAmount'> {}
+interface PLStatementProps {
+    balances: Balances;
+    shopName: string | null;
+    isLoading: boolean;
+}
 
 interface ApiSaleItem {
     profitAmount: number;
@@ -227,7 +231,7 @@ interface ReportData {
 }
 
 
-const PLStatement = ({ shopName }: PLStatementProps) => {
+const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatementProps) => {
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const [isLoading, setIsLoading] = useState(false);
     const [reportData, setReportData] = useState<ReportData | null>(null);
@@ -304,43 +308,56 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
             const toTime = Math.floor(endOfDay(dateRange.to).getTime() / 1000);
             
             const salesUrl = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/sales?startDate=${fromTime}&endDate=${toTime}`;
-            const bankChargesUrl = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/cashflow?type=IOBBank&startDate=${fromTime}&endDate=${toTime}`;
-
             const headers = { 'Authorization': `Bearer ${token}` };
 
-            const [salesResponse, bankChargesResponse] = await Promise.all([
-                fetch(salesUrl, { method: 'GET', headers }),
-                fetch(bankChargesUrl, { method: 'GET', headers })
-            ]);
+            const bankAccounts = Object.keys(balances).filter(key => key.toLowerCase().includes('bank'));
+            
+            const apiCalls = [fetch(salesUrl, { method: 'GET', headers })];
 
-            if (!salesResponse.ok || !bankChargesResponse.ok) {
-                 if (salesResponse.status === 401 || bankChargesResponse.status === 401) {
-                     toast({
-                        variant: "destructive",
-                        title: "Session Expired",
-                        description: "Please login again.",
-                    });
-                    sessionStorage.removeItem('accessToken');
-                    router.push('/login');
-                    return;
+            bankAccounts.forEach(bank => {
+                const bankChargesUrl = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/cashflow?type=${bank}&startDate=${fromTime}&endDate=${toTime}`;
+                apiCalls.push(fetch(bankChargesUrl, { method: 'GET', headers }));
+            });
+
+            const responses = await Promise.all(apiCalls);
+
+            for (const response of responses) {
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        toast({
+                            variant: "destructive",
+                            title: "Session Expired",
+                            description: "Please login again.",
+                        });
+                        sessionStorage.removeItem('accessToken');
+                        router.push('/login');
+                        return;
+                    }
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to fetch report data');
                 }
-                const errorData = !salesResponse.ok ? await salesResponse.json() : await bankChargesResponse.json();
-                throw new Error(errorData.message || 'Failed to fetch report data');
             }
+
+            const [salesResponse, ...bankChargesResponses] = responses;
             
             const salesResult: { data: ApiSaleItem[] } = await salesResponse.json();
-            const bankChargesResult: { transactions: ApiBankChargeItem[] } = await bankChargesResponse.json();
+            
+            let totalBankCharges = 0;
+            for (const res of bankChargesResponses) {
+                const bankChargesResult: { transactions: ApiBankChargeItem[] } = await res.json();
+                const charges = bankChargesResult.transactions
+                    .filter(tx => tx.naration?.toUpperCase().includes('CHARGE'))
+                    .reduce((sum, item) => sum + item.amount, 0);
+                totalBankCharges += charges;
+            }
 
             const salesValue = salesResult.data.reduce((sum, item) => sum + item.totalSalesAmount, 0);
             const costOfSales = salesResult.data.reduce((sum, item) => sum + item.basePrice, 0);
             const kitchenIncome = salesResult.data.reduce((sum, item) => sum + (item.kitchenSales || 0), 0);
             const shopExpenses = salesResult.data.reduce((sum, item) => sum + (item.totalExpensesAmount || 0), 0);
-            const bankCharges = bankChargesResult.transactions
-                .filter(tx => tx.naration?.toUpperCase().includes('CHARGE'))
-                .reduce((sum, item) => sum + item.amount, 0);
 
 
-            setReportData({ salesValue, costOfSales, kitchenIncome, shopExpenses, bankCharges });
+            setReportData({ salesValue, costOfSales, kitchenIncome, shopExpenses, bankCharges: totalBankCharges });
 
             toast({
                 title: 'Report Generated',
@@ -465,7 +482,7 @@ const PLStatement = ({ shopName }: PLStatementProps) => {
                 </div>
             </CardHeader>
             <CardContent id="report-content-pl" className="p-0">
-                 {isLoading ? (
+                 {(isLoading || isPropsLoading) ? (
                     <div className="h-96 flex items-center justify-center">
                         <p>Loading Report...</p>
                     </div>
@@ -572,11 +589,9 @@ export default function MonthEndReport(props: MonthEndReportProps) {
                 <CashFlowReport {...props} />
             </TabsContent>
             <TabsContent value="plstatement">
-                <PLStatement shopName={props.shopName} isLoading={props.isLoading} />
+                <PLStatement shopName={props.shopName} isLoading={props.isLoading} balances={props.balances} />
             </TabsContent>
         </Tabs>
     </div>
   );
 }
-
-    
