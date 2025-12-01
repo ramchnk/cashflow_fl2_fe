@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -228,6 +229,7 @@ interface ReportData {
     kitchenIncome: number;
     shopExpenses: number;
     bankCharges: number;
+    billPayments: number;
 }
 
 
@@ -343,12 +345,20 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
             const salesResult: { data: ApiSaleItem[] } = await salesResponse.json();
             
             let totalBankCharges = 0;
+            let totalBillPayments = 0;
+
             for (const res of bankChargesResponses) {
-                const bankChargesResult: { transactions: ApiBankChargeItem[] } = await res.json();
-                const charges = bankChargesResult.transactions
+                const bankFlowResult: { transactions: ApiBankChargeItem[] } = await res.json();
+                
+                const charges = bankFlowResult.transactions
                     .filter(tx => tx.naration?.toUpperCase().includes('CHARGE'))
                     .reduce((sum, item) => sum + item.amount, 0);
                 totalBankCharges += charges;
+
+                const billPayments = bankFlowResult.transactions
+                    .filter(tx => tx.naration?.toUpperCase().includes('BILL'))
+                    .reduce((sum, item) => sum + item.amount, 0);
+                totalBillPayments += billPayments;
             }
 
             const salesValue = salesResult.data.reduce((sum, item) => sum + item.totalSalesAmount, 0);
@@ -357,7 +367,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
             const shopExpenses = salesResult.data.reduce((sum, item) => sum + (item.totalExpensesAmount || 0), 0);
 
 
-            setReportData({ salesValue, costOfSales, kitchenIncome, shopExpenses, bankCharges: totalBankCharges });
+            setReportData({ salesValue, costOfSales, kitchenIncome, shopExpenses, bankCharges: totalBankCharges, billPayments: totalBillPayments });
 
             toast({
                 title: 'Report Generated',
@@ -409,7 +419,8 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
     const totalIncome = grossProfit + kitchenIncome + emptyBottleSales;
     const shopExpenses = reportData?.shopExpenses ?? 0;
     const bankCharges = reportData?.bankCharges ?? 0;
-    const totalExpenses = shopExpenses + bankCharges;
+    const billPayments = reportData?.billPayments ?? 0;
+    const totalExpenses = shopExpenses + bankCharges + billPayments;
     const netProfit = totalIncome - totalExpenses;
 
 
@@ -549,6 +560,12 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                                 <TableCell className="text-right">{formatNumber(bankCharges)}</TableCell>
                                 <TableCell></TableCell>
                             </TableRow>
+                             <TableRow>
+                                <TableCell>3</TableCell>
+                                <TableCell>Bill Payment</TableCell>
+                                <TableCell className="text-right">{formatNumber(billPayments)}</TableCell>
+                                <TableCell></TableCell>
+                            </TableRow>
                             <TotalRow label="TOTAL EXPENSES" value={totalExpenses} isDebit />
 
                         </TableBody>
@@ -580,7 +597,7 @@ export default function MonthEndReport(props: MonthEndReportProps) {
             }
             `}
         </style>
-        <Tabs defaultValue="cashflow">
+        <Tabs defaultValue="cashflow" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
                 <TabsTrigger value="plstatement">P&L Statement</TabsTrigger>
