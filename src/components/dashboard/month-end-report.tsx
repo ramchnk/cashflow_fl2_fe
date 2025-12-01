@@ -261,7 +261,10 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
     const handleCapture = () => {
         const reportCard = document.getElementById('report-card-pl');
         if (reportCard) {
+            const datePicker = reportCard.querySelector('#pl-date-picker-container');
             const buttons = reportCard.querySelectorAll('button');
+            
+            if(datePicker) (datePicker as HTMLElement).style.visibility = 'hidden';
             buttons.forEach(btn => btn.style.visibility = 'hidden');
 
             html2canvas(reportCard, { 
@@ -272,6 +275,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                 link.download = `pl-statement-${format(new Date(), 'yyyy-MM-dd')}.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
+                if(datePicker) (datePicker as HTMLElement).style.visibility = 'visible';
                 buttons.forEach(btn => btn.style.visibility = 'visible');
             });
         }
@@ -443,7 +447,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                         </Button>
                     </div>
                 </div>
-                <div className="p-4 bg-background text-foreground print-hidden">
+                <div id="pl-date-picker-container" className="p-4 bg-background text-foreground print-hidden">
                      <div className="flex flex-wrap gap-4 items-center">
                         <div className="grid gap-2">
                           <Label htmlFor="date-range-pl" className="sr-only">Date Range</Label>
@@ -504,15 +508,15 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-blue-200">
-                                <TableHead className="w-[5%] text-lg font-semibold">S.No</TableHead>
-                                <TableHead className="text-lg font-semibold">Particulars</TableHead>
-                                <TableHead className="text-right w-[20%] text-lg font-semibold">Debit</TableHead>
-                                <TableHead className="text-right w-[20%] text-lg font-semibold">Credit</TableHead>
+                                <TableHead className="w-[5%] text-lg font-bold">S.No</TableHead>
+                                <TableHead className="text-lg font-bold">Particulars</TableHead>
+                                <TableHead className="text-right w-[20%] text-lg font-bold">Debit</TableHead>
+                                <TableHead className="text-right w-[20%] text-lg font-bold">Credit</TableHead>
                             </TableRow>
                         </TableHeader>
-                        <TableBody className="text-base font-medium">
+                        <TableBody className="text-lg font-medium">
                             <TableRow>
-                                <TableCell rowSpan={2} className="font-bold align-top pt-6 text-lg">LIQUOR</TableCell>
+                                <TableCell rowSpan={2} className="font-bold align-top pt-6 text-xl">LIQUOR</TableCell>
                                 <TableCell>
                                     <span className="font-bold">A) Sales Value</span>
                                     <p className="text-sm text-muted-foreground">(TOTAL SALES AMOUNT)</p>
