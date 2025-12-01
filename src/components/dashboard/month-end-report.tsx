@@ -386,7 +386,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
         }
     }
 
-    const formatNumber = (num: number) => new Intl.NumberFormat('en-IN').format(num);
+    const formatNumber = (num: number) => new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(num);
 
     const SectionHeader = ({ children, value }: { children: React.ReactNode, value?: number }) => (
         <TableRow className="bg-blue-100">
@@ -454,7 +454,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                                         id="date-range-pl"
                                         variant={"outline"}
                                         className={cn(
-                                            "w-[240px] justify-start text-left font-normal",
+                                            "w-full sm:w-auto justify-start text-left font-normal",
                                             !dateRange && "text-muted-foreground"
                                         )}
                                         disabled={isLoading}
