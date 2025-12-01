@@ -97,7 +97,6 @@ const CashFlowReport = ({ balances, investAmount, shopName, isLoading }: MonthEn
 
   if (reportBalances.readyToCollect) {
     reportBalances.CashInOffice = reportBalances.readyToCollect;
-    reportBalances.CashInHand = (reportBalances.CashInHand || 0);
   }
 
   const reportDetails = Object.keys(reportBalances)
