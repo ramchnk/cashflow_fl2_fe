@@ -171,11 +171,6 @@ const CashFlowReport = ({ balances, investAmount, shopName, isLoading }: MonthEn
                             <TableCell className="text-right">{formatCurrency(investAmount)}</TableCell>
                             <TableCell className="text-right">{formatCurrency(closeTotal)}</TableCell>
                         </TableRow>
-                        <TableRow>
-                            <TableCell>PROFIT = (CLOSE - OPEN)</TableCell>
-                            <TableCell></TableCell>
-                            <TableCell className="text-right">{formatCurrency(profit)}</TableCell>
-                        </TableRow>
                         <TableRow className="bg-green-200">
                             <TableCell>Total Profit</TableCell>
                             <TableCell></TableCell>
@@ -263,7 +258,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
             const datePicker = reportCard.querySelector('#pl-date-picker-container');
             const buttons = reportCard.querySelectorAll('button');
             
-            if(datePicker) (datePicker as HTMLElement).style.visibility = 'hidden';
+            if(datePicker) (datePicker as HTMLElement).style.display = 'none';
             buttons.forEach(btn => btn.style.visibility = 'hidden');
 
             html2canvas(reportCard, { 
@@ -274,7 +269,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                 link.download = `pl-statement-${format(new Date(), 'yyyy-MM-dd')}.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
-                if(datePicker) (datePicker as HTMLElement).style.visibility = 'visible';
+                if(datePicker) (datePicker as HTMLElement).style.display = 'flex';
                 buttons.forEach(btn => btn.style.visibility = 'visible');
             });
         }
@@ -392,13 +387,13 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
 
     const SectionHeader = ({ children, value }: { children: React.ReactNode, value?: number }) => (
         <TableRow className="bg-blue-100">
-            <TableCell colSpan={value ? 3: 4} className="font-bold text-blue-900 text-lg">{children}</TableCell>
-            {value != null && <TableCell className="text-right font-bold text-blue-900 text-lg">{formatNumber(value)}</TableCell>}
+            <TableCell colSpan={value ? 3: 4} className="font-extrabold text-blue-900 text-xl">{children}</TableCell>
+            {value != null && <TableCell className="text-right font-extrabold text-blue-900 text-xl">{formatNumber(value)}</TableCell>}
         </TableRow>
     );
     
     const TotalRow = ({ label, value, isDebit = false, isCredit = false }: { label: string, value: number, isDebit?: boolean, isCredit?: boolean }) => (
-         <TableRow className="bg-gray-200 font-bold text-lg">
+         <TableRow className="bg-gray-200 font-extrabold text-xl">
             <TableCell colSpan={isDebit ? 2 : 3} className="text-right">{label}</TableCell>
             {isDebit && <TableCell className="text-right">{formatNumber(value)}</TableCell>}
             {isCredit && <TableCell className="text-right">{formatNumber(value)}</TableCell>}
@@ -407,7 +402,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
     );
 
     const NetProfitRow = ({label, value}: {label: string, value: number}) => (
-        <TableRow className="bg-blue-900 text-white font-bold text-xl">
+        <TableRow className="bg-blue-900 text-white font-extrabold text-2xl">
             <TableCell colSpan={3} className="text-right">{label}</TableCell>
             <TableCell className="text-right">{formatNumber(value)}</TableCell>
         </TableRow>
@@ -446,8 +441,8 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                         </Button>
                     </div>
                 </div>
-                <div id="pl-date-picker-container" className="p-4 bg-background text-foreground print-hidden">
-                     <div className="flex flex-wrap gap-4 items-center">
+                <div id="pl-date-picker-container" className="p-4 bg-background text-foreground print-hidden flex items-center justify-center">
+                     <div className="flex flex-wrap gap-4 items-end">
                         <div className="grid gap-2">
                           <Label htmlFor="date-range-pl" className="sr-only">Date Range</Label>
                            <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
@@ -507,26 +502,26 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-blue-200">
-                                <TableHead className="w-[5%] text-lg font-bold">S.No</TableHead>
-                                <TableHead className="text-lg font-bold">Particulars</TableHead>
-                                <TableHead className="text-right w-[20%] text-lg font-bold">Debit</TableHead>
-                                <TableHead className="text-right w-[20%] text-lg font-bold">Credit</TableHead>
+                                <TableHead className="w-[5%] text-xl font-extrabold">S.No</TableHead>
+                                <TableHead className="text-xl font-extrabold">Particulars</TableHead>
+                                <TableHead className="text-right w-[20%] text-xl font-extrabold">Debit</TableHead>
+                                <TableHead className="text-right w-[20%] text-xl font-extrabold">Credit</TableHead>
                             </TableRow>
                         </TableHeader>
-                        <TableBody className="text-lg font-medium">
+                        <TableBody className="text-xl font-bold">
                             <TableRow>
-                                <TableCell rowSpan={2} className="font-bold align-top pt-6 text-xl">LIQUOR</TableCell>
+                                <TableCell rowSpan={2} className="font-extrabold align-top pt-6 text-2xl">LIQUOR</TableCell>
                                 <TableCell>
-                                    <span className="font-bold">A) Sales Value</span>
-                                    <p className="text-sm text-muted-foreground">(TOTAL SALES AMOUNT)</p>
+                                    <span className="font-extrabold">A) Sales Value</span>
+                                    <p className="text-base text-muted-foreground font-medium">(TOTAL SALES AMOUNT)</p>
                                 </TableCell>
                                 <TableCell></TableCell>
                                 <TableCell className="text-right">{formatNumber(salesValue)}</TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell>
-                                <span className="font-bold">B) Cost of Sales</span>
-                                    <p className="text-sm text-muted-foreground">(PURCHASE VALUE)</p>
+                                <span className="font-extrabold">B) Cost of Sales</span>
+                                    <p className="text-base text-muted-foreground font-medium">(PURCHASE VALUE)</p>
                                 </TableCell>
                                 <TableCell className="text-right">{formatNumber(costOfSales)}</TableCell>
                                 <TableCell></TableCell>
