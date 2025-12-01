@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Wallet, LogOut, Store, Home, Package, Receipt, Calculator } from 'lucide-react';
+import { Wallet, LogOut, Store, Home, Package, Receipt, Calculator, BarChart3 } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,7 @@ export default function Header() {
         { href: "/", label: "Dashboard", icon: Home },
         { href: "/purchase", label: "Purchase", icon: Package },
         { href: "/expenses", label: "Expenses", icon: Receipt },
+        { href: "/sales", label: "Sales", icon: BarChart3 },
         { href: "/purchase-estimate", label: "Purchase Estimate", icon: Calculator },
     ]
 
@@ -83,3 +84,5 @@ export default function Header() {
     </header>
   );
 }
+
+    
