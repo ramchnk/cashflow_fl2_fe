@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -390,13 +389,13 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
 
     const SectionHeader = ({ children, value }: { children: React.ReactNode, value?: number }) => (
         <TableRow className="bg-blue-100">
-            <TableCell colSpan={value ? 3: 4} className="font-bold text-blue-900">{children}</TableCell>
-            {value != null && <TableCell className="text-right font-bold text-blue-900">{formatNumber(value)}</TableCell>}
+            <TableCell colSpan={value ? 3: 4} className="font-bold text-blue-900 text-lg">{children}</TableCell>
+            {value != null && <TableCell className="text-right font-bold text-blue-900 text-lg">{formatNumber(value)}</TableCell>}
         </TableRow>
     );
     
     const TotalRow = ({ label, value, isDebit = false, isCredit = false }: { label: string, value: number, isDebit?: boolean, isCredit?: boolean }) => (
-         <TableRow className="bg-gray-200 font-bold">
+         <TableRow className="bg-gray-200 font-bold text-lg">
             <TableCell colSpan={isDebit ? 2 : 3} className="text-right">{label}</TableCell>
             {isDebit && <TableCell className="text-right">{formatNumber(value)}</TableCell>}
             {isCredit && <TableCell className="text-right">{formatNumber(value)}</TableCell>}
@@ -405,7 +404,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
     );
 
     const NetProfitRow = ({label, value}: {label: string, value: number}) => (
-        <TableRow className="bg-blue-900 text-white font-bold text-lg">
+        <TableRow className="bg-blue-900 text-white font-bold text-xl">
             <TableCell colSpan={3} className="text-right">{label}</TableCell>
             <TableCell className="text-right">{formatNumber(value)}</TableCell>
         </TableRow>
@@ -505,18 +504,18 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-blue-200">
-                                <TableHead className="w-[5%]">S.No</TableHead>
-                                <TableHead>Particulars</TableHead>
-                                <TableHead className="text-right w-[20%]">Debit</TableHead>
-                                <TableHead className="text-right w-[20%]">Credit</TableHead>
+                                <TableHead className="w-[5%] text-lg font-semibold">S.No</TableHead>
+                                <TableHead className="text-lg font-semibold">Particulars</TableHead>
+                                <TableHead className="text-right w-[20%] text-lg font-semibold">Debit</TableHead>
+                                <TableHead className="text-right w-[20%] text-lg font-semibold">Credit</TableHead>
                             </TableRow>
                         </TableHeader>
-                        <TableBody>
+                        <TableBody className="text-base font-medium">
                             <TableRow>
-                                <TableCell rowSpan={2} className="font-bold align-top pt-6">LIQUOR</TableCell>
+                                <TableCell rowSpan={2} className="font-bold align-top pt-6 text-lg">LIQUOR</TableCell>
                                 <TableCell>
                                     <span className="font-bold">A) Sales Value</span>
-                                    <p className="text-xs text-muted-foreground">(TOTAL SALES AMOUNT)</p>
+                                    <p className="text-sm text-muted-foreground">(TOTAL SALES AMOUNT)</p>
                                 </TableCell>
                                 <TableCell></TableCell>
                                 <TableCell className="text-right">{formatNumber(salesValue)}</TableCell>
@@ -524,7 +523,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                             <TableRow>
                                 <TableCell>
                                 <span className="font-bold">B) Cost of Sales</span>
-                                    <p className="text-xs text-muted-foreground">(PURCHASE VALUE)</p>
+                                    <p className="text-sm text-muted-foreground">(PURCHASE VALUE)</p>
                                 </TableCell>
                                 <TableCell className="text-right">{formatNumber(costOfSales)}</TableCell>
                                 <TableCell></TableCell>
@@ -598,7 +597,7 @@ export default function MonthEndReport(props: MonthEndReportProps) {
             `}
         </style>
         <Tabs defaultValue="cashflow" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-2 print-hidden">
                 <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
                 <TabsTrigger value="plstatement">P&L Statement</TabsTrigger>
             </TabsList>
