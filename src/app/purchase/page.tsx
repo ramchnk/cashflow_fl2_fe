@@ -58,6 +58,7 @@ export default function PurchasePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { setShopName } = useUserStore();
   const [actualBillValue, setActualBillValue] = useState<string>('');
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   const fetchProductMaster = async () => {
     const token = sessionStorage.getItem('accessToken');
@@ -374,7 +375,7 @@ export default function PurchasePage() {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="bill-date">Bill Date</Label>
-                        <Popover>
+                        <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                         <PopoverTrigger asChild>
                             <Button
                             id="bill-date"
@@ -393,7 +394,10 @@ export default function PurchasePage() {
                             <Calendar
                             mode="single"
                             selected={billDate}
-                            onSelect={setBillDate}
+                            onSelect={(date) => {
+                                setBillDate(date);
+                                setIsDatePickerOpen(false);
+                            }}
                             initialFocus
                             />
                         </PopoverContent>

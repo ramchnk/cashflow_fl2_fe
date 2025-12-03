@@ -61,6 +61,8 @@ export default function ExpensesPage() {
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [detailedItems, setDetailedItems] = useState<DetailedItem[]>([]);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [fromDatePickerOpen, setFromDatePickerOpen] = useState(false);
+  const [toDatePickerOpen, setToDatePickerOpen] = useState(false);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -233,7 +235,7 @@ export default function ExpensesPage() {
             <div className="flex flex-wrap gap-4 items-end print-hidden">
                 <div className="grid gap-2">
                   <Label htmlFor="from-date">From Date</Label>
-                  <Popover>
+                  <Popover open={fromDatePickerOpen} onOpenChange={setFromDatePickerOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         id="from-date"
@@ -251,7 +253,10 @@ export default function ExpensesPage() {
                       <Calendar
                         mode="single"
                         selected={fromDate}
-                        onSelect={setFromDate}
+                        onSelect={(date) => {
+                          setFromDate(date);
+                          setFromDatePickerOpen(false);
+                        }}
                         initialFocus
                       />
                     </PopoverContent>
@@ -259,7 +264,7 @@ export default function ExpensesPage() {
                 </div>
                 <div className="grid gap-2">
                    <Label htmlFor="to-date">To Date</Label>
-                  <Popover>
+                  <Popover open={toDatePickerOpen} onOpenChange={setToDatePickerOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         id="to-date"
@@ -277,7 +282,10 @@ export default function ExpensesPage() {
                       <Calendar
                         mode="single"
                         selected={toDate}
-                        onSelect={setToDate}
+                        onSelect={(date) => {
+                          setToDate(date);
+                          setToDatePickerOpen(false);
+                        }}
                         disabled={{ before: fromDate }}
                         initialFocus
                       />
