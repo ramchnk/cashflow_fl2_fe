@@ -98,9 +98,17 @@ const CashFlowReport = ({ balances, investAmount, shopName, isLoading }: MonthEn
   if (reportBalances.readyToCollect) {
     reportBalances.CashInOffice = reportBalances.readyToCollect;
   }
+  
+  const cashInHandKey = Object.keys(reportBalances).find(k => k.toLowerCase() === 'cashinhand');
+
 
   const reportDetails = Object.keys(reportBalances)
-    .filter(key => key !== 'expenses' && key !== 'readyToCollect')
+    .filter(key => {
+        const lowerKey = key.toLowerCase();
+        if (lowerKey === 'expenses' || lowerKey === 'readytocollect') return false;
+        if (lowerKey === 'cashinhand' && key !== cashInHandKey) return false;
+        return true;
+    })
     .sort((a, b) => {
         const aIndex = detailsOrder.indexOf(a);
         const bIndex = detailsOrder.indexOf(b);
@@ -442,7 +450,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                     </div>
                 </div>
                 <div id="pl-date-picker-container" className="p-4 bg-background text-foreground print-hidden flex items-center justify-center">
-                     <div className="flex flex-wrap gap-4 items-end">
+                     <div className="flex flex-wrap gap-4 items-center">
                         <div className="grid gap-2">
                           <Label htmlFor="date-range-pl" className="sr-only">Date Range</Label>
                            <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>

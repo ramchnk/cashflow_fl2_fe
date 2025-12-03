@@ -50,6 +50,8 @@ export default function SalesPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [sales, setSales] = useState<ApiSaleItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+
 
   const { toast } = useToast();
   const router = useRouter();
@@ -131,6 +133,13 @@ export default function SalesPage() {
     finalCashSettlement: 0,
   });
 
+  const handleDateSelect = (selectedRange: DateRange | undefined) => {
+    setDateRange(selectedRange);
+    if (selectedRange?.from && selectedRange?.to) {
+        setIsDatePickerOpen(false);
+    }
+  }
+
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -140,7 +149,7 @@ export default function SalesPage() {
             <div className="flex flex-wrap gap-4 items-end print-hidden">
                 <div className="grid gap-2">
                   <Label htmlFor="date-range">Date Range</Label>
-                   <Popover>
+                   <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                         <PopoverTrigger asChild>
                             <Button
                                 id="date"
@@ -172,7 +181,7 @@ export default function SalesPage() {
                                 mode="range"
                                 defaultMonth={dateRange?.from}
                                 selected={dateRange}
-                                onSelect={setDateRange}
+                                onSelect={handleDateSelect}
                                 numberOfMonths={2}
                             />
                         </PopoverContent>
@@ -251,5 +260,3 @@ export default function SalesPage() {
     </div>
   );
 }
-
-    

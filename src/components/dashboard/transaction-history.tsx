@@ -88,7 +88,6 @@ export default function TransactionHistory({ transactions, allParties, dateRange
     
     const handleDateChange = (newDateRange?: DateRange) => {
         onFiltersChange(partyFilter, newDateRange);
-        // Close the popover once a range is selected
         if (newDateRange?.from && newDateRange?.to) {
             setIsDatePickerOpen(false);
         }

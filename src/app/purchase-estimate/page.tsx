@@ -55,6 +55,8 @@ export default function PurchaseEstimatePage() {
   const [purchaseDays, setPurchaseDays] = useState<number | ''>('');
   const [isLoading, setIsLoading] = useState(false);
   const [productMaster, setProductMaster] = useState<ProductMasterItem[]>([]);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+
   const { toast } = useToast();
   const router = useRouter();
   
@@ -252,6 +254,13 @@ export default function PurchaseEstimatePage() {
     });
   };
 
+  const handleDateSelect = (selectedRange: DateRange | undefined) => {
+    setDateRange(selectedRange);
+    if (selectedRange?.from && selectedRange?.to) {
+        setIsDatePickerOpen(false);
+    }
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
@@ -265,7 +274,7 @@ export default function PurchaseEstimatePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                 <div className="space-y-2">
                   <Label htmlFor="date-range">Sales Date Range</Label>
-                   <Popover>
+                   <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                         <PopoverTrigger asChild>
                             <Button
                                 id="date"
@@ -297,7 +306,7 @@ export default function PurchaseEstimatePage() {
                                 mode="range"
                                 defaultMonth={dateRange?.from}
                                 selected={dateRange}
-                                onSelect={setDateRange}
+                                onSelect={handleDateSelect}
                                 numberOfMonths={2}
                             />
                         </PopoverContent>
@@ -382,5 +391,3 @@ export default function PurchaseEstimatePage() {
     </div>
   );
 }
-
-    
