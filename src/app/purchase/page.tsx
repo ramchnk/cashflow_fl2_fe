@@ -299,14 +299,14 @@ export default function PurchasePage() {
     const payload = {
         billNo: billNumber,
         purchaseDate: Math.floor(billDate.getTime() / 1000),
-        purchaseAmount: finalPurchaseAmount.toFixed(2),
-        totalQuantity: totalQty,
+        purchaseAmount: Math.round(finalPurchaseAmount),
+        totalQuantity: Math.round(totalQty),
         productList: parsedItems.map(item => ({
             SKU: item.apiSku,
-            openingStock: item.matchedProduct?.stock || 0,
-            purchaseStock: item.calculatedQty,
-            stock: (item.matchedProduct?.stock || 0) + item.calculatedQty,
-            purchaseAmount: item.numericTotalValue
+            openingStock: Math.round(item.matchedProduct?.stock || 0),
+            purchaseStock: Math.round(item.calculatedQty),
+            stock: Math.round((item.matchedProduct?.stock || 0) + item.calculatedQty),
+            purchaseAmount: Math.round(item.numericTotalValue)
         }))
     };
 
