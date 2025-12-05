@@ -449,6 +449,7 @@ export default function PurchasePage() {
                                           type="number"
                                           value={item.calculatedQty}
                                           onChange={(e) => handleBottleQtyChange(index, e.target.value)}
+                                          onWheel={(e) => e.currentTarget.blur()}
                                           className="text-right h-8 w-24 ml-auto"
                                           disabled={isSubmitting}
                                       />
@@ -484,6 +485,7 @@ export default function PurchasePage() {
                                     placeholder="Enter actual value"
                                     value={actualBillValue}
                                     onChange={(e) => setActualBillValue(e.target.value)}
+                                    onWheel={(e) => e.currentTarget.blur()}
                                     className="w-48"
                                 />
                              </div>

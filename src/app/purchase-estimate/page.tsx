@@ -320,6 +320,7 @@ export default function PurchaseEstimatePage() {
                     placeholder="e.g., 7"
                     value={purchaseDays}
                     onChange={(e) => setPurchaseDays(e.target.value === '' ? '' : Number(e.target.value))}
+                    onWheel={(e) => e.currentTarget.blur()}
                     disabled={isLoading}
                   />
                 </div>
@@ -370,6 +371,7 @@ export default function PurchaseEstimatePage() {
                             type="number"
                             value={item.estInCase.toFixed(2)}
                             onChange={(e) => handleEstInCaseChange(index, e.target.value)}
+                            onWheel={(e) => e.currentTarget.blur()}
                             className="text-right h-8"
                           />
                         </TableCell>
@@ -391,3 +393,5 @@ export default function PurchaseEstimatePage() {
     </div>
   );
 }
+
+    

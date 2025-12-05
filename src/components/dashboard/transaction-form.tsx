@@ -167,7 +167,7 @@ function GeneralTransferForm({ onTransaction, balances, isSubmitting }: Transact
             <FormItem>
               <FormLabel>Amount</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="0.00" {...field} onChange={event => field.onChange(event.target.value === '' ? undefined : +event.target.value)} />
+                <Input type="number" placeholder="0.00" {...field} onWheel={(e) => e.currentTarget.blur()} onChange={event => field.onChange(event.target.value === '' ? undefined : +event.target.value)} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -307,7 +307,7 @@ function DeductionForm({ onTransaction, balances, isSubmitting }: TransactionFor
             <FormItem>
               <FormLabel>Amount</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="0.00" {...field} onChange={event => field.onChange(event.target.value === '' ? undefined : +event.target.value)} />
+                <Input type="number" placeholder="0.00" {...field} onWheel={(e) => e.currentTarget.blur()} onChange={event => field.onChange(event.target.value === '' ? undefined : +event.target.value)} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -416,7 +416,7 @@ function CollectedForm({ onTransaction, isSubmitting }: TransactionFormProps) {
                         <FormItem>
                             <FormLabel>Amount Collected</FormLabel>
                             <FormControl>
-                                <Input type="number" placeholder="0.00" {...field} onChange={event => field.onChange(event.target.value === '' ? undefined : +event.target.value)} />
+                                <Input type="number" placeholder="0.00" {...field} onWheel={(e) => e.currentTarget.blur()} onChange={event => field.onChange(event.target.value === '' ? undefined : +event.target.value)} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
