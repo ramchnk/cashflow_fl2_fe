@@ -48,7 +48,7 @@ export default function Header() {
           </div>
           <div className="flex items-center gap-4">
             {shopName && (
-                <div className="hidden md:flex items-center gap-2 text-sm font-medium text-foreground">
+                <div className="hidden md:flex items-center gap-2 text-sm font-bold text-foreground">
                     <Store className="w-5 h-5 text-muted-foreground" />
                     <span>Shop: {shopName}</span>
                 </div>
@@ -84,5 +84,3 @@ export default function Header() {
     </header>
   );
 }
-
-    
