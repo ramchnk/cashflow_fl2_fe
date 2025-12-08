@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/layout/header';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, File, Printer } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import type { DateRange } from 'react-day-picker';
 import { format, startOfDay, endOfDay } from 'date-fns';
@@ -261,12 +261,31 @@ export default function PurchaseEstimatePage() {
     }
   }
 
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleCSV = () => {
+      if (items.length === 0) return;
+      const header = "Item Name,Total Sales Qty,AVG Sales/Day,In Hand,Purchase Price per Item,Estimated Quantity,Est In Case";
+      const rows = items.map(i => `"${i.SKU.replace(/"/g, '""')}",${i.totalSalesQty},${Math.round(i.avgSalesPerDay)},${i.inHand},${i.purchasePrice},${i.estimatedQuantity},${i.estInCase.toFixed(2)}`);
+      let csvContent = "data:text/csv;charset=utf-8," + header + "\n" + rows.join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `purchase_estimate_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
+
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <div className="space-y-6">
-          <Card>
+          <Card className="print-hidden">
             <CardHeader>
               <CardTitle>Generate Purchase Estimate</CardTitle>
             </CardHeader>
@@ -335,7 +354,19 @@ export default function PurchaseEstimatePage() {
           
           <Card>
             <CardHeader>
-              <CardTitle>Purchase Estimate</CardTitle>
+              <div className="flex justify-between items-center">
+                  <CardTitle>Purchase Estimate</CardTitle>
+                  <div className="flex gap-2 print-hidden">
+                      <Button variant="outline" onClick={handleCSV} disabled={items.length === 0}>
+                        <File className="mr-2 h-4 w-4"/>
+                        CSV
+                      </Button>
+                      <Button variant="outline" onClick={handlePrint} disabled={items.length === 0}>
+                          <Printer className="mr-2 h-4 w-4"/>
+                          Print
+                      </Button>
+                  </div>
+              </div>
             </CardHeader>
             <CardContent>
               <Table>
@@ -393,5 +424,3 @@ export default function PurchaseEstimatePage() {
     </div>
   );
 }
-
-    
