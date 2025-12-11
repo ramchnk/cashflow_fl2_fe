@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -235,12 +234,14 @@ interface ReportData {
 
 
 const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatementProps) => {
-    const [dateRange, setDateRange] = useState<DateRange | undefined>();
+    const [startDate, setStartDate] = useState<Date | undefined>();
+    const [endDate, setEndDate] = useState<Date | undefined>();
     const [isLoading, setIsLoading] = useState(false);
     const [reportData, setReportData] = useState<ReportData | null>(null);
     const { toast } = useToast();
     const router = useRouter();
-    const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
+    const [isStartDatePickerOpen, setStartDatePickerOpen] = React.useState(false);
+    const [isEndDatePickerOpen, setEndDatePickerOpen] = React.useState(false);
 
 
     const handlePrint = () => {
@@ -250,7 +251,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
             const header = `
                 <div style="text-align: center; margin-bottom: 20px;">
                     <h1 style="font-size: 1.5rem; font-weight: bold; color: #1E3A8A;">${shopName || 'THENDRAL CLUB THIRUMAYAM'}</h1>
-                    <p style="font-size: 1.25rem;">Statement for ${dateRange?.from ? format(dateRange.from, 'MMM yyyy') : 'selected period'}</p>
+                    <p style="font-size: 1.25rem;">Statement for ${startDate ? format(startDate, 'MMM yyyy') : 'selected period'}</p>
                 </div>
             `;
             document.body.innerHTML = header + printContent.innerHTML;
@@ -283,15 +284,8 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
         }
     }
 
-    const handleDateChange = (newDateRange?: DateRange) => {
-        setDateRange(newDateRange);
-        if (newDateRange?.from && newDateRange?.to) {
-            setIsDatePickerOpen(false);
-        }
-    }
-
     const handleGetReport = async () => {
-        if (!dateRange || !dateRange.from || !dateRange.to) {
+        if (!startDate || !endDate) {
             toast({
                 variant: 'destructive',
                 title: 'Invalid Date Range',
@@ -311,8 +305,8 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
         }
 
         try {
-            const fromTime = Math.floor(startOfDay(dateRange.from).getTime() / 1000);
-            const toTime = Math.floor(endOfDay(dateRange.to).getTime() / 1000);
+            const fromTime = Math.floor(startOfDay(startDate).getTime() / 1000);
+            const toTime = Math.floor(endOfDay(endDate).getTime() / 1000);
             
             const salesUrl = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/sales?startDate=${fromTime}&endDate=${toTime}`;
             const headers = { 'Authorization': `Bearer ${token}` };
@@ -437,7 +431,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                     <div className="text-center">
                         <CardTitle className="text-2xl font-bold">{shopName || 'THENDRAL CLUB THIRUMAYAM'}</CardTitle>
                         <CardDescription className="text-lg text-blue-200">
-                           {dateRange?.from ? `Statement for ${format(dateRange.from, 'MMM yyyy')}`: 'P&L Statement'}
+                           {startDate ? `Statement for ${format(startDate, 'MMM yyyy')}`: 'P&L Statement'}
                         </CardDescription>
                     </div>
                     <div className="flex-grow flex justify-end gap-2 print-hidden">
@@ -450,51 +444,70 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                     </div>
                 </div>
                 <div id="pl-date-picker-container" className="p-4 bg-background text-foreground print-hidden flex items-center justify-center">
-                     <div className="flex flex-wrap gap-4 items-center">
+                     <div className="flex flex-wrap gap-4 items-end">
                         <div className="grid gap-2">
-                          <Label htmlFor="date-range-pl" className="sr-only">Date Range</Label>
-                           <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                          <Label htmlFor="start-date-pl">Start Date</Label>
+                           <Popover open={isStartDatePickerOpen} onOpenChange={setStartDatePickerOpen}>
                                 <PopoverTrigger asChild>
                                     <Button
-                                        id="date-range-pl"
+                                        id="start-date-pl"
                                         variant={"outline"}
                                         className={cn(
-                                            "w-full sm:w-auto justify-start text-left font-normal",
-                                            !dateRange && "text-muted-foreground"
+                                            "w-[240px] justify-start text-left font-normal",
+                                            !startDate && "text-muted-foreground"
                                         )}
                                         disabled={isLoading}
                                     >
                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {dateRange?.from ? (
-                                            dateRange.to ? (
-                                                <>
-                                                    {format(dateRange.from, "LLL dd, y")} -{" "}
-                                                    {format(dateRange.to, "LLL dd, y")}
-                                                </>
-                                            ) : (
-                                                format(dateRange.from, "LLL dd, y")
-                                            )
-                                        ) : (
-                                            <span>Pick a date range</span>
-                                        )}
+                                        {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="start">
                                     <Calendar
-                                        initialFocus
-                                        mode="range"
-                                        defaultMonth={dateRange?.from}
-                                        selected={dateRange}
-                                        onSelect={(range) => {
-                                            setDateRange(range);
-                                            setIsDatePickerOpen(false);
+                                        mode="single"
+                                        selected={startDate}
+                                        onSelect={(date) => {
+                                            setStartDate(date);
+                                            setStartDatePickerOpen(false);
                                         }}
-                                        numberOfMonths={2}
+                                        disabled={{ after: endDate }}
+                                        initialFocus
                                     />
                                 </PopoverContent>
                             </Popover>
                         </div>
-                        <Button onClick={handleGetReport} disabled={isLoading || !dateRange?.from || !dateRange?.to}>
+                        <div className="grid gap-2">
+                          <Label htmlFor="end-date-pl">End Date</Label>
+                           <Popover open={isEndDatePickerOpen} onOpenChange={setEndDatePickerOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        id="end-date-pl"
+                                        variant={"outline"}
+                                        className={cn(
+                                            "w-[240px] justify-start text-left font-normal",
+                                            !endDate && "text-muted-foreground"
+                                        )}
+                                        disabled={isLoading}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={endDate}
+                                        onSelect={(date) => {
+                                            setEndDate(date);
+                                            setEndDatePickerOpen(false);
+                                        }}
+                                        disabled={{ before: startDate }}
+                                        initialFocus
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        <Button onClick={handleGetReport} disabled={isLoading || !startDate || !endDate}>
                           {isLoading ? 'Getting Report...' : 'Get Report'}
                         </Button>
                     </div>
