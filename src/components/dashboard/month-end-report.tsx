@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -14,11 +15,11 @@ import {
 } from '@/components/ui/table';
 import { Printer, Camera, CalendarIcon } from 'lucide-react';
 import { getPartyDetails } from '@/app/lib/parties';
-import { format, startOfDay, endOfDay, parse } from 'date-fns';
+import { format, startOfDay, endOfDay, parse, isValid } from 'date-fns';
 import html2canvas from 'html2canvas';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { Label } from '../ui/label';
@@ -243,13 +244,27 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
     const router = useRouter();
     const [isStartDatePickerOpen, setStartDatePickerOpen] = React.useState(false);
     const [isEndDatePickerOpen, setEndDatePickerOpen] = React.useState(false);
+    
+    const [startDateString, setStartDateString] = useState('');
+    const [endDateString, setEndDateString] = useState('');
 
-    const handleDateInput = (setter: (date: Date | undefined) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
-      const dateString = e.target.value;
-      const parsedDate = parse(dateString, 'yyyy-MM-dd', new Date());
-      if (!isNaN(parsedDate.getTime())) {
-          setter(parsedDate);
-      }
+    useEffect(() => {
+        setStartDateString(startDate ? format(startDate, 'yyyy-MM-dd') : '');
+    }, [startDate]);
+
+    useEffect(() => {
+        setEndDateString(endDate ? format(endDate, 'yyyy-MM-dd') : '');
+    }, [endDate]);
+
+    const handleDateInput = (setter: (date: Date | undefined) => void, valueSetter: (value: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+        const dateString = e.target.value;
+        valueSetter(dateString);
+        const parsedDate = parse(dateString, 'yyyy-MM-dd', new Date());
+        if (isValid(parsedDate)) {
+            setter(parsedDate);
+        } else {
+            setter(undefined);
+        }
     };
 
 
@@ -462,8 +477,8 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                                     <Input
                                         id="start-date-pl"
                                         type="text"
-                                        value={startDate ? format(startDate, 'yyyy-MM-dd') : ''}
-                                        onChange={handleDateInput(setStartDate)}
+                                        value={startDateString}
+                                        onChange={handleDateInput(setStartDate, setStartDateString)}
                                         className={cn(
                                             "w-[240px] justify-start text-left font-normal",
                                             !startDate && "text-muted-foreground"
@@ -496,8 +511,8 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                                         <Input
                                             id="end-date-pl"
                                             type="text"
-                                            value={endDate ? format(endDate, 'yyyy-MM-dd') : ''}
-                                            onChange={handleDateInput(setEndDate)}
+                                            value={endDateString}
+                                            onChange={handleDateInput(setEndDate, setEndDateString)}
                                             className={cn(
                                                 "w-[240px] justify-start text-left font-normal",
                                                 !endDate && "text-muted-foreground"
