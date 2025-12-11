@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -13,17 +14,17 @@ import {
 } from '@/components/ui/table';
 import { Printer, Camera, CalendarIcon } from 'lucide-react';
 import { getPartyDetails } from '@/app/lib/parties';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfDay, endOfDay, parse } from 'date-fns';
 import html2canvas from 'html2canvas';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import type { DateRange } from 'react-day-picker';
 import React, { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { Input } from '../ui/input';
 
 
 interface Balances {
@@ -243,6 +244,14 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
     const [isStartDatePickerOpen, setStartDatePickerOpen] = React.useState(false);
     const [isEndDatePickerOpen, setEndDatePickerOpen] = React.useState(false);
 
+    const handleDateInput = (setter: (date: Date | undefined) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      const dateString = e.target.value;
+      const parsedDate = parse(dateString, 'yyyy-MM-dd', new Date());
+      if (!isNaN(parsedDate.getTime())) {
+          setter(parsedDate);
+      }
+    };
+
 
     const handlePrint = () => {
         const printContent = document.getElementById('report-content-pl');
@@ -449,18 +458,21 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                           <Label htmlFor="start-date-pl">Start Date</Label>
                            <Popover open={isStartDatePickerOpen} onOpenChange={setStartDatePickerOpen}>
                                 <PopoverTrigger asChild>
-                                    <Button
+                                  <div className="relative">
+                                    <Input
                                         id="start-date-pl"
-                                        variant={"outline"}
+                                        type="text"
+                                        value={startDate ? format(startDate, 'yyyy-MM-dd') : ''}
+                                        onChange={handleDateInput(setStartDate)}
                                         className={cn(
                                             "w-[240px] justify-start text-left font-normal",
                                             !startDate && "text-muted-foreground"
                                         )}
+                                        placeholder="YYYY-MM-DD"
                                         disabled={isLoading}
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
-                                    </Button>
+                                    />
+                                    <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50" />
+                                  </div>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="start">
                                     <Calendar
@@ -480,18 +492,21 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                           <Label htmlFor="end-date-pl">End Date</Label>
                            <Popover open={isEndDatePickerOpen} onOpenChange={setEndDatePickerOpen}>
                                 <PopoverTrigger asChild>
-                                    <Button
-                                        id="end-date-pl"
-                                        variant={"outline"}
-                                        className={cn(
-                                            "w-[240px] justify-start text-left font-normal",
-                                            !endDate && "text-muted-foreground"
-                                        )}
-                                        disabled={isLoading}
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
-                                    </Button>
+                                    <div className="relative">
+                                        <Input
+                                            id="end-date-pl"
+                                            type="text"
+                                            value={endDate ? format(endDate, 'yyyy-MM-dd') : ''}
+                                            onChange={handleDateInput(setEndDate)}
+                                            className={cn(
+                                                "w-[240px] justify-start text-left font-normal",
+                                                !endDate && "text-muted-foreground"
+                                            )}
+                                            placeholder="YYYY-MM-DD"
+                                            disabled={isLoading}
+                                        />
+                                        <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50" />
+                                    </div>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="start">
                                     <Calendar
@@ -633,3 +648,5 @@ export default function MonthEndReport(props: MonthEndReportProps) {
     </div>
   );
 }
+
+    
