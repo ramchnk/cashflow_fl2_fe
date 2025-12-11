@@ -485,7 +485,10 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                                         mode="range"
                                         defaultMonth={dateRange?.from}
                                         selected={dateRange}
-                                        onSelect={handleDateChange}
+                                        onSelect={(range) => {
+                                            setDateRange(range);
+                                            setIsDatePickerOpen(false);
+                                        }}
                                         numberOfMonths={2}
                                     />
                                 </PopoverContent>
