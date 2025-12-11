@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -249,23 +248,22 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
     const [endDateString, setEndDateString] = useState('');
 
     useEffect(() => {
-        setStartDateString(startDate ? format(startDate, 'yyyy-MM-dd') : '');
-    }, [startDate]);
+        const parsedDate = parse(startDateString, 'yyyy-MM-dd', new Date());
+        if (isValid(parsedDate)) {
+            setStartDate(parsedDate);
+        } else {
+            setStartDate(undefined);
+        }
+    }, [startDateString]);
 
     useEffect(() => {
-        setEndDateString(endDate ? format(endDate, 'yyyy-MM-dd') : '');
-    }, [endDate]);
-
-    const handleDateInput = (setter: (date: Date | undefined) => void, valueSetter: (value: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
-        const dateString = e.target.value;
-        valueSetter(dateString);
-        const parsedDate = parse(dateString, 'yyyy-MM-dd', new Date());
+        const parsedDate = parse(endDateString, 'yyyy-MM-dd', new Date());
         if (isValid(parsedDate)) {
-            setter(parsedDate);
+            setEndDate(parsedDate);
         } else {
-            setter(undefined);
+            setEndDate(undefined);
         }
-    };
+    }, [endDateString]);
 
 
     const handlePrint = () => {
@@ -478,7 +476,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                                         id="start-date-pl"
                                         type="text"
                                         value={startDateString}
-                                        onChange={handleDateInput(setStartDate, setStartDateString)}
+                                        onChange={(e) => setStartDateString(e.target.value)}
                                         className={cn(
                                             "w-[240px] justify-start text-left font-normal",
                                             !startDate && "text-muted-foreground"
@@ -495,6 +493,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                                         selected={startDate}
                                         onSelect={(date) => {
                                             setStartDate(date);
+                                            setStartDateString(date ? format(date, 'yyyy-MM-dd') : '');
                                             setStartDatePickerOpen(false);
                                         }}
                                         disabled={{ after: endDate }}
@@ -512,7 +511,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                                             id="end-date-pl"
                                             type="text"
                                             value={endDateString}
-                                            onChange={handleDateInput(setEndDate, setEndDateString)}
+                                            onChange={(e) => setEndDateString(e.target.value)}
                                             className={cn(
                                                 "w-[240px] justify-start text-left font-normal",
                                                 !endDate && "text-muted-foreground"
@@ -529,6 +528,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                                         selected={endDate}
                                         onSelect={(date) => {
                                             setEndDate(date);
+                                            setEndDateString(date ? format(date, 'yyyy-MM-dd') : '');
                                             setEndDatePickerOpen(false);
                                         }}
                                         disabled={{ before: startDate }}
