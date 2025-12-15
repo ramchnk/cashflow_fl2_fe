@@ -101,6 +101,16 @@ export default function PurchaseEstimatePage() {
     fetchProductMaster();
   }, [router, toast]);
 
+  const getPackSize = (sku: string) => {
+    const size = sku.split('-')[1]?.toUpperCase() || '';
+    if (size.includes('180ML')) return 48;
+    if (size.includes('375ML')) return 24;
+    if (size.includes('750ML') || size.includes('650ML')) return 12;
+    if (size.includes('1000ML')) return 9;
+    if (size.includes('500ML') || size.includes('325ML')) return 24;
+    return 1;
+  }
+
   const handleGenerateEstimate = async () => {
     if (!dateRange || !dateRange.from || !dateRange.to || purchaseDays === '' || +purchaseDays <= 0) {
       toast({
@@ -152,22 +162,7 @@ export default function PurchaseEstimatePage() {
                 const estimatedQuantity = Math.max(0, Math.ceil(requiredQuantity));
 
                 let estInCase = 0;
-                let packSize = 1;
-                const skuParts = item.SKU.split('-');
-                if (skuParts.length > 1) {
-                    const size = skuParts[1].toUpperCase();
-                    if (size.includes('180ML')) {
-                        packSize = 48;
-                    } else if (size.includes('375ML')) {
-                        packSize = 24;
-                    } else if (size.includes('750ML') || size.includes('650ML')) {
-                        packSize = 12;
-                    } else if (size.includes('1000ML')) {
-                        packSize = 9;
-                    } else if (size.includes('325ML') || size.includes('500ML')) {
-                        packSize = 24;
-                    }
-                }
+                const packSize = getPackSize(item.SKU);
                 if (packSize > 0) {
                     estInCase = estimatedQuantity / packSize;
                 }
@@ -226,22 +221,7 @@ export default function PurchaseEstimatePage() {
         const item = newItems[index];
         if (!item) return prevItems;
 
-        let packSize = 1;
-        const skuParts = item.SKU.split('-');
-        if (skuParts.length > 1) {
-            const size = skuParts[1].toUpperCase();
-            if (size.includes('180ML')) {
-                packSize = 48;
-            } else if (size.includes('375ML')) {
-                packSize = 24;
-            } else if (size.includes('750ML') || size.includes('650ML')) {
-                packSize = 12;
-            } else if (size.includes('1000ML')) {
-                packSize = 9;
-            } else if (size.includes('325ML') || size.includes('500ML')) {
-                packSize = 24;
-            }
-        }
+        const packSize = getPackSize(item.SKU);
 
         const newEstimatedQuantity = newEstInCase * packSize;
         
@@ -268,8 +248,12 @@ export default function PurchaseEstimatePage() {
 
   const handleCSV = () => {
       if (items.length === 0) return;
-      const header = "Item Name,Total Sales Qty,AVG Sales/Day,In Hand,Purchase Price per Item,Estimated Quantity,Est In Case";
-      const rows = items.map(i => `"${i.SKU.replace(/"/g, '""')}",${i.totalSalesQty},${Math.round(i.avgSalesPerDay)},${i.inHand},${i.purchasePrice},${i.estimatedQuantity},${i.estInCase}`);
+      const header = "Item Name,Total Sales Qty,AVG Sales/Day,In Hand,Purchase Price per Item,Estimated Quantity,Est In Case,Approved Qty";
+      const rows = items.map(i => {
+        const packSize = getPackSize(i.SKU);
+        const approvedQty = i.estInCase * packSize;
+        return `"${i.SKU.replace(/"/g, '""')}",${i.totalSalesQty},${Math.round(i.avgSalesPerDay)},${i.inHand},${i.purchasePrice},${i.estimatedQuantity},${i.estInCase},${approvedQty}`;
+      });
       let csvContent = "data:text/csv;charset=utf-8," + header + "\n" + rows.join("\n");
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
@@ -395,38 +379,44 @@ export default function PurchaseEstimatePage() {
                     <TableHead className="text-right">Purchase Price per Item</TableHead>
                     <TableHead className="text-right">Estimated Quantity</TableHead>
                     <TableHead className="text-right">Est In Case</TableHead>
+                    <TableHead className="text-right">Approved Qty</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center">
+                      <TableCell colSpan={8} className="h-24 text-center">
                         Loading estimate...
                       </TableCell>
                     </TableRow>
                   ) : items.length > 0 ? (
-                    items.map((item, index) => (
-                      <TableRow key={item.SKU}>
-                        <TableCell>{item.SKU}</TableCell>
-                        <TableCell className="text-right">{item.totalSalesQty}</TableCell>
-                        <TableCell className="text-right">{Math.round(item.avgSalesPerDay)}</TableCell>
-                        <TableCell className="text-right">{item.inHand}</TableCell>
-                        <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.purchasePrice)}</TableCell>
-                        <TableCell className="text-right">{item.estimatedQuantity}</TableCell>
-                        <TableCell className="text-right">
-                          <Input
-                            type="number"
-                            value={item.estInCase}
-                            onChange={(e) => handleEstInCaseChange(index, e.target.value)}
-                            onWheel={(e) => e.currentTarget.blur()}
-                            className="text-right h-8"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    items.map((item, index) => {
+                       const packSize = getPackSize(item.SKU);
+                       const approvedQty = item.estInCase * packSize;
+                      return (
+                        <TableRow key={item.SKU}>
+                          <TableCell>{item.SKU}</TableCell>
+                          <TableCell className="text-right">{item.totalSalesQty}</TableCell>
+                          <TableCell className="text-right">{Math.round(item.avgSalesPerDay)}</TableCell>
+                          <TableCell className="text-right">{item.inHand}</TableCell>
+                          <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.purchasePrice)}</TableCell>
+                          <TableCell className="text-right">{item.estimatedQuantity}</TableCell>
+                          <TableCell className="text-right">
+                            <Input
+                              type="number"
+                              value={item.estInCase}
+                              onChange={(e) => handleEstInCaseChange(index, e.target.value)}
+                              onWheel={(e) => e.currentTarget.blur()}
+                              className="text-right h-8"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right font-bold">{approvedQty}</TableCell>
+                        </TableRow>
+                      )
+                    })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                      <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                         Generate an estimate to see results.
                       </TableCell>
                     </TableRow>
