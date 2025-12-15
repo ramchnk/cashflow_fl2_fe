@@ -102,7 +102,7 @@ export default function ExpensesPage() {
         const apiExpenses: ApiResponseExpense[] = responseData.data || [];
         
         const filteredApiExpenses = apiExpenses.filter(
-          item => item.expenseDetail !== "TAKEN AMOUNT"
+          item => !item.expenseDetail.toLowerCase().includes("taken amount")
         );
         
         const formattedExpenses: Expense[] = filteredApiExpenses.map((item, index) => ({
