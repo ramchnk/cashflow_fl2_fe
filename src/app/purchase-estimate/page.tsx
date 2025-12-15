@@ -303,8 +303,8 @@ export default function PurchaseEstimatePage() {
               <CardTitle>Generate Purchase Estimate</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                <div className="space-y-2">
+              <div className="flex flex-wrap gap-4 items-end">
+                <div className="grid gap-2">
                   <Label htmlFor="date-range">Sales Date Range</Label>
                    <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                         <PopoverTrigger asChild>
@@ -312,7 +312,7 @@ export default function PurchaseEstimatePage() {
                                 id="date"
                                 variant={"outline"}
                                 className={cn(
-                                    "w-full justify-start text-left font-normal",
+                                    "w-full sm:w-[300px] justify-start text-left font-normal",
                                     !dateRange && "text-muted-foreground"
                                 )}
                                 disabled={isLoading}
@@ -344,7 +344,7 @@ export default function PurchaseEstimatePage() {
                         </PopoverContent>
                     </Popover>
                 </div>
-                <div className="space-y-2">
+                <div className="grid gap-2">
                   <Label htmlFor="purchase-days">No. of Days for Purchase</Label>
                   <Input
                     id="purchase-days"
@@ -354,6 +354,7 @@ export default function PurchaseEstimatePage() {
                     onChange={(e) => setPurchaseDays(e.target.value === '' ? '' : Number(e.target.value))}
                     onWheel={(e) => e.currentTarget.blur()}
                     disabled={isLoading}
+                    className="w-full sm:w-auto"
                   />
                 </div>
                 <Button onClick={handleGenerateEstimate} disabled={isLoading}>
@@ -363,9 +364,9 @@ export default function PurchaseEstimatePage() {
               <div className="mt-4 flex flex-wrap gap-4 items-end">
                 <div className="grid gap-2">
                   <Label>Filter</Label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Select value={filterColumn} onValueChange={(v) => setFilterColumn(v as keyof EstimateItem | 'none')}>
-                      <SelectTrigger className="w-[180px]">
+                      <SelectTrigger className="w-full sm:w-[180px]">
                         <SelectValue placeholder="Select column" />
                       </SelectTrigger>
                       <SelectContent>
@@ -378,7 +379,7 @@ export default function PurchaseEstimatePage() {
                       </SelectContent>
                     </Select>
                      <Select value={filterOperator} onValueChange={(v) => setFilterOperator(v as '>' | '<' | '=')}>
-                      <SelectTrigger className="w-[80px]">
+                      <SelectTrigger className="w-full sm:w-[80px]">
                         <SelectValue placeholder="Op" />
                       </SelectTrigger>
                       <SelectContent>
@@ -392,7 +393,7 @@ export default function PurchaseEstimatePage() {
                         placeholder="Value"
                         value={filterValue}
                         onChange={(e) => setFilterValue(e.target.value === '' ? '' : Number(e.target.value))}
-                        className="w-[100px]"
+                        className="w-full sm:w-[100px]"
                         disabled={filterColumn === 'none'}
                     />
                   </div>
@@ -406,7 +407,7 @@ export default function PurchaseEstimatePage() {
               <div className="flex flex-wrap justify-between items-center gap-4">
                   <CardTitle>Purchase Estimate</CardTitle>
                   {items.length > 0 && (
-                      <div className="flex items-center gap-8 font-bold text-lg">
+                      <div className="flex flex-wrap items-center gap-4 sm:gap-8 font-bold text-lg">
                           <div>
                               <span>Total Cases: </span>
                               <span className="text-primary">{totalCases}</span>
@@ -491,7 +492,3 @@ export default function PurchaseEstimatePage() {
     </div>
   );
 }
-
-    
-
-    
