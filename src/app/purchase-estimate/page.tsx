@@ -23,6 +23,7 @@ import { format, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { useRouter } from 'next/navigation';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 interface EstimateItem {
@@ -55,6 +56,7 @@ export default function PurchaseEstimatePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [productMaster, setProductMaster] = useState<ProductMasterItem[]>([]);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [filterEstCase, setFilterEstCase] = useState(true);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -218,14 +220,17 @@ export default function PurchaseEstimatePage() {
 
     setItems(prevItems => {
         const newItems = [...prevItems];
-        const item = newItems[index];
+        const itemToUpdate = filteredItems[index]; // Get item from filtered list
+        const originalIndex = prevItems.findIndex(i => i.SKU === itemToUpdate.SKU); // Find its index in original list
+        const item = prevItems[originalIndex];
+
         if (!item) return prevItems;
 
         const packSize = getPackSize(item.SKU);
 
         const newEstimatedQuantity = newEstInCase * packSize;
         
-        newItems[index] = {
+        newItems[originalIndex] = {
             ...item,
             estInCase: newEstInCase,
             estimatedQuantity: newEstimatedQuantity,
@@ -247,9 +252,9 @@ export default function PurchaseEstimatePage() {
   };
 
   const handleCSV = () => {
-      if (items.length === 0) return;
+      if (filteredItems.length === 0) return;
       const header = "Item Name,Total Sales Qty,AVG Sales/Day,In Hand,Purchase Price per Item,Estimated Quantity,Est In Case,Approved Qty";
-      const rows = items.map(i => {
+      const rows = filteredItems.map(i => {
         const packSize = getPackSize(i.SKU);
         const approvedQty = i.estInCase * packSize;
         return `"${i.SKU.replace(/"/g, '""')}",${i.totalSalesQty},${Math.round(i.avgSalesPerDay)},${i.inHand},${i.purchasePrice},${i.estimatedQuantity},${i.estInCase},${approvedQty}`;
@@ -264,12 +269,14 @@ export default function PurchaseEstimatePage() {
       document.body.removeChild(link);
   };
   
-  const totalEstimatedValue = items.reduce((acc, item) => {
+  const filteredItems = items.filter(item => filterEstCase ? item.estInCase > 0 : true);
+
+  const totalEstimatedValue = filteredItems.reduce((acc, item) => {
     const packSize = getPackSize(item.SKU);
     const approvedQty = item.estInCase * packSize;
     return acc + (approvedQty * item.purchasePrice);
   }, 0);
-  const totalCases = items.reduce((acc, item) => acc + item.estInCase, 0);
+  const totalCases = filteredItems.reduce((acc, item) => acc + item.estInCase, 0);
 
 
   return (
@@ -282,7 +289,7 @@ export default function PurchaseEstimatePage() {
               <CardTitle>Generate Purchase Estimate</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
                 <div className="space-y-2">
                   <Label htmlFor="date-range">Sales Date Range</Label>
                    <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
@@ -334,6 +341,19 @@ export default function PurchaseEstimatePage() {
                     onWheel={(e) => e.currentTarget.blur()}
                     disabled={isLoading}
                   />
+                </div>
+                 <div className="flex items-center space-x-2">
+                    <Checkbox 
+                        id="filter-est-case" 
+                        checked={filterEstCase}
+                        onCheckedChange={(checked) => setFilterEstCase(Boolean(checked))}
+                    />
+                    <label
+                        htmlFor="filter-est-case"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                        Show only items to order (Est In Case > 0)
+                    </label>
                 </div>
               </div>
             </CardContent>
@@ -393,8 +413,8 @@ export default function PurchaseEstimatePage() {
                         Loading estimate...
                       </TableCell>
                     </TableRow>
-                  ) : items.length > 0 ? (
-                    items.map((item, index) => {
+                  ) : filteredItems.length > 0 ? (
+                    filteredItems.map((item, index) => {
                        const packSize = getPackSize(item.SKU);
                        const approvedQty = item.estInCase * packSize;
                       return (
@@ -421,7 +441,7 @@ export default function PurchaseEstimatePage() {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                        Generate an estimate to see results.
+                        {items.length > 0 ? 'No items match the current filter.' : 'Generate an estimate to see results.'}
                       </TableCell>
                     </TableRow>
                   )}
