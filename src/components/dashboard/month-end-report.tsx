@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -392,7 +393,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
             const kitchenIncome = salesResult.data.reduce((sum, item) => sum + (item.kitchenSales || 0), 0);
             let shopExpenses = salesResult.data.reduce((sum, item) => sum + (item.totalExpensesAmount || 0), 0);
 
-            const takenAmountItem = expensesResult.data.find(item => item.expenseDetail === 'TAKEN AMOUNT');
+            const takenAmountItem = expensesResult.data.find(item => item.expenseDetail.toLowerCase().includes('taken amount'));
             if (takenAmountItem) {
                 const takenAmount = parseFloat(takenAmountItem.totalAmount);
                 if (!isNaN(takenAmount)) {
@@ -630,3 +631,5 @@ export default function MonthEndReport(props: MonthEndReportProps) {
     </div>
   );
 }
+
+    
