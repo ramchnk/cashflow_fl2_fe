@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -13,15 +11,12 @@ import {
   TableCell,
   TableFooter
 } from '@/components/ui/table';
-import { Printer, Camera, CalendarIcon } from 'lucide-react';
+import { Printer, Camera } from 'lucide-react';
 import { getPartyDetails } from '@/app/lib/parties';
 import { format, startOfDay, endOfDay, parse, isValid } from 'date-fns';
 import html2canvas from 'html2canvas';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { cn } from '@/lib/utils';
-import React, { useState, useEffect } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Calendar } from '../ui/calendar';
+import React, { useState } from 'react';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -224,6 +219,11 @@ interface ApiBankChargeItem {
   _id: { $oid: string };
 }
 
+interface ApiExpenseReportItem {
+  expenseDetail: string;
+  totalAmount: string;
+}
+
 
 interface ReportData {
     salesValue: number;
@@ -331,11 +331,15 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
             const toTime = Math.floor(endOfDay(endDate).getTime() / 1000);
             
             const salesUrl = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/sales?startDate=${fromTime}&endDate=${toTime}`;
+            const expensesUrl = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/expenses/expensesReport?fromTime=${fromTime}&toTime=${toTime}`;
             const headers = { 'Authorization': `Bearer ${token}` };
 
             const bankAccounts = Object.keys(balances).filter(key => key.toLowerCase().includes('bank'));
             
-            const apiCalls = [fetch(salesUrl, { method: 'GET', headers })];
+            const apiCalls = [
+              fetch(salesUrl, { method: 'GET', headers }),
+              fetch(expensesUrl, { method: 'GET', headers }),
+            ];
 
             bankAccounts.forEach(bank => {
                 const bankChargesUrl = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/cashflow?type=${bank}&startDate=${fromTime}&endDate=${toTime}`;
@@ -361,9 +365,10 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                 }
             }
 
-            const [salesResponse, ...bankChargesResponses] = responses;
+            const [salesResponse, expensesResponse, ...bankChargesResponses] = responses;
             
             const salesResult: { data: ApiSaleItem[] } = await salesResponse.json();
+            const expensesResult: { data: ApiExpenseReportItem[] } = await expensesResponse.json();
             
             let totalBankCharges = 0;
             let totalBillPayments = 0;
@@ -385,7 +390,15 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
             const salesValue = salesResult.data.reduce((sum, item) => sum + item.totalSalesAmount, 0);
             const costOfSales = salesResult.data.reduce((sum, item) => sum + item.basePrice, 0);
             const kitchenIncome = salesResult.data.reduce((sum, item) => sum + (item.kitchenSales || 0), 0);
-            const shopExpenses = salesResult.data.reduce((sum, item) => sum + (item.totalExpensesAmount || 0), 0);
+            let shopExpenses = salesResult.data.reduce((sum, item) => sum + (item.totalExpensesAmount || 0), 0);
+
+            const takenAmountItem = expensesResult.data.find(item => item.expenseDetail === 'TAKEN AMOUNT');
+            if (takenAmountItem) {
+                const takenAmount = parseFloat(takenAmountItem.totalAmount);
+                if (!isNaN(takenAmount)) {
+                    shopExpenses -= takenAmount;
+                }
+            }
 
 
             setReportData({ salesValue, costOfSales, kitchenIncome, shopExpenses, bankCharges: totalBankCharges, billPayments: totalBillPayments });
@@ -617,5 +630,3 @@ export default function MonthEndReport(props: MonthEndReportProps) {
     </div>
   );
 }
-
-    
