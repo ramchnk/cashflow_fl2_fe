@@ -279,6 +279,7 @@ export default function PurchaseEstimatePage() {
   };
   
   const totalEstimatedValue = items.reduce((acc, item) => acc + (item.estimatedQuantity * item.purchasePrice), 0);
+  const totalCases = items.reduce((acc, item) => acc + item.estInCase, 0);
 
 
   return (
@@ -358,9 +359,15 @@ export default function PurchaseEstimatePage() {
               <div className="flex flex-wrap justify-between items-center gap-4">
                   <CardTitle>Purchase Estimate</CardTitle>
                   {items.length > 0 && (
-                      <div className="flex items-center gap-4 font-bold text-lg">
-                          <span>Total Estimated Value:</span>
-                          <span className="text-primary">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalEstimatedValue)}</span>
+                      <div className="flex items-center gap-8 font-bold text-lg">
+                          <div>
+                              <span>Total Cases: </span>
+                              <span className="text-primary">{totalCases.toFixed(2)}</span>
+                          </div>
+                          <div>
+                              <span>Total Estimated Value: </span>
+                              <span className="text-primary">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalEstimatedValue)}</span>
+                          </div>
                       </div>
                   )}
                   <div className="flex gap-2 print-hidden">
