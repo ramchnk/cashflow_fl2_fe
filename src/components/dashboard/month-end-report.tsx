@@ -391,18 +391,13 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
             const salesValue = salesResult.data.reduce((sum, item) => sum + item.totalSalesAmount, 0);
             const costOfSales = salesResult.data.reduce((sum, item) => sum + item.basePrice, 0);
             const kitchenIncome = salesResult.data.reduce((sum, item) => sum + (item.kitchenSales || 0), 0);
-            let shopExpenses = salesResult.data.reduce((sum, item) => sum + (item.totalExpensesAmount || 0), 0);
-
-            const takenAmountItem = expensesResult.data.find(item => 
-                item.expenseDetail.toLowerCase().includes("taken amount")
+            
+            const filteredExpenses = expensesResult.data.filter(
+              item => !item.expenseDetail.toLowerCase().includes("taken amount")
             );
 
-            if (takenAmountItem) {
-                const takenAmount = parseFloat(takenAmountItem.totalAmount);
-                if (!isNaN(takenAmount)) {
-                    shopExpenses -= takenAmount;
-                }
-            }
+            const shopExpenses = filteredExpenses.reduce((sum, item) => sum + parseFloat(item.totalAmount), 0);
+
 
             setReportData({ salesValue, costOfSales, kitchenIncome, shopExpenses, bankCharges: totalBankCharges, billPayments: totalBillPayments });
 
