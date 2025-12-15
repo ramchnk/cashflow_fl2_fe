@@ -264,7 +264,11 @@ export default function PurchaseEstimatePage() {
       document.body.removeChild(link);
   };
   
-  const totalEstimatedValue = items.reduce((acc, item) => acc + (item.estimatedQuantity * item.purchasePrice), 0);
+  const totalEstimatedValue = items.reduce((acc, item) => {
+    const packSize = getPackSize(item.SKU);
+    const approvedQty = item.estInCase * packSize;
+    return acc + (approvedQty * item.purchasePrice);
+  }, 0);
   const totalCases = items.reduce((acc, item) => acc + item.estInCase, 0);
 
 
