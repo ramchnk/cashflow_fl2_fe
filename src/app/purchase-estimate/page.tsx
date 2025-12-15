@@ -11,7 +11,6 @@ import {
   TableRow,
   TableHead,
   TableCell,
-  TableFooter
 } from '@/components/ui/table';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -356,8 +355,14 @@ export default function PurchaseEstimatePage() {
           
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-wrap justify-between items-center gap-4">
                   <CardTitle>Purchase Estimate</CardTitle>
+                  {items.length > 0 && (
+                      <div className="flex items-center gap-4 font-bold text-lg">
+                          <span>Total Estimated Value:</span>
+                          <span className="text-primary">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalEstimatedValue)}</span>
+                      </div>
+                  )}
                   <div className="flex gap-2 print-hidden">
                       <Button variant="outline" onClick={handleCSV} disabled={items.length === 0}>
                         <File className="mr-2 h-4 w-4"/>
@@ -420,19 +425,9 @@ export default function PurchaseEstimatePage() {
                 </TableBody>
               </Table>
             </CardContent>
-             {items.length > 0 && (
-              <CardFooter className="flex justify-end font-bold text-lg pt-4">
-                  <div className="flex items-center gap-4">
-                      <span>Total Estimated Value:</span>
-                      <span className="text-primary">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalEstimatedValue)}</span>
-                  </div>
-              </CardFooter>
-            )}
           </Card>
         </div>
       </main>
     </div>
   );
 }
-
-    
