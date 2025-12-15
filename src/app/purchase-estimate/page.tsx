@@ -278,6 +278,8 @@ export default function PurchaseEstimatePage() {
       link.click();
       document.body.removeChild(link);
   };
+  
+  const totalEstimatedValue = items.reduce((acc, item) => acc + (item.estimatedQuantity * item.purchasePrice), 0);
 
 
   return (
@@ -418,9 +420,19 @@ export default function PurchaseEstimatePage() {
                 </TableBody>
               </Table>
             </CardContent>
+             {items.length > 0 && (
+              <CardFooter className="flex justify-end font-bold text-lg pt-4">
+                  <div className="flex items-center gap-4">
+                      <span>Total Estimated Value:</span>
+                      <span className="text-primary">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalEstimatedValue)}</span>
+                  </div>
+              </CardFooter>
+            )}
           </Card>
         </div>
       </main>
     </div>
   );
 }
+
+    
