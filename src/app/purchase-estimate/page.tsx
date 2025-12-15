@@ -23,7 +23,7 @@ import { format, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { useRouter } from 'next/navigation';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 interface EstimateItem {
@@ -56,7 +56,10 @@ export default function PurchaseEstimatePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [productMaster, setProductMaster] = useState<ProductMasterItem[]>([]);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const [filterEstCase, setFilterEstCase] = useState(true);
+  
+  const [filterColumn, setFilterColumn] = useState<keyof EstimateItem | 'none'>('estInCase');
+  const [filterOperator, setFilterOperator] = useState<'>' | '<' | '='>('>');
+  const [filterValue, setFilterValue] = useState<number | ''>(0);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -269,7 +272,18 @@ export default function PurchaseEstimatePage() {
       document.body.removeChild(link);
   };
   
-  const filteredItems = items.filter(item => filterEstCase ? item.estInCase > 0 : true);
+  const filteredItems = items.filter(item => {
+    if (filterColumn === 'none' || filterValue === '') return true;
+    const itemValue = item[filterColumn];
+    if (typeof itemValue !== 'number') return true;
+
+    switch (filterOperator) {
+        case '>': return itemValue > filterValue;
+        case '<': return itemValue < filterValue;
+        case '=': return itemValue === filterValue;
+        default: return true;
+    }
+  });
 
   const totalEstimatedValue = filteredItems.reduce((acc, item) => {
     const packSize = getPackSize(item.SKU);
@@ -342,18 +356,43 @@ export default function PurchaseEstimatePage() {
                     disabled={isLoading}
                   />
                 </div>
-                 <div className="flex items-center space-x-2">
-                    <Checkbox 
-                        id="filter-est-case" 
-                        checked={filterEstCase}
-                        onCheckedChange={(checked) => setFilterEstCase(Boolean(checked))}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-4 items-end">
+                <div className="grid gap-2">
+                  <Label>Filter</Label>
+                  <div className="flex gap-2">
+                    <Select value={filterColumn} onValueChange={(v) => setFilterColumn(v as keyof EstimateItem | 'none')}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Select column" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Filter</SelectItem>
+                        <SelectItem value="totalSalesQty">Total Sales Qty</SelectItem>
+                        <SelectItem value="avgSalesPerDay">Avg Sales/Day</SelectItem>
+                        <SelectItem value="inHand">In Hand</SelectItem>
+                        <SelectItem value="estimatedQuantity">Estimated Qty</SelectItem>
+                        <SelectItem value="estInCase">Est In Case</SelectItem>
+                      </SelectContent>
+                    </Select>
+                     <Select value={filterOperator} onValueChange={(v) => setFilterOperator(v as '>' | '<' | '=')}>
+                      <SelectTrigger className="w-[80px]">
+                        <SelectValue placeholder="Op" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value=">">&gt;</SelectItem>
+                        <SelectItem value="<">&lt;</SelectItem>
+                        <SelectItem value="=">=</SelectItem>
+                      </SelectContent>
+                    </Select>
+                     <Input
+                        type="number"
+                        placeholder="Value"
+                        value={filterValue}
+                        onChange={(e) => setFilterValue(e.target.value === '' ? '' : Number(e.target.value))}
+                        className="w-[100px]"
+                        disabled={filterColumn === 'none'}
                     />
-                    <label
-                        htmlFor="filter-est-case"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                        Show only items to order (Est In Case > 0)
-                    </label>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -454,3 +493,5 @@ export default function PurchaseEstimatePage() {
     </div>
   );
 }
+
+    
