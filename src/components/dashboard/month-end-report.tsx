@@ -393,14 +393,16 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
             const kitchenIncome = salesResult.data.reduce((sum, item) => sum + (item.kitchenSales || 0), 0);
             let shopExpenses = salesResult.data.reduce((sum, item) => sum + (item.totalExpensesAmount || 0), 0);
 
-            const takenAmountItem = expensesResult.data.find(item => item.expenseDetail.toLowerCase().includes('taken amount'));
+            const takenAmountItem = expensesResult.data.find(item => 
+                item.expenseDetail.toLowerCase().includes("taken amount")
+            );
+
             if (takenAmountItem) {
                 const takenAmount = parseFloat(takenAmountItem.totalAmount);
                 if (!isNaN(takenAmount)) {
                     shopExpenses -= takenAmount;
                 }
             }
-
 
             setReportData({ salesValue, costOfSales, kitchenIncome, shopExpenses, bankCharges: totalBankCharges, billPayments: totalBillPayments });
 
@@ -631,5 +633,3 @@ export default function MonthEndReport(props: MonthEndReportProps) {
     </div>
   );
 }
-
-    
