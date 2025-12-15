@@ -182,8 +182,10 @@ export default function PurchaseEstimatePage() {
                     purchasePrice: purchasePrice,
                 }
             });
+            
+            const sortedItems = estimatedItems.sort((a, b) => b.estInCase - a.estInCase);
 
-            setItems(estimatedItems);
+            setItems(sortedItems);
             toast({
                 title: 'Estimate Generated',
                 description: `Purchase estimate created for ${purchaseDays} days based on selected sales data.`
