@@ -178,7 +178,7 @@ export default function PurchaseEstimatePage() {
                     avgSalesPerDay: dailyAvg,
                     inHand: inHandStock,
                     estimatedQuantity: estimatedQuantity,
-                    estInCase: estInCase,
+                    estInCase: Math.round(estInCase),
                     purchasePrice: purchasePrice,
                 }
             });
@@ -269,7 +269,7 @@ export default function PurchaseEstimatePage() {
   const handleCSV = () => {
       if (items.length === 0) return;
       const header = "Item Name,Total Sales Qty,AVG Sales/Day,In Hand,Purchase Price per Item,Estimated Quantity,Est In Case";
-      const rows = items.map(i => `"${i.SKU.replace(/"/g, '""')}",${i.totalSalesQty},${Math.round(i.avgSalesPerDay)},${i.inHand},${i.purchasePrice},${i.estimatedQuantity},${i.estInCase.toFixed(2)}`);
+      const rows = items.map(i => `"${i.SKU.replace(/"/g, '""')}",${i.totalSalesQty},${Math.round(i.avgSalesPerDay)},${i.inHand},${i.purchasePrice},${i.estimatedQuantity},${i.estInCase}`);
       let csvContent = "data:text/csv;charset=utf-8," + header + "\n" + rows.join("\n");
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
@@ -364,7 +364,7 @@ export default function PurchaseEstimatePage() {
                       <div className="flex items-center gap-8 font-bold text-lg">
                           <div>
                               <span>Total Cases: </span>
-                              <span className="text-primary">{totalCases.toFixed(2)}</span>
+                              <span className="text-primary">{totalCases}</span>
                           </div>
                           <div>
                               <span>Total Estimated Value: </span>
@@ -416,7 +416,7 @@ export default function PurchaseEstimatePage() {
                         <TableCell className="text-right">
                           <Input
                             type="number"
-                            value={item.estInCase.toFixed(2)}
+                            value={item.estInCase}
                             onChange={(e) => handleEstInCaseChange(index, e.target.value)}
                             onWheel={(e) => e.currentTarget.blur()}
                             className="text-right h-8"
