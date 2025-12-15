@@ -406,18 +406,20 @@ export default function PurchaseEstimatePage() {
             <CardHeader>
               <div className="flex flex-wrap justify-between items-center gap-4">
                   <CardTitle>Purchase Estimate</CardTitle>
-                  {items.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-4 sm:gap-8 font-bold text-lg">
-                          <div>
-                              <span>Total Cases: </span>
-                              <span className="text-primary">{totalCases}</span>
-                          </div>
-                          <div>
-                              <span>Total Estimated Value: </span>
-                              <span className="text-primary">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalEstimatedValue)}</span>
-                          </div>
-                      </div>
-                  )}
+                  <div className="flex flex-wrap items-center gap-4 sm:gap-8 font-bold text-lg print-hidden">
+                      {items.length > 0 && (
+                        <>
+                            <div>
+                                <span>Total Cases: </span>
+                                <span className="text-primary">{totalCases}</span>
+                            </div>
+                            <div>
+                                <span>Total Estimated Value: </span>
+                                <span className="text-primary">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalEstimatedValue)}</span>
+                            </div>
+                        </>
+                      )}
+                  </div>
                   <div className="flex gap-2 print-hidden">
                       <Button variant="outline" onClick={handleCSV} disabled={items.length === 0}>
                         <File className="mr-2 h-4 w-4"/>
@@ -435,13 +437,13 @@ export default function PurchaseEstimatePage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Item Name</TableHead>
-                    <TableHead className="text-right">Total Sales Qty</TableHead>
-                    <TableHead className="text-right">AVG Sales/Day</TableHead>
-                    <TableHead className="text-right">In Hand</TableHead>
-                    <TableHead className="text-right">Purchase Price per Item</TableHead>
-                    <TableHead className="text-right">Estimated Quantity</TableHead>
+                    <TableHead className="text-right print-hidden">Total Sales Qty</TableHead>
+                    <TableHead className="text-right print-hidden">AVG Sales/Day</TableHead>
+                    <TableHead className="text-right print-hidden">In Hand</TableHead>
+                    <TableHead className="text-right print-hidden">Purchase Price per Item</TableHead>
+                    <TableHead className="text-right print-hidden">Estimated Quantity</TableHead>
                     <TableHead className="text-right">Est In Case</TableHead>
-                    <TableHead className="text-right">Approved Qty</TableHead>
+                    <TableHead className="text-right print-hidden">Approved Qty</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -458,11 +460,11 @@ export default function PurchaseEstimatePage() {
                       return (
                         <TableRow key={item.SKU}>
                           <TableCell>{item.SKU}</TableCell>
-                          <TableCell className="text-right">{item.totalSalesQty}</TableCell>
-                          <TableCell className="text-right">{Math.round(item.avgSalesPerDay)}</TableCell>
-                          <TableCell className="text-right">{item.inHand}</TableCell>
-                          <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.purchasePrice)}</TableCell>
-                          <TableCell className="text-right">{item.estimatedQuantity}</TableCell>
+                          <TableCell className="text-right print-hidden">{item.totalSalesQty}</TableCell>
+                          <TableCell className="text-right print-hidden">{Math.round(item.avgSalesPerDay)}</TableCell>
+                          <TableCell className="text-right print-hidden">{item.inHand}</TableCell>
+                          <TableCell className="text-right print-hidden">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.purchasePrice)}</TableCell>
+                          <TableCell className="text-right print-hidden">{item.estimatedQuantity}</TableCell>
                           <TableCell className="text-right">
                             <Input
                               type="number"
@@ -472,7 +474,7 @@ export default function PurchaseEstimatePage() {
                               className="text-right h-8"
                             />
                           </TableCell>
-                          <TableCell className="text-right font-bold">{approvedQty}</TableCell>
+                          <TableCell className="text-right font-bold print-hidden">{approvedQty}</TableCell>
                         </TableRow>
                       )
                     })
