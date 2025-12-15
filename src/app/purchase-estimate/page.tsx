@@ -303,7 +303,7 @@ export default function PurchaseEstimatePage() {
               <CardTitle>Generate Purchase Estimate</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                 <div className="space-y-2">
                   <Label htmlFor="date-range">Sales Date Range</Label>
                    <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
@@ -356,6 +356,9 @@ export default function PurchaseEstimatePage() {
                     disabled={isLoading}
                   />
                 </div>
+                <Button onClick={handleGenerateEstimate} disabled={isLoading}>
+                  {isLoading ? 'Generating...' : 'Generate Estimate'}
+                </Button>
               </div>
               <div className="mt-4 flex flex-wrap gap-4 items-end">
                 <div className="grid gap-2">
@@ -396,11 +399,6 @@ export default function PurchaseEstimatePage() {
                 </div>
               </div>
             </CardContent>
-            <CardFooter>
-              <Button onClick={handleGenerateEstimate} disabled={isLoading}>
-                {isLoading ? 'Generating...' : 'Generate Estimate'}
-              </Button>
-            </CardFooter>
           </Card>
           
           <Card>
@@ -493,5 +491,7 @@ export default function PurchaseEstimatePage() {
     </div>
   );
 }
+
+    
 
     
