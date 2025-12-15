@@ -173,7 +173,7 @@ export default function PurchaseEstimatePage() {
                     avgSalesPerDay: dailyAvg,
                     inHand: inHandStock,
                     estimatedQuantity: estimatedQuantity,
-                    estInCase: Math.round(estInCase),
+                    estInCase: Math.ceil(estInCase),
                     purchasePrice: purchasePrice,
                 }
             });
