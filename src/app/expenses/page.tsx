@@ -101,7 +101,11 @@ export default function ExpensesPage() {
         const responseData = await response.json();
         const apiExpenses: ApiResponseExpense[] = responseData.data || [];
         
-        const formattedExpenses: Expense[] = apiExpenses.map((item, index) => ({
+        const filteredApiExpenses = apiExpenses.filter(
+          item => item.expenseDetail !== "TAKEN AMOUNT"
+        );
+        
+        const formattedExpenses: Expense[] = filteredApiExpenses.map((item, index) => ({
             _id: `${item.shopNumber}-${index}-${new Date().getTime()}`,
             name: item.expenseDetail,
             amount: parseFloat(item.totalAmount),
