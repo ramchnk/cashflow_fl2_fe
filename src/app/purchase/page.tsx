@@ -21,7 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Sheet } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useUserStore } from '@/app/lib/user-store';
@@ -47,10 +47,17 @@ interface PurchaseItem {
   matchedProduct?: ProductMasterItem;
 }
 
+interface ProductMasterResponse {
+  productList: ProductMasterItem[];
+  shopName?: string;
+  sheetLink?: string;
+  [key: string]: any;
+}
+
 export default function PurchasePage() {
   const [pastedData, setPastedData] = useState('');
   const [parsedItems, setParsedItems] = useState<PurchaseItem[]>([]);
-  const [productMaster, setProductMaster] = useState<{ productList: ProductMasterItem[] } | null>(null);
+  const [productMaster, setProductMaster] = useState<ProductMasterResponse | null>(null);
   const router = useRouter();
   const { toast } = useToast();
   const [billNumber, setBillNumber] = useState('');
@@ -356,10 +363,23 @@ export default function PurchasePage() {
         <div className="grid gap-8">
           <Card>
             <CardHeader>
-                <CardTitle>Process Purchase Data</CardTitle>
-                <CardDescription>
-                    மூன்றாம் தரப்பு போர்ட்டலில் இருந்து தரவை நகலெடுத்து கீழே உள்ள டெக்ஸ்ட் ஏரியாவில் ஒட்டவும். தரவு தானாகவே செயலாக்கப்படும்.
-                </CardDescription>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>Process Purchase Data</CardTitle>
+                        <CardDescription>
+                            மூன்றாம் தரப்பு போர்ட்டலில் இருந்து தரவை நகலெடுத்து கீழே உள்ள டெக்ஸ்ட் ஏரியாவில் ஒட்டவும். தரவு தானாகவே செயலாக்கப்படும்.
+                        </CardDescription>
+                    </div>
+                     {productMaster?.sheetLink && (
+                        <Button
+                            variant="outline"
+                            onClick={() => window.open(productMaster.sheetLink, '_blank')}
+                        >
+                            <Sheet className="mr-2 h-4 w-4" />
+                            Open Sheet
+                        </Button>
+                    )}
+                </div>
             </CardHeader>
             <CardContent className="space-y-4">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
