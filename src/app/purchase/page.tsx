@@ -49,9 +49,15 @@ interface PurchaseItem {
 
 interface ProductMasterResponse {
   productList: ProductMasterItem[];
-  shopName?: string;
-  sheetLink?: string;
   [key: string]: any;
+}
+
+interface AccountInfoResponse {
+    account: {
+        shopName?: string;
+        sheetLink?: string;
+        [key: string]: any;
+    }
 }
 
 export default function PurchasePage() {
@@ -66,8 +72,9 @@ export default function PurchasePage() {
   const { setShopName } = useUserStore();
   const [actualBillValue, setActualBillValue] = useState<string>('');
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [sheetLink, setSheetLink] = useState<string | null>(null);
 
-  const fetchProductMaster = async () => {
+  const fetchData = async () => {
     const token = sessionStorage.getItem('accessToken');
     if (!token) {
       router.push('/login');
@@ -75,21 +82,42 @@ export default function PurchasePage() {
     }
 
     try {
-      const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/productmaster', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+        const [productResponse, accountResponse] = await Promise.all([
+             fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/productmaster', {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` }
+            }),
+            fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/account/getAccountInfo', {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+        ]);
 
-      if (response.ok) {
-        const data = await response.json();
-        setProductMaster(data || {});
-        if (data.shopName) {
-            setShopName(data.shopName);
+        if (productResponse.ok) {
+            const data = await productResponse.json();
+            setProductMaster(data || {});
+        } else {
+            if(productResponse.status === 401) throw new Error('Session Expired');
+            throw new Error('Failed to fetch product master');
         }
-      } else {
-        if(response.status === 401) {
+
+        if (accountResponse.ok) {
+            const data: AccountInfoResponse = await accountResponse.json();
+            if (data.account) {
+                 if (data.account.shopName) {
+                    setShopName(data.account.shopName);
+                }
+                if (data.account.sheetLink) {
+                    setSheetLink(data.account.sheetLink);
+                }
+            }
+        } else {
+             if(accountResponse.status === 401) throw new Error('Session Expired');
+             throw new Error('Failed to fetch account info');
+        }
+
+    } catch (error: any) {
+        if (error.message === 'Session Expired') {
             toast({
                 variant: "destructive",
                 title: "Session Expired",
@@ -98,20 +126,17 @@ export default function PurchasePage() {
             sessionStorage.removeItem('accessToken');
             router.push('/login');
         } else {
-            throw new Error('Failed to fetch product master');
+            toast({
+                variant: "destructive",
+                title: "An Error Occurred",
+                description: error.message || "Could not fetch required data.",
+            });
         }
-      }
-    } catch (error: any) {
-        toast({
-            variant: "destructive",
-            title: "An Error Occurred",
-            description: error.message || "Could not fetch product master data.",
-        });
     }
   };
 
   useEffect(() => {
-    fetchProductMaster();
+    fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -338,7 +363,7 @@ export default function PurchasePage() {
             setBillNumber('');
             setBillDate(new Date());
             setActualBillValue('');
-            await fetchProductMaster();
+            await fetchData();
         } else {
              const errorData = await response.json();
             throw new Error(errorData.message || 'Failed to submit purchase.');
@@ -370,10 +395,10 @@ export default function PurchasePage() {
                             மூன்றாம் தரப்பு போர்ட்டலில் இருந்து தரவை நகலெடுத்து கீழே உள்ள டெக்ஸ்ட் ஏரியாவில் ஒட்டவும். தரவு தானாகவே செயலாக்கப்படும்.
                         </CardDescription>
                     </div>
-                     {productMaster?.sheetLink && (
+                     {sheetLink && (
                         <Button
                             variant="outline"
-                            onClick={() => window.open(productMaster.sheetLink, '_blank')}
+                            onClick={() => window.open(sheetLink, '_blank')}
                         >
                             <Sheet className="mr-2 h-4 w-4" />
                             Open Sheet
@@ -529,7 +554,3 @@ export default function PurchasePage() {
     </div>
   );
 }
-
-    
-
-    
