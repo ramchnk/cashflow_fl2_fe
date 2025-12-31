@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -233,6 +232,7 @@ interface ReportData {
     shopExpenses: number;
     bankCharges: number;
     billPayments: number;
+    officeExpenses: number;
 }
 
 
@@ -373,6 +373,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
             
             let totalBankCharges = 0;
             let totalBillPayments = 0;
+            let totalOfficeExpenses = 0;
 
             for (const res of bankChargesResponses) {
                 const bankFlowResult: { transactions: ApiBankChargeItem[] } = await res.json();
@@ -386,6 +387,11 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                     .filter(tx => tx.naration?.toUpperCase().includes('BILL'))
                     .reduce((sum, item) => sum + item.amount, 0);
                 totalBillPayments += billPayments;
+
+                 const officeExpenses = bankFlowResult.transactions
+                    .filter(tx => tx.naration?.toUpperCase().includes('OFFICE EXP'))
+                    .reduce((sum, item) => sum + item.amount, 0);
+                totalOfficeExpenses += officeExpenses;
             }
 
             const salesValue = salesResult.data.reduce((sum, item) => sum + item.totalSalesAmount, 0);
@@ -399,7 +405,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
             const shopExpenses = filteredExpenses.reduce((sum, item) => sum + parseFloat(item.totalAmount), 0);
 
 
-            setReportData({ salesValue, costOfSales, kitchenIncome, shopExpenses, bankCharges: totalBankCharges, billPayments: totalBillPayments });
+            setReportData({ salesValue, costOfSales, kitchenIncome, shopExpenses, bankCharges: totalBankCharges, billPayments: totalBillPayments, officeExpenses: totalOfficeExpenses });
 
             toast({
                 title: 'Report Generated',
@@ -452,7 +458,8 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
     const shopExpenses = reportData?.shopExpenses ?? 0;
     const bankCharges = reportData?.bankCharges ?? 0;
     const billPayments = reportData?.billPayments ?? 0;
-    const totalExpenses = shopExpenses + bankCharges + billPayments;
+    const officeExpenses = reportData?.officeExpenses ?? 0;
+    const totalExpenses = shopExpenses + bankCharges + billPayments + officeExpenses;
     const netProfit = totalIncome - totalExpenses;
 
 
@@ -580,6 +587,12 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                                 <TableCell>3</TableCell>
                                 <TableCell>Bill Payment</TableCell>
                                 <TableCell className="text-right">{formatNumber(billPayments)}</TableCell>
+                                <TableCell></TableCell>
+                            </TableRow>
+                             <TableRow>
+                                <TableCell>4</TableCell>
+                                <TableCell>Office Expense</TableCell>
+                                <TableCell className="text-right">{formatNumber(officeExpenses)}</TableCell>
                                 <TableCell></TableCell>
                             </TableRow>
                             <TotalRow label="TOTAL EXPENSES" value={totalExpenses} isDebit />
