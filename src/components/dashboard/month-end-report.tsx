@@ -233,6 +233,7 @@ interface ReportData {
     bankCharges: number;
     billPayments: number;
     officeExpenses: number;
+    emptyBottleSales: number;
 }
 
 
@@ -335,16 +336,17 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
             const expensesUrl = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/expenses/expensesReport?fromTime=${fromTime}&toTime=${toTime}`;
             const headers = { 'Authorization': `Bearer ${token}` };
 
-            const bankAccounts = Object.keys(balances).filter(key => key.toLowerCase().includes('bank'));
+            const accountKeys = Object.keys(balances);
             
             const apiCalls = [
               fetch(salesUrl, { method: 'GET', headers }),
               fetch(expensesUrl, { method: 'GET', headers }),
             ];
-
-            bankAccounts.forEach(bank => {
-                const bankChargesUrl = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/cashflow?type=${bank}&startDate=${fromTime}&endDate=${toTime}`;
-                apiCalls.push(fetch(bankChargesUrl, { method: 'GET', headers }));
+            
+            // Add cashflow calls for all accounts to find other income
+            accountKeys.forEach(account => {
+                const cashflowUrl = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/cashflow?type=${account}&startDate=${fromTime}&endDate=${toTime}`;
+                apiCalls.push(fetch(cashflowUrl, { method: 'GET', headers }));
             });
 
             const responses = await Promise.all(apiCalls);
@@ -366,7 +368,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                 }
             }
 
-            const [salesResponse, expensesResponse, ...bankChargesResponses] = responses;
+            const [salesResponse, expensesResponse, ...cashflowResponses] = responses;
             
             const salesResult: { data: ApiSaleItem[] } = await salesResponse.json();
             const expensesResult: { data: ApiExpenseReportItem[] } = await expensesResponse.json();
@@ -374,24 +376,26 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
             let totalBankCharges = 0;
             let totalBillPayments = 0;
             let totalOfficeExpenses = 0;
+            let totalEmptyBottleSales = 0;
 
-            for (const res of bankChargesResponses) {
-                const bankFlowResult: { transactions: ApiBankChargeItem[] } = await res.json();
+            for (const res of cashflowResponses) {
+                const cashflowResult: { transactions: ApiBankChargeItem[] } = await res.json();
                 
-                const charges = bankFlowResult.transactions
-                    .filter(tx => tx.naration?.toUpperCase().includes('CHARGE'))
-                    .reduce((sum, item) => sum + item.amount, 0);
-                totalBankCharges += charges;
-
-                const billPayments = bankFlowResult.transactions
-                    .filter(tx => tx.naration?.toUpperCase().includes('BILL'))
-                    .reduce((sum, item) => sum + item.amount, 0);
-                totalBillPayments += billPayments;
-
-                 const officeExpenses = bankFlowResult.transactions
-                    .filter(tx => tx.naration?.toUpperCase().includes('OFFICE EXP'))
-                    .reduce((sum, item) => sum + item.amount, 0);
-                totalOfficeExpenses += officeExpenses;
+                cashflowResult.transactions.forEach(tx => {
+                    const naration = tx.naration?.toUpperCase() || '';
+                    if (naration.includes('CHARGE')) {
+                        totalBankCharges += tx.amount;
+                    }
+                    if (naration.includes('BILL')) {
+                        totalBillPayments += tx.amount;
+                    }
+                    if (naration.includes('OFFICE EXP')) {
+                        totalOfficeExpenses += tx.amount;
+                    }
+                    if (naration.includes('EMPTY BOTTLE')) {
+                        totalEmptyBottleSales += tx.amount;
+                    }
+                });
             }
 
             const salesValue = salesResult.data.reduce((sum, item) => sum + item.totalSalesAmount, 0);
@@ -405,7 +409,16 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
             const shopExpenses = filteredExpenses.reduce((sum, item) => sum + parseFloat(item.totalAmount), 0);
 
 
-            setReportData({ salesValue, costOfSales, kitchenIncome, shopExpenses, bankCharges: totalBankCharges, billPayments: totalBillPayments, officeExpenses: totalOfficeExpenses });
+            setReportData({ 
+                salesValue, 
+                costOfSales, 
+                kitchenIncome, 
+                shopExpenses, 
+                bankCharges: totalBankCharges, 
+                billPayments: totalBillPayments, 
+                officeExpenses: totalOfficeExpenses,
+                emptyBottleSales: totalEmptyBottleSales
+            });
 
             toast({
                 title: 'Report Generated',
@@ -453,7 +466,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
     const costOfSales = reportData?.costOfSales ?? 0;
     const grossProfit = salesValue - costOfSales;
     const kitchenIncome = reportData?.kitchenIncome ?? 0;
-    const emptyBottleSales = 0;
+    const emptyBottleSales = reportData?.emptyBottleSales ?? 0;
     const totalIncome = grossProfit + kitchenIncome + emptyBottleSales;
     const shopExpenses = reportData?.shopExpenses ?? 0;
     const bankCharges = reportData?.bankCharges ?? 0;
