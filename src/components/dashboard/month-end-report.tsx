@@ -205,6 +205,8 @@ interface ApiSaleItem {
     totalExpensesAmount: number;
     basePrice: number;
     kitchenSales?: number;
+    otherIncome?: number;
+    otherIncomeNaretion?: string;
 }
 
 interface ApiBankChargeItem {
@@ -343,7 +345,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
               fetch(expensesUrl, { method: 'GET', headers }),
             ];
             
-            // Add cashflow calls for all accounts to find other income
+            // Add cashflow calls for all accounts to find bank charges
             accountKeys.forEach(account => {
                 const cashflowUrl = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/cashflow?type=${account}&startDate=${fromTime}&endDate=${toTime}`;
                 apiCalls.push(fetch(cashflowUrl, { method: 'GET', headers }));
@@ -376,8 +378,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
             let totalBankCharges = 0;
             let totalBillPayments = 0;
             let totalOfficeExpenses = 0;
-            let totalEmptyBottleSales = 0;
-
+            
             for (const res of cashflowResponses) {
                 const cashflowResult: { transactions: ApiBankChargeItem[] } = await res.json();
                 
@@ -392,15 +393,18 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                     if (naration.includes('OFFICE EXP')) {
                         totalOfficeExpenses += tx.amount;
                     }
-                    if (naration.includes('EMPTY BOTTLE')) {
-                        totalEmptyBottleSales += tx.amount;
-                    }
                 });
             }
 
             const salesValue = salesResult.data.reduce((sum, item) => sum + item.totalSalesAmount, 0);
             const costOfSales = salesResult.data.reduce((sum, item) => sum + item.basePrice, 0);
             const kitchenIncome = salesResult.data.reduce((sum, item) => sum + (item.kitchenSales || 0), 0);
+            const emptyBottleSales = salesResult.data.reduce((sum, item) => {
+                if (item.otherIncomeNaretion?.toUpperCase().includes('EMPTY BOTTLE')) {
+                    return sum + (item.otherIncome || 0);
+                }
+                return sum;
+            }, 0);
             
             const filteredExpenses = expensesResult.data.filter(
               item => !item.expenseDetail.toLowerCase().includes("taken amount")
@@ -417,7 +421,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                 bankCharges: totalBankCharges, 
                 billPayments: totalBillPayments, 
                 officeExpenses: totalOfficeExpenses,
-                emptyBottleSales: totalEmptyBottleSales
+                emptyBottleSales: emptyBottleSales
             });
 
             toast({
