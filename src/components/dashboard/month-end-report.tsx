@@ -24,6 +24,7 @@ import { Input } from '../ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
+import { DialogPortal } from '../ui/dialog';
 
 
 interface Balances {
@@ -383,7 +384,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                     if (naration.includes('BILL')) {
                         totalBillPayments += tx.amount;
                     }
-                    if (naration.includes('OFFICE EXP')) {
+                     if (naration.includes('OFFICE EXP')) {
                         totalOfficeExpenses += tx.amount;
                     }
                 });
@@ -394,7 +395,8 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
             const kitchenIncome = salesResult.data.reduce((sum, item) => sum + (item.kitchenSales || 0), 0);
             const emptyBottleSales = salesResult.data.reduce((sum, item) => {
                 if (item.otherIncomeNaretion?.toUpperCase().includes('EMPTY BOTTLE')) {
-                    return sum + ((typeof item.otherIncome === 'number') ? item.otherIncome : 0);
+                    const income = (typeof item.otherIncome === 'string') ? parseFloat(item.otherIncome) : item.otherIncome;
+                    return sum + ( (income && !isNaN(income)) ? income : 0);
                 }
                 return sum;
             }, 0);
@@ -512,17 +514,19 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                                 {startDate ? format(startDate, "yyyy-MM-dd") : <span>Select Date</span>}
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={startDate}
-                                onSelect={(date) => {
-                                  setStartDate(date);
-                                  setIsStartDatePickerOpen(false);
-                                }}
-                                initialFocus
-                              />
-                            </PopoverContent>
+                            <DialogPortal>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={startDate}
+                                  onSelect={(date) => {
+                                    setStartDate(date);
+                                    setIsStartDatePickerOpen(false);
+                                  }}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </DialogPortal>
                           </Popover>
                         </div>
                         <div className="grid gap-2">
@@ -542,18 +546,20 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                                 {endDate ? format(endDate, "yyyy-MM-dd") : <span>Select Date</span>}
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={endDate}
-                                onSelect={(date) => {
-                                  setEndDate(date);
-                                  setIsEndDatePickerOpen(false);
-                                }}
-                                disabled={{ before: startDate }}
-                                initialFocus
-                              />
-                            </PopoverContent>
+                             <DialogPortal>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={endDate}
+                                    onSelect={(date) => {
+                                      setEndDate(date);
+                                      setIsEndDatePickerOpen(false);
+                                    }}
+                                    disabled={{ before: startDate }}
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </DialogPortal>
                           </Popover>
                         </div>
                         <Button onClick={handleGetReport} disabled={isLoading || !startDate || !endDate}>
