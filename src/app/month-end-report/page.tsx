@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,83 +14,129 @@ import {
   TableFooter
 } from '@/components/ui/table';
 import Header from '@/components/layout/header';
-import { Printer, Camera } from 'lucide-react';
+import { Printer, Camera, CalendarIcon } from 'lucide-react';
 import { getPartyDetails } from '@/app/lib/parties';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/app/lib/user-store';
 import html2canvas from 'html2canvas';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 
+// Interfaces for both reports
 interface Balances {
     [key: string]: number;
 }
 
-export default function MonthEndReportPage() {
+interface ApiSaleItem {
+    profitAmount: number;
+    invoiceNumber: string;
+    finalCashSettlement: number;
+    _id: { $oid: string };
+    totalDigitalAmount: number;
+    timeCreatedAt: number;
+    totalSalesAmount: number;
+    totalExpensesAmount: number;
+    basePrice: number;
+    kitchenSales?: number;
+    otherIncome?: string | number;
+    otherIncomeNaretion?: string;
+}
+
+interface ApiBankChargeItem {
+  date: number;
+  toAccount: string;
+  amount: number;
+  toAccountOpeningBalance: number;
+  naration: string;
+  fromAccount: string;
+  fromAccountOpeningBalance: number;
+  shopNumber: string;
+  _id: { $oid: string };
+}
+
+interface ApiExpenseReportItem {
+  expenseDetail: string;
+  totalAmount: string;
+}
+
+interface PLReportData {
+    salesValue: number;
+    costOfSales: number;
+    kitchenIncome: number;
+    shopExpenses: number;
+    bankCharges: number;
+    billPayments: number;
+    officeExpenses: number;
+    emptyBottleSales: number;
+}
+
+
+function CashFlowReport({ shopName, token }: { shopName: string | null, token: string | null}) {
     const [balances, setBalances] = useState<Balances>({});
     const [investAmount, setInvestAmount] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
-    const { shopName, setShopName } = useUserStore();
+    const { setShopName } = useUserStore();
     const { toast } = useToast();
     const router = useRouter();
 
+    useEffect(() => {
+        const fetchAccountInfo = async () => {
+            if (!token) {
+                router.push('/login');
+                return;
+            }
 
-   useEffect(() => {
-    const fetchAccountInfo = async () => {
-        setIsLoading(true);
-        const token = sessionStorage.getItem('accessToken');
-        if (!token) {
-        router.push('/login');
-        return;
-        }
+            setIsLoading(true);
+            try {
+                const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/account/getAccountInfo', {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
 
-        try {
-        const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/account/getAccountInfo', {
-            method: 'GET',
-            headers: {
-            'Authorization': `Bearer ${token}`
-            }
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            if (data.account && data.account.cashFlow) {
-            setBalances(data.account.cashFlow);
-            } else {
-            throw new Error('Account cashFlow not found in response.');
-            }
-            if (data.account && data.account.investAmount) {
-                setInvestAmount(data.account.investAmount);
-            }
-            if (data.account && data.account.shopName) {
-            setShopName(data.account.shopName);
-            }
-        } else {
-            if(response.status === 401) {
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.account && data.account.cashFlow) {
+                        setBalances(data.account.cashFlow);
+                    } else {
+                        throw new Error('Account cashFlow not found in response.');
+                    }
+                    if (data.account && data.account.investAmount) {
+                        setInvestAmount(data.account.investAmount);
+                    }
+                    if (data.account && data.account.shopName && !shopName) {
+                       setShopName(data.account.shopName);
+                    }
+                } else {
+                    if (response.status === 401) {
+                        toast({
+                            variant: "destructive",
+                            title: "Session Expired",
+                            description: "Please login again.",
+                        });
+                        sessionStorage.removeItem('accessToken');
+                        router.push('/login');
+                    } else {
+                        throw new Error('Failed to fetch account information');
+                    }
+                }
+            } catch (error: any) {
                 toast({
                     variant: "destructive",
-                    title: "Session Expired",
-                    description: "Please login again.",
+                    title: "An Error Occurred",
+                    description: error.message || "Could not fetch account information.",
                 });
-                sessionStorage.removeItem('accessToken');
-                router.push('/login');
-            } else {
-                throw new Error('Failed to fetch account information');
+            } finally {
+                setIsLoading(false);
             }
-        }
-        } catch (error: any) {
-        toast({
-            variant: "destructive",
-            title: "An Error Occurred",
-            description: error.message || "Could not fetch account information.",
-        });
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        };
 
-    fetchAccountInfo();
-   }, [router, setShopName, toast]);
+        fetchAccountInfo();
+    }, [router, setShopName, toast, token, shopName]);
 
     const handlePrint = () => {
         const printContent = document.getElementById('report-content-cashflow');
@@ -112,25 +159,17 @@ export default function MonthEndReportPage() {
     const handleCapture = () => {
         const reportCard = document.getElementById('report-card-cashflow');
         if (reportCard) {
-        const buttons = reportCard.querySelectorAll('button');
-        buttons.forEach(btn => btn.style.visibility = 'hidden');
+            const buttons = reportCard.querySelectorAll('button');
+            buttons.forEach(btn => btn.style.visibility = 'hidden');
 
-        html2canvas(reportCard, { 
-            useCORS: true,
-            scale: 2, 
-            onclone: (document) => {
-                const header = document.getElementById('report-header-cashflow');
-                if (header) {
-                    header.classList.remove('print-hidden');
-                }
-            }
-        }).then(canvas => {
-            const link = document.createElement('a');
-            link.download = `monthly-profit-report-cashflow-${format(new Date(), 'yyyy-MM-dd')}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-            buttons.forEach(btn => btn.style.visibility = 'visible');
-        });
+            html2canvas(reportCard, { useCORS: true, scale: 2 })
+                .then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = `monthly-profit-report-cashflow-${format(new Date(), 'yyyy-MM-dd')}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    buttons.forEach(btn => btn.style.visibility = 'visible');
+                });
         }
     }
 
@@ -142,7 +181,7 @@ export default function MonthEndReportPage() {
             maximumFractionDigits: 0,
         }).format(amount);
     }
-  
+
     const detailsOrder = ['stock', 'CashInHand', 'CashInOffice'];
     const reportBalances = { ...balances };
 
@@ -180,37 +219,32 @@ export default function MonthEndReportPage() {
         return getPartyDetails(key).name;
     }
 
-
-  return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <Header />
-      <main className="flex-1 container mx-auto p-4 md:p-8">
-        <div className="space-y-6">
-            <Card id="report-card-cashflow">
-                <CardHeader id="report-header-cashflow">
-                     <div className="flex justify-between items-start">
-                        <div className="flex-grow"></div>
-                        <div className="text-center flex-shrink-0">
-                            <CardTitle className="text-xl text-primary font-bold">MONTHLY PROFIT CALCULATION</CardTitle>
-                            <CardDescription className="text-lg font-semibold">{shopName || "Gobi's Shop"}</CardDescription>
-                            <CardDescription className="text-md">{format(new Date(), 'MMMM-yyyy')}</CardDescription>
-                        </div>
-                        <div className="flex-grow flex justify-end gap-2">
-                            <Button onClick={handleCapture} variant="outline" size="icon" className="print-hidden" disabled={isLoading}>
-                                <Camera className="h-5 w-5"/>
-                            </Button>
-                            <Button onClick={handlePrint} variant="outline" size="icon" className="print-hidden" disabled={isLoading}>
-                                <Printer className="h-5 w-5"/>
-                            </Button>
-                        </div>
+    return (
+        <Card id="report-card-cashflow">
+            <CardHeader id="report-header-cashflow">
+                <div className="flex justify-between items-start">
+                    <div className="flex-grow"></div>
+                    <div className="text-center flex-shrink-0">
+                        <CardTitle className="text-xl text-primary font-bold">MONTHLY PROFIT CALCULATION</CardTitle>
+                        <CardDescription className="text-lg font-semibold">{shopName || "Gobi's Shop"}</CardDescription>
+                        <CardDescription className="text-md">{format(new Date(), 'MMMM-yyyy')}</CardDescription>
                     </div>
-                </CardHeader>
-                <CardContent id="report-content-cashflow" className="pt-0 bg-background p-6">
-                  {isLoading ? (
-                      <div className="h-96 flex items-center justify-center">
-                          <p>Loading Report...</p>
-                      </div>
-                  ) : (
+                    <div className="flex-grow flex justify-end gap-2">
+                        <Button onClick={handleCapture} variant="outline" size="icon" className="print-hidden" disabled={isLoading}>
+                            <Camera className="h-5 w-5"/>
+                        </Button>
+                        <Button onClick={handlePrint} variant="outline" size="icon" className="print-hidden" disabled={isLoading}>
+                            <Printer className="h-5 w-5"/>
+                        </Button>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent id="report-content-cashflow" className="pt-0 bg-background p-6">
+                {isLoading ? (
+                    <div className="h-96 flex items-center justify-center">
+                        <p>Loading Report...</p>
+                    </div>
+                ) : (
                     <Table>
                         <TableHeader className="bg-yellow-300">
                         <TableRow>
@@ -241,11 +275,469 @@ export default function MonthEndReportPage() {
                             </TableRow>
                         </TableFooter>
                     </Table>
-                  )}
-                </CardContent>
-            </Card>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+function PLStatementReport({ shopName, token }: { shopName: string | null, token: string | null }) {
+    const [isLoading, setIsLoading] = useState(false);
+    const [reportData, setReportData] = useState<PLReportData | null>(null);
+    const { toast } = useToast();
+    const router = useRouter();
+    
+    const [startDate, setStartDate] = useState<Date | undefined>();
+    const [endDate, setEndDate] = useState<Date | undefined>();
+    const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
+    const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
+
+    const balances = useMemo(() => {
+        const fetchBalances = async () => {
+            if (!token) return {};
+            try {
+                const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/account/getAccountInfo', {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.account?.cashFlow || {};
+                }
+            } catch (error) {
+                console.error("Failed to fetch balances for P&L", error);
+            }
+            return {};
+        };
+        return fetchBalances();
+    }, [token]);
+
+    const handlePrint = () => {
+        const printContent = document.getElementById('report-content-pl');
+        if (printContent) {
+            const originalContents = document.body.innerHTML;
+            const header = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h1 style="font-size: 1.5rem; font-weight: bold; color: #1E3A8A;">${shopName || 'THENDRAL CLUB THIRUMAYAM'}</h1>
+                    <p style="font-size: 1.25rem;">Statement for ${startDate ? format(startDate, 'MMM yyyy') : 'selected period'}</p>
+                </div>
+            `;
+            document.body.innerHTML = header + printContent.innerHTML;
+            window.print();
+            document.body.innerHTML = originalContents;
+            window.location.reload();
+        }
+    }
+
+    const handleCapture = () => {
+        const reportCard = document.getElementById('report-card-pl');
+        if (reportCard) {
+            const datePicker = reportCard.querySelector('#pl-date-picker-container');
+            const buttons = reportCard.querySelectorAll('button');
+            
+            if(datePicker) (datePicker as HTMLElement).style.display = 'none';
+            buttons.forEach(btn => btn.style.visibility = 'hidden');
+
+            html2canvas(reportCard, { useCORS: true, scale: 2 })
+                .then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = `pl-statement-${format(new Date(), 'yyyy-MM-dd')}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    if(datePicker) (datePicker as HTMLElement).style.display = 'flex';
+                    buttons.forEach(btn => btn.style.visibility = 'visible');
+                });
+        }
+    }
+
+    const handleGetReport = async () => {
+        if (!startDate || !endDate) {
+            toast({
+                variant: 'destructive',
+                title: 'Invalid Date Range',
+                description: 'Please select a start and end date.',
+            });
+            return;
+        }
+
+        if (endDate < startDate) {
+            toast({
+                variant: 'destructive',
+                title: 'Invalid Date Range',
+                description: 'End date cannot be before the start date.',
+            });
+            return;
+        }
+
+        setIsLoading(true);
+        setReportData(null);
+        
+        if (!token) {
+            router.push('/login');
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            const fromTime = Math.floor(startOfDay(startDate).getTime() / 1000);
+            const toTime = Math.floor(endOfDay(endDate).getTime() / 1000);
+            
+            const salesUrl = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/sales?startDate=${fromTime}&endDate=${toTime}`;
+            const expensesUrl = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/expenses/expensesReport?fromTime=${fromTime}&toTime=${toTime}`;
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            const resolvedBalances = await balances;
+            const accountKeys = Object.keys(resolvedBalances);
+            
+            const apiCalls = [
+              fetch(salesUrl, { method: 'GET', headers }),
+              fetch(expensesUrl, { method: 'GET', headers }),
+            ];
+            
+            accountKeys.forEach(account => {
+                const cashflowUrl = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/cashflow?type=${account}&startDate=${fromTime}&endDate=${toTime}`;
+                apiCalls.push(fetch(cashflowUrl, { method: 'GET', headers }));
+            });
+
+            const responses = await Promise.all(apiCalls);
+
+            for (const response of responses) {
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        toast({
+                            variant: "destructive",
+                            title: "Session Expired",
+                            description: "Please login again.",
+                        });
+                        sessionStorage.removeItem('accessToken');
+                        router.push('/login');
+                        return;
+                    }
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to fetch report data');
+                }
+            }
+
+            const [salesResponse, expensesResponse, ...cashflowResponses] = responses;
+            
+            const salesResult: { data: ApiSaleItem[] } = await salesResponse.json();
+            const expensesResult: { data: ApiExpenseReportItem[] } = await expensesResponse.json();
+            
+            let totalBankCharges = 0;
+            let totalBillPayments = 0;
+            let totalOfficeExpenses = 0;
+            
+            for (const res of cashflowResponses) {
+                const cashflowResult: { transactions: ApiBankChargeItem[] } = await res.json();
+                
+                cashflowResult.transactions.forEach(tx => {
+                    const naration = tx.naration?.toUpperCase() || '';
+                    if (naration.includes('CHARGE')) totalBankCharges += tx.amount;
+                    if (naration.includes('BILL')) totalBillPayments += tx.amount;
+                    if (naration.includes('OFFICE EXP')) totalOfficeExpenses += tx.amount;
+                });
+            }
+
+            const salesValue = salesResult.data.reduce((sum, item) => sum + item.totalSalesAmount, 0);
+            const costOfSales = salesResult.data.reduce((sum, item) => sum + item.basePrice, 0);
+            const kitchenIncome = salesResult.data.reduce((sum, item) => sum + (item.kitchenSales || 0), 0);
+            const emptyBottleSales = salesResult.data.reduce((sum, item) => {
+                if (item.otherIncomeNaretion?.toUpperCase().includes('EMPTY BOTTLE')) {
+                    const income = (typeof item.otherIncome === 'string') ? parseFloat(item.otherIncome) : item.otherIncome;
+                    return sum + ( (income && !isNaN(income)) ? income : 0);
+                }
+                return sum;
+            }, 0);
+            
+            const filteredExpenses = expensesResult.data.filter(
+              item => !item.expenseDetail.toLowerCase().includes("taken amount")
+            );
+
+            const shopExpenses = filteredExpenses.reduce((sum, item) => sum + parseFloat(item.totalAmount), 0);
+
+            setReportData({ 
+                salesValue, 
+                costOfSales, 
+                kitchenIncome, 
+                shopExpenses, 
+                bankCharges: totalBankCharges, 
+                billPayments: totalBillPayments, 
+                officeExpenses: totalOfficeExpenses,
+                emptyBottleSales: emptyBottleSales
+            });
+
+            toast({
+                title: 'Report Generated',
+                description: 'P&L statement has been fetched.',
+            });
+
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "An Error Occurred",
+                description: error.message || 'Could not fetch P&L data.',
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    const formatNumber = (num: number) => new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(num);
+
+    const SectionHeader = ({ children, value }: { children: React.ReactNode, value?: number }) => (
+        <TableRow className="bg-blue-100">
+            <TableCell colSpan={value ? 3: 4} className="font-extrabold text-blue-900 text-xl">{children}</TableCell>
+            {value != null && <TableCell className="text-right font-extrabold text-blue-900 text-xl">{formatNumber(value)}</TableCell>}
+        </TableRow>
+    );
+    
+    const TotalRow = ({ label, value, isDebit = false, isCredit = false }: { label: string, value: number, isDebit?: boolean, isCredit?: boolean }) => (
+         <TableRow className="bg-gray-200 font-extrabold text-xl">
+            <TableCell colSpan={isDebit ? 2 : 3} className="text-right">{label}</TableCell>
+            {isDebit && <TableCell className="text-right">{formatNumber(value)}</TableCell>}
+            {isCredit && <TableCell className="text-right">{formatNumber(value)}</TableCell>}
+            {!isDebit && !isCredit && <TableCell colSpan={1}></TableCell>}
+        </TableRow>
+    );
+
+    const NetProfitRow = ({label, value}: {label: string, value: number}) => (
+        <TableRow className="bg-blue-900 text-white font-extrabold text-2xl">
+            <TableCell colSpan={3} className="text-right">{label}</TableCell>
+            <TableCell className="text-right">{formatNumber(value)}</TableCell>
+        </TableRow>
+    );
+    
+    const salesValue = reportData?.salesValue ?? 0;
+    const costOfSales = reportData?.costOfSales ?? 0;
+    const grossProfit = salesValue - costOfSales;
+    const kitchenIncome = reportData?.kitchenIncome ?? 0;
+    const emptyBottleSales = reportData?.emptyBottleSales ?? 0;
+    const totalIncome = grossProfit + kitchenIncome + emptyBottleSales;
+    const shopExpenses = reportData?.shopExpenses ?? 0;
+    const bankCharges = reportData?.bankCharges ?? 0;
+    const billPayments = reportData?.billPayments ?? 0;
+    const officeExpenses = reportData?.officeExpenses ?? 0;
+    const totalExpenses = shopExpenses + bankCharges + billPayments + officeExpenses;
+    const netProfit = totalIncome - totalExpenses;
+
+    return (
+        <Card id="report-card-pl" className="border-0 shadow-none">
+            <CardHeader id="report-header-pl" className="text-center bg-blue-900 text-white rounded-t-lg py-4">
+                <div className="flex justify-between items-start">
+                    <div className="flex-grow"></div>
+                    <div className="text-center">
+                        <CardTitle className="text-2xl font-bold">{shopName || 'THENDRAL CLUB THIRUMAYAM'}</CardTitle>
+                        <CardDescription className="text-lg text-blue-200">
+                        {startDate ? `Statement for ${format(startDate, 'MMM yyyy')}`: 'P&L Statement'}
+                        </CardDescription>
+                    </div>
+                    <div className="flex-grow flex justify-end gap-2 print-hidden">
+                        <Button onClick={handleCapture} variant="outline" size="icon" className="bg-transparent text-white hover:bg-white/20" disabled={isLoading || !reportData}>
+                            <Camera className="h-5 w-5"/>
+                        </Button>
+                        <Button onClick={handlePrint} variant="outline" size="icon" className="bg-transparent text-white hover:bg-white/20" disabled={isLoading || !reportData}>
+                            <Printer className="h-5 w-5"/>
+                        </Button>
+                    </div>
+                </div>
+                <div id="pl-date-picker-container" className="p-4 bg-background text-foreground print-hidden flex items-center justify-center">
+                    <div className="flex flex-wrap gap-4 items-end">
+                        <div className="grid gap-2">
+                        <Label htmlFor="start-date-pl">Start Date</Label>
+                        <Popover open={isStartDatePickerOpen} onOpenChange={setIsStartDatePickerOpen}>
+                            <PopoverTrigger asChild>
+                            <Button
+                                id="start-date-pl"
+                                variant={"outline"}
+                                className={cn(
+                                "w-[240px] justify-start text-left font-normal",
+                                !startDate && "text-muted-foreground"
+                                )}
+                                disabled={isLoading}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {startDate ? format(startDate, "yyyy-MM-dd") : <span>Select Date</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 z-[101]">
+                                <Calendar
+                                mode="single"
+                                selected={startDate}
+                                onSelect={(date) => {
+                                    setStartDate(date);
+                                    setIsStartDatePickerOpen(false);
+                                }}
+                                initialFocus
+                                />
+                            </PopoverContent>
+                        </Popover>
+                        </div>
+                        <div className="grid gap-2">
+                        <Label htmlFor="end-date-pl">End Date</Label>
+                        <Popover open={isEndDatePickerOpen} onOpenChange={setIsEndDatePickerOpen}>
+                            <PopoverTrigger asChild>
+                            <Button
+                                id="end-date-pl"
+                                variant={"outline"}
+                                className={cn(
+                                "w-[240px] justify-start text-left font-normal",
+                                !endDate && "text-muted-foreground"
+                                )}
+                                disabled={isLoading}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {endDate ? format(endDate, "yyyy-MM-dd") : <span>Select Date</span>}
+                            </Button>
+                            </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0 z-[101]">
+                                <Calendar
+                                    mode="single"
+                                    selected={endDate}
+                                    onSelect={(date) => {
+                                    setEndDate(date);
+                                    setIsEndDatePickerOpen(false);
+                                    }}
+                                    disabled={{ before: startDate }}
+                                    initialFocus
+                                />
+                                </PopoverContent>
+                        </Popover>
+                        </div>
+                        <Button onClick={handleGetReport} disabled={isLoading || !startDate || !endDate}>
+                        {isLoading ? 'Getting Report...' : 'Get Report'}
+                        </Button>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent id="report-content-pl" className="p-0">
+                {isLoading ? (
+                    <div className="h-96 flex items-center justify-center">
+                        <p>Loading Report...</p>
+                    </div>
+                ) : !reportData ? (
+                    <div className="h-96 flex items-center justify-center text-muted-foreground">
+                        <p>Select a date range and click "Get Report" to view the P&L Statement.</p>
+                    </div>
+                ) : (
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="bg-blue-200">
+                                <TableHead className="w-[5%] text-xl font-extrabold">S.No</TableHead>
+                                <TableHead className="text-xl font-extrabold">Particulars</TableHead>
+                                <TableHead className="text-right w-[20%] text-xl font-extrabold">Debit</TableHead>
+                                <TableHead className="text-right w-[20%] text-xl font-extrabold">Credit</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody className="text-xl font-bold">
+                            <TableRow>
+                                <TableCell rowSpan={2} className="font-extrabold align-top pt-6 text-2xl">LIQUOR</TableCell>
+                                <TableCell>
+                                    <span className="font-extrabold">A) Sales Value</span>
+                                    <p className="text-base text-muted-foreground font-medium">(TOTAL SALES AMOUNT)</p>
+                                </TableCell>
+                                <TableCell></TableCell>
+                                <TableCell className="text-right">{formatNumber(salesValue)}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>
+                                <span className="font-extrabold">B) Cost of Sales</span>
+                                    <p className="text-base text-muted-foreground font-medium">(PURCHASE VALUE)</p>
+                                </TableCell>
+                                <TableCell className="text-right">{formatNumber(costOfSales)}</TableCell>
+                                <TableCell></TableCell>
+                            </TableRow>
+                            
+                            <SectionHeader value={grossProfit}>GROSS PROFIT</SectionHeader>
+
+                            <SectionHeader>C) OTHER INCOME</SectionHeader>
+                            <TableRow>
+                                <TableCell>1</TableCell>
+                                <TableCell>Kitchen Income</TableCell>
+                                <TableCell></TableCell>
+                                <TableCell className="text-right">{formatNumber(kitchenIncome)}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>2</TableCell>
+                                <TableCell>Empty Bottle Sales</TableCell>
+                                <TableCell></TableCell>
+                                <TableCell className="text-right">{formatNumber(emptyBottleSales)}</TableCell>
+                            </TableRow>
+                            <TotalRow label="TOTAL INCOME" value={totalIncome} isCredit />
+                            
+                            <SectionHeader>D) OTHER EXPENSES</SectionHeader>
+                            <TableRow>
+                                <TableCell>1</TableCell>
+                                <TableCell>Shop Expenses</TableCell>
+                                <TableCell className="text-right">{formatNumber(shopExpenses)}</TableCell>
+                                <TableCell></TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>2</TableCell>
+                                <TableCell>Bank Charges</TableCell>
+                                <TableCell className="text-right">{formatNumber(bankCharges)}</TableCell>
+                                <TableCell></TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>3</TableCell>
+                                <TableCell>Bill Payment</TableCell>
+                                <TableCell className="text-right">{formatNumber(billPayments)}</TableCell>
+                                <TableCell></TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>4</TableCell>
+                                <TableCell>Office Expense</TableCell>
+                                <TableCell className="text-right">{formatNumber(officeExpenses)}</TableCell>
+                                <TableCell></TableCell>
+                            </TableRow>
+                            <TotalRow label="TOTAL EXPENSES" value={totalExpenses} isDebit />
+
+                        </TableBody>
+                        <TableFooter>
+                            <NetProfitRow label="NET PROFIT" value={netProfit} />
+                        </TableFooter>
+                    </Table>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+export default function ReportsPage() {
+    const { shopName } = useUserStore();
+    const [token, setToken] = useState<string|null>(null);
+    const router = useRouter();
+
+    useEffect(() => {
+        const t = sessionStorage.getItem('accessToken');
+        if (!t) {
+            router.push('/login');
+        } else {
+            setToken(t);
+        }
+    }, [router]);
+
+    return (
+        <div className="flex flex-col min-h-screen bg-background">
+            <Header />
+            <main className="flex-1 container mx-auto p-4 md:p-8">
+                <Tabs defaultValue="profit-calculation" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="profit-calculation">Profit Calculation</TabsTrigger>
+                        <TabsTrigger value="pl-statement">P&L Statement</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="profit-calculation">
+                        <div className="pt-4">
+                            <CashFlowReport shopName={shopName} token={token} />
+                        </div>
+                    </TabsContent>
+                    <TabsContent value="pl-statement">
+                        <div className="pt-4">
+                            <PLStatementReport shopName={shopName} token={token} />
+                        </div>
+                    </TabsContent>
+                </Tabs>
+            </main>
         </div>
-      </main>
-    </div>
-  );
+    );
 }
