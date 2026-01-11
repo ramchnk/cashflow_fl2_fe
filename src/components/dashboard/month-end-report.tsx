@@ -11,7 +11,7 @@ import {
   TableCell,
   TableFooter
 } from '@/components/ui/table';
-import { Printer, Camera } from 'lucide-react';
+import { Printer, Camera, CalendarIcon } from 'lucide-react';
 import { getPartyDetails } from '@/app/lib/parties';
 import { format, startOfDay, endOfDay, parse, isValid } from 'date-fns';
 import html2canvas from 'html2canvas';
@@ -21,6 +21,9 @@ import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Input } from '../ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import { cn } from '@/lib/utils';
 
 
 interface Balances {
@@ -245,19 +248,20 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
     const { toast } = useToast();
     const router = useRouter();
     
-    const [startDateString, setStartDateString] = useState('');
-    const [endDateString, setEndDateString] = useState('');
+    const [startDate, setStartDate] = useState<Date | undefined>();
+    const [endDate, setEndDate] = useState<Date | undefined>();
+    const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
+    const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
 
 
     const handlePrint = () => {
         const printContent = document.getElementById('report-content-pl');
         if (printContent) {
             const originalContents = document.body.innerHTML;
-            const startDate = parse(startDateString, 'yyyy-MM-dd', new Date());
             const header = `
                 <div style="text-align: center; margin-bottom: 20px;">
                     <h1 style="font-size: 1.5rem; font-weight: bold; color: #1E3A8A;">${shopName || 'THENDRAL CLUB THIRUMAYAM'}</h1>
-                    <p style="font-size: 1.25rem;">Statement for ${isValid(startDate) ? format(startDate, 'MMM yyyy') : 'selected period'}</p>
+                    <p style="font-size: 1.25rem;">Statement for ${startDate ? format(startDate, 'MMM yyyy') : 'selected period'}</p>
                 </div>
             `;
             document.body.innerHTML = header + printContent.innerHTML;
@@ -290,26 +294,15 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
         }
     }
 
-    const validateDate = (dateString: string) => {
-        const parsedDate = parse(dateString, 'yyyy-MM-dd', new Date());
-        return isValid(parsedDate) && format(parsedDate, 'yyyy-MM-dd') === dateString;
-    }
-
     const handleGetReport = async () => {
-        const isStartDateValid = validateDate(startDateString);
-        const isEndDateValid = validateDate(endDateString);
-
-        if (!isStartDateValid || !isEndDateValid) {
+        if (!startDate || !endDate) {
             toast({
                 variant: 'destructive',
-                title: 'Invalid Date Format',
-                description: 'Please enter dates in YYYY-MM-DD format.',
+                title: 'Invalid Date Range',
+                description: 'Please select a start and end date.',
             });
             return;
         }
-
-        const startDate = parse(startDateString, 'yyyy-MM-dd', new Date());
-        const endDate = parse(endDateString, 'yyyy-MM-dd', new Date());
 
         if (endDate < startDate) {
             toast({
@@ -488,7 +481,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                     <div className="text-center">
                         <CardTitle className="text-2xl font-bold">{shopName || 'THENDRAL CLUB THIRUMAYAM'}</CardTitle>
                         <CardDescription className="text-lg text-blue-200">
-                           {isValid(parse(startDateString, 'yyyy-MM-dd', new Date())) ? `Statement for ${format(parse(startDateString, 'yyyy-MM-dd', new Date()), 'MMM yyyy')}`: 'P&L Statement'}
+                           {startDate ? `Statement for ${format(startDate, 'MMM yyyy')}`: 'P&L Statement'}
                         </CardDescription>
                     </div>
                     <div className="flex-grow flex justify-end gap-2 print-hidden">
@@ -504,29 +497,66 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
                      <div className="flex flex-wrap gap-4 items-end">
                         <div className="grid gap-2">
                           <Label htmlFor="start-date-pl">Start Date</Label>
-                           <Input
+                          <Popover open={isStartDatePickerOpen} onOpenChange={setIsStartDatePickerOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
                                 id="start-date-pl"
-                                type="text"
-                                value={startDateString}
-                                onChange={(e) => setStartDateString(e.target.value)}
-                                className="w-[240px]"
-                                placeholder="YYYY-MM-DD"
+                                variant={"outline"}
+                                className={cn(
+                                  "w-[240px] justify-start text-left font-normal",
+                                  !startDate && "text-muted-foreground"
+                                )}
                                 disabled={isLoading}
-                            />
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {startDate ? format(startDate, "yyyy-MM-dd") : <span>Select Date</span>}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={startDate}
+                                onSelect={(date) => {
+                                  setStartDate(date);
+                                  setIsStartDatePickerOpen(false);
+                                }}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
                         </div>
                         <div className="grid gap-2">
                           <Label htmlFor="end-date-pl">End Date</Label>
-                            <Input
+                          <Popover open={isEndDatePickerOpen} onOpenChange={setIsEndDatePickerOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
                                 id="end-date-pl"
-                                type="text"
-                                value={endDateString}
-                                onChange={(e) => setEndDateString(e.target.value)}
-                                className="w-[240px]"
-                                placeholder="YYYY-MM-DD"
+                                variant={"outline"}
+                                className={cn(
+                                  "w-[240px] justify-start text-left font-normal",
+                                  !endDate && "text-muted-foreground"
+                                )}
                                 disabled={isLoading}
-                            />
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {endDate ? format(endDate, "yyyy-MM-dd") : <span>Select Date</span>}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={endDate}
+                                onSelect={(date) => {
+                                  setEndDate(date);
+                                  setIsEndDatePickerOpen(false);
+                                }}
+                                disabled={{ before: startDate }}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
                         </div>
-                        <Button onClick={handleGetReport} disabled={isLoading || !startDateString || !endDateString}>
+                        <Button onClick={handleGetReport} disabled={isLoading || !startDate || !endDate}>
                           {isLoading ? 'Getting Report...' : 'Get Report'}
                         </Button>
                     </div>
