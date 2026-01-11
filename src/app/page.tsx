@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -14,8 +15,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useUserStore } from '@/app/lib/user-store';
 import Header from '@/components/layout/header';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { FileText } from 'lucide-react';
 import Link from 'next/link';
 
 
@@ -304,12 +303,6 @@ export default function Home() {
           <section className="print-hidden">
              <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold tracking-tight text-foreground">Account Balances</h2>
-                 <Button variant="outline" asChild>
-                    <Link href="/month-end-report">
-                        <FileText className="mr-2 h-4 w-4" />
-                        View Report
-                    </Link>
-                </Button>
             </div>
             {isLoading ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
