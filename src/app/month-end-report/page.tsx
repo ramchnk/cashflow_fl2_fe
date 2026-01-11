@@ -87,7 +87,8 @@ function CashFlowReport({ shopName, token }: { shopName: string | null, token: s
     useEffect(() => {
         const fetchAccountInfo = async () => {
             if (!token) {
-                router.push('/login');
+                // Don't redirect, just wait for the token to be available.
+                // The parent component will handle the main redirect if needed.
                 return;
             }
 
