@@ -1,6 +1,6 @@
-
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,56 +13,172 @@ import {
   TableFooter
 } from '@/components/ui/table';
 import Header from '@/components/layout/header';
-import { Printer } from 'lucide-react';
+import { Printer, Camera } from 'lucide-react';
 import { getPartyDetails } from '@/app/lib/parties';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+import { useUserStore } from '@/app/lib/user-store';
+import html2canvas from 'html2canvas';
 
 interface Balances {
     [key: string]: number;
 }
 
 export default function MonthEndReportPage() {
-  // --- Static Data ---
-  const shopName = "Gobi's Shop";
-  const investAmount = 250000;
-  const balances: Balances = {
-      stock: 150000,
-      CashInHand: 75000,
-      IOBBank: 50000,
-      HDFCBank: 25000,
-      'Sundry Debtors': 30000,
-  };
-  const isLoading = false;
-  // -------------------
+    const [balances, setBalances] = useState<Balances>({});
+    const [investAmount, setInvestAmount] = useState(0);
+    const [isLoading, setIsLoading] = useState(true);
+    const { shopName, setShopName } = useUserStore();
+    const { toast } = useToast();
+    const router = useRouter();
 
-  const handlePrint = () => {
-    window.print();
-  }
+
+   useEffect(() => {
+    const fetchAccountInfo = async () => {
+        setIsLoading(true);
+        const token = sessionStorage.getItem('accessToken');
+        if (!token) {
+        router.push('/login');
+        return;
+        }
+
+        try {
+        const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/account/getAccountInfo', {
+            method: 'GET',
+            headers: {
+            'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.account && data.account.cashFlow) {
+            setBalances(data.account.cashFlow);
+            } else {
+            throw new Error('Account cashFlow not found in response.');
+            }
+            if (data.account && data.account.investAmount) {
+                setInvestAmount(data.account.investAmount);
+            }
+            if (data.account && data.account.shopName) {
+            setShopName(data.account.shopName);
+            }
+        } else {
+            if(response.status === 401) {
+                toast({
+                    variant: "destructive",
+                    title: "Session Expired",
+                    description: "Please login again.",
+                });
+                sessionStorage.removeItem('accessToken');
+                router.push('/login');
+            } else {
+                throw new Error('Failed to fetch account information');
+            }
+        }
+        } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "An Error Occurred",
+            description: error.message || "Could not fetch account information.",
+        });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    fetchAccountInfo();
+   }, [router, setShopName, toast]);
+
+    const handlePrint = () => {
+        const printContent = document.getElementById('report-content-cashflow');
+        if (printContent) {
+            const originalContents = document.body.innerHTML;
+            const header = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h1 style="font-size: 1.5rem; font-weight: bold; color: #3F51B5;">MONTHLY PROFIT CALCULATION</h1>
+                    <h2 style="font-size: 1.25rem; font-weight: 600;">${shopName || "Gobi's Shop"}</h2>
+                    <p style="font-size: 1rem;">${format(new Date(), 'MMMM-yyyy')}</p>
+                </div>
+            `;
+            document.body.innerHTML = header + printContent.innerHTML;
+            window.print();
+            document.body.innerHTML = originalContents;
+            window.location.reload();
+        }
+    }
+
+    const handleCapture = () => {
+        const reportCard = document.getElementById('report-card-cashflow');
+        if (reportCard) {
+        const buttons = reportCard.querySelectorAll('button');
+        buttons.forEach(btn => btn.style.visibility = 'hidden');
+
+        html2canvas(reportCard, { 
+            useCORS: true,
+            scale: 2, 
+            onclone: (document) => {
+                const header = document.getElementById('report-header-cashflow');
+                if (header) {
+                    header.classList.remove('print-hidden');
+                }
+            }
+        }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = `monthly-profit-report-cashflow-${format(new Date(), 'yyyy-MM-dd')}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            buttons.forEach(btn => btn.style.visibility = 'visible');
+        });
+        }
+    }
+
+    const formatCurrency = (amount: number) => {
+        if (typeof amount !== 'number' || isNaN(amount)) return '₹ 0';
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            maximumFractionDigits: 0,
+        }).format(amount);
+    }
   
-  const formatCurrency = (amount: number) => {
-    if (typeof amount !== 'number') return '';
-    return new Intl.NumberFormat('en-IN', {
-        maximumFractionDigits: 0,
-    }).format(amount);
-  }
-  
-  const detailsOrder = ['stock', 'CashInHand'];
+    const detailsOrder = ['stock', 'CashInHand', 'CashInOffice'];
+    const reportBalances = { ...balances };
 
-  const reportDetails = Object.keys(balances)
-    .filter(key => key !== 'expenses' && key !== 'readyToCollect')
-    .sort((a, b) => {
-        const aIndex = detailsOrder.indexOf(a);
-        const bIndex = detailsOrder.indexOf(b);
-        if (aIndex > -1 && bIndex > -1) return aIndex - bIndex;
-        if (aIndex > -1) return -1;
-        if (bIndex > -1) return 1;
-        if (a.toLowerCase().includes('bank') && !b.toLowerCase().includes('bank')) return 1;
-        if (!a.toLowerCase().includes('bank') && b.toLowerCase().includes('bank')) return -1;
-        return a.localeCompare(b);
-    });
+    if (reportBalances.readyToCollect) {
+        reportBalances.CashInOffice = reportBalances.readyToCollect;
+    }
+    
+    const cashInHandKey = Object.keys(reportBalances).find(k => k.toLowerCase() === 'cashinhand');
 
-    const closeTotal = reportDetails.reduce((acc, key) => acc + (balances[key] || 0), 0);
+    const reportDetails = Object.keys(reportBalances)
+        .filter(key => {
+            const lowerKey = key.toLowerCase();
+            if (lowerKey === 'expenses' || lowerKey === 'readytocollect') return false;
+            if (lowerKey === 'cashinhand' && key !== cashInHandKey) return false;
+            return true;
+        })
+        .sort((a, b) => {
+            const aIndex = detailsOrder.indexOf(a);
+            const bIndex = detailsOrder.indexOf(b);
+            if (aIndex > -1 && bIndex > -1) return aIndex - bIndex;
+            if (aIndex > -1) return -1;
+            if (bIndex > -1) return 1;
+            if (a.toLowerCase().includes('bank') && !b.toLowerCase().includes('bank')) return 1;
+            if (!a.toLowerCase().includes('bank') && b.toLowerCase().includes('bank')) return -1;
+            return a.localeCompare(b);
+        });
+
+    const closeTotal = reportDetails.reduce((acc, key) => acc + (reportBalances[key] || 0), 0);
     const profit = closeTotal - investAmount;
+
+    const getRowName = (key: string) => {
+        if (key === 'CashInOffice') {
+            return 'Cash in Office';
+        }
+        return getPartyDetails(key).name;
+    }
 
 
   return (
@@ -70,20 +186,26 @@ export default function MonthEndReportPage() {
       <Header />
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <CardTitle className="text-center text-xl text-primary font-bold">MONTHLY PROFIT CALCULATION</CardTitle>
-                            <CardDescription className="text-center text-lg font-semibold">{shopName}</CardDescription>
-                            <CardDescription className="text-center text-md">{format(new Date(), 'MMMM-yyyy')}</CardDescription>
+            <Card id="report-card-cashflow">
+                <CardHeader id="report-header-cashflow">
+                     <div className="flex justify-between items-start">
+                        <div className="flex-grow"></div>
+                        <div className="text-center flex-shrink-0">
+                            <CardTitle className="text-xl text-primary font-bold">MONTHLY PROFIT CALCULATION</CardTitle>
+                            <CardDescription className="text-lg font-semibold">{shopName || "Gobi's Shop"}</CardDescription>
+                            <CardDescription className="text-md">{format(new Date(), 'MMMM-yyyy')}</CardDescription>
                         </div>
-                        <Button onClick={handlePrint} variant="outline" size="icon" className="print-hidden" disabled={isLoading}>
-                            <Printer className="h-5 w-5"/>
-                        </Button>
+                        <div className="flex-grow flex justify-end gap-2">
+                            <Button onClick={handleCapture} variant="outline" size="icon" className="print-hidden" disabled={isLoading}>
+                                <Camera className="h-5 w-5"/>
+                            </Button>
+                            <Button onClick={handlePrint} variant="outline" size="icon" className="print-hidden" disabled={isLoading}>
+                                <Printer className="h-5 w-5"/>
+                            </Button>
+                        </div>
                     </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent id="report-content-cashflow" className="pt-0 bg-background p-6">
                   {isLoading ? (
                       <div className="h-96 flex items-center justify-center">
                           <p>Loading Report...</p>
@@ -92,17 +214,17 @@ export default function MonthEndReportPage() {
                     <Table>
                         <TableHeader className="bg-yellow-300">
                         <TableRow>
-                            <TableHead className="font-bold text-black">DETAILS</TableHead>
-                            <TableHead className="text-right font-bold text-black">OPEN</TableHead>
-                            <TableHead className="text-right font-bold text-black">CLOSE</TableHead>
+                            <TableHead className="font-bold text-black text-lg">DETAILS</TableHead>
+                            <TableHead className="text-right font-bold text-black text-lg">OPEN</TableHead>
+                            <TableHead className="text-right font-bold text-black text-lg">CLOSE</TableHead>
                         </TableRow>
                         </TableHeader>
-                        <TableBody>
+                        <TableBody className="text-lg">
                             {reportDetails.map(key => (
                             <TableRow key={key}>
-                                <TableCell className="font-medium">{getPartyDetails(key).name}</TableCell>
+                                <TableCell className="font-medium">{getRowName(key)}</TableCell>
                                 <TableCell className="text-right"></TableCell>
-                                <TableCell className="text-right">{formatCurrency(balances[key] || 0)}</TableCell>
+                                <TableCell className="text-right font-semibold">{formatCurrency(reportBalances[key] || 0)}</TableCell>
                             </TableRow>
                             ))}
                         </TableBody>
@@ -111,11 +233,6 @@ export default function MonthEndReportPage() {
                                 <TableCell>TOTAL</TableCell>
                                 <TableCell className="text-right">{formatCurrency(investAmount)}</TableCell>
                                 <TableCell className="text-right">{formatCurrency(closeTotal)}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell>PROFIT = (CLOSE - OPEN)</TableCell>
-                                <TableCell></TableCell>
-                                <TableCell className="text-right">{formatCurrency(profit)}</TableCell>
                             </TableRow>
                             <TableRow className="bg-green-200">
                                 <TableCell>Total Profit</TableCell>

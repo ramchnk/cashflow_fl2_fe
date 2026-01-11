@@ -1,7 +1,6 @@
-
 'use client';
 
-import { Wallet, LogOut, Store, Home, Package, Receipt, Calculator, BarChart3 } from 'lucide-react';
+import { Wallet, LogOut, Store, Home, Package, Receipt, Calculator, BarChart3, BookCopy } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -32,6 +31,8 @@ export default function Header() {
         { href: "/expenses", label: "Expenses", icon: Receipt },
         { href: "/sales", label: "Sales", icon: BarChart3 },
         { href: "/purchase-estimate", label: "Purchase Estimate", icon: Calculator },
+        { href: "/month-end-report", label: "Month End Report", icon: BookCopy },
+        { href: "/pl-statement", label: "P&L Statement", icon: BookCopy },
     ]
 
   return (
@@ -68,7 +69,7 @@ export default function Header() {
             </TooltipProvider>
           </div>
         </div>
-        <div className="flex items-center justify-center h-14 border-b">
+        <div className="flex items-center justify-center h-14 border-b overflow-x-auto">
              <nav className="flex items-center gap-2">
                  {navLinks.map((link) => (
                     <Button key={link.href} variant={pathname === link.href ? 'secondary' : 'ghost'} asChild>

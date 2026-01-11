@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -17,8 +16,7 @@ import Header from '@/components/layout/header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import MonthEndReport from '@/components/dashboard/month-end-report';
+import Link from 'next/link';
 
 
 export default function Home() {
@@ -306,27 +304,12 @@ export default function Home() {
           <section className="print-hidden">
              <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold tracking-tight text-foreground">Account Balances</h2>
-                <Dialog>
-                    <DialogTrigger asChild>
-                        <Button variant="outline">
-                            <FileText className="mr-2 h-4 w-4" />
-                            View Report
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-                        <DialogHeader>
-                            <DialogTitle>Monthly Profit Calculation</DialogTitle>
-                        </DialogHeader>
-                        <div className="overflow-y-auto">
-                            <MonthEndReport 
-                              balances={balances} 
-                              investAmount={investAmount}
-                              shopName={shopName}
-                              isLoading={isLoading}
-                            />
-                        </div>
-                    </DialogContent>
-                </Dialog>
+                 <Button variant="outline" asChild>
+                    <Link href="/month-end-report">
+                        <FileText className="mr-2 h-4 w-4" />
+                        View Report
+                    </Link>
+                </Button>
             </div>
             {isLoading ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
