@@ -27,11 +27,11 @@ export default function Header() {
 
     const navLinks = [
         { href: "/", label: "Dashboard", icon: Home },
+        { href: "/month-end-report", label: "Reports", icon: BookCopy },
         { href: "/purchase", label: "Purchase", icon: Package },
         { href: "/expenses", label: "Expenses", icon: Receipt },
         { href: "/sales", label: "Sales", icon: BarChart3 },
         { href: "/purchase-estimate", label: "Purchase Estimate", icon: Calculator },
-        { href: "/month-end-report", label: "Reports", icon: BookCopy },
     ]
 
   return (
