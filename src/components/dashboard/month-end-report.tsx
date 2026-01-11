@@ -208,7 +208,7 @@ interface ApiSaleItem {
     totalExpensesAmount: number;
     basePrice: number;
     kitchenSales?: number;
-    otherIncome?: number;
+    otherIncome?: string | number;
     otherIncomeNaretion?: string;
 }
 
@@ -394,7 +394,7 @@ const PLStatement = ({ shopName, balances, isLoading: isPropsLoading }: PLStatem
             const kitchenIncome = salesResult.data.reduce((sum, item) => sum + (item.kitchenSales || 0), 0);
             const emptyBottleSales = salesResult.data.reduce((sum, item) => {
                 if (item.otherIncomeNaretion?.toUpperCase().includes('EMPTY BOTTLE')) {
-                    return sum + (item.otherIncome || 0);
+                    return sum + ((typeof item.otherIncome === 'number') ? item.otherIncome : 0);
                 }
                 return sum;
             }, 0);
