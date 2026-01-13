@@ -433,7 +433,7 @@ export default function ExpensesPage() {
                           <TableHeader>
                               <TableRow>
                                   <TableHead>Date</TableHead>
-                                  <TableHead>Narration</TableHead>
+                                  <TableHead>Description</TableHead>
                                   <TableHead className="text-right">Amount</TableHead>
                               </TableRow>
                           </TableHeader>
@@ -441,10 +441,11 @@ export default function ExpensesPage() {
                               {detailedItems.map((item, index) => {
                                 const date = new Date(item.saleDate * 1000);
                                 const itemAmount = item.expenseList?.amount || 0;
+                                const description = item.expenseList?.narration || item.expenseList?.details;
                                 return (
                                   <TableRow key={index}>
                                       <TableCell>{!isNaN(date.getTime()) ? format(date, 'yyyy-MM-dd') : 'Invalid Date'}</TableCell>
-                                      <TableCell>{item.expenseList?.narration}</TableCell>
+                                      <TableCell>{description}</TableCell>
                                       <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(isNaN(itemAmount) ? 0 : itemAmount)}</TableCell>
                                   </TableRow>
                                 )
@@ -467,5 +468,3 @@ export default function ExpensesPage() {
     </div>
   );
 }
-
-    
