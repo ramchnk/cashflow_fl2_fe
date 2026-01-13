@@ -50,7 +50,11 @@ interface Expense {
 
 interface DetailedItem {
   saleDate: number;
-  amount: string;
+  expenseList: {
+    amount: number;
+    narration: string;
+    details: string;
+  };
 }
 
 export default function ExpensesPage() {
@@ -429,16 +433,18 @@ export default function ExpensesPage() {
                           <TableHeader>
                               <TableRow>
                                   <TableHead>Date</TableHead>
+                                  <TableHead>Narration</TableHead>
                                   <TableHead className="text-right">Amount</TableHead>
                               </TableRow>
                           </TableHeader>
                           <TableBody>
                               {detailedItems.map((item, index) => {
                                 const date = new Date(item.saleDate * 1000);
-                                const itemAmount = parseFloat(item.amount);
+                                const itemAmount = item.expenseList?.amount || 0;
                                 return (
                                   <TableRow key={index}>
                                       <TableCell>{!isNaN(date.getTime()) ? format(date, 'yyyy-MM-dd') : 'Invalid Date'}</TableCell>
+                                      <TableCell>{item.expenseList?.narration}</TableCell>
                                       <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(isNaN(itemAmount) ? 0 : itemAmount)}</TableCell>
                                   </TableRow>
                                 )
