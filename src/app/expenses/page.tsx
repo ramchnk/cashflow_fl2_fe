@@ -110,28 +110,13 @@ export default function ExpensesPage() {
           item => !item.expenseDetail.toLowerCase().includes("taken amount")
         );
         
-        // Grouping logic
-        const groupedExpenses = filteredApiExpenses.reduce((acc, item) => {
-            const expenseName = item.expenseDetail;
-            // Split by space or hyphen to get the first word as the group key
-            const groupKey = expenseName.split(/[\s-]/)[0].toUpperCase();
-            
-            if (!acc[groupKey]) {
-                acc[groupKey] = {
-                    _id: groupKey,
-                    name: groupKey,
-                    amount: 0,
-                    shopNumber: item.shopNumber,
-                    originalNames: []
-                };
-            }
-            acc[groupKey].amount += parseFloat(item.totalAmount);
-            acc[groupKey].originalNames.push(expenseName);
-
-            return acc;
-        }, {} as Record<string, Expense>);
-
-        const formattedExpenses: Expense[] = Object.values(groupedExpenses);
+        const formattedExpenses: Expense[] = filteredApiExpenses.map((item, index) => ({
+            _id: `${item.expenseDetail}-${index}`,
+            name: item.expenseDetail,
+            amount: parseFloat(item.totalAmount),
+            shopNumber: item.shopNumber,
+            originalNames: [item.expenseDetail]
+        }));
 
         setExpenses(formattedExpenses);
       } else {
