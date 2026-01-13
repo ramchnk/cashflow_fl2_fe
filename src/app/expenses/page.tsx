@@ -45,6 +45,7 @@ interface Expense {
   name: string;
   amount: number;
   shopNumber: string;
+  originalNames: string[];
 }
 
 interface DetailedItem {
@@ -105,12 +106,28 @@ export default function ExpensesPage() {
           item => !item.expenseDetail.toLowerCase().includes("taken amount")
         );
         
-        const formattedExpenses: Expense[] = filteredApiExpenses.map((item, index) => ({
-            _id: `${item.shopNumber}-${index}-${new Date().getTime()}`,
-            name: item.expenseDetail,
-            amount: parseFloat(item.totalAmount),
-            shopNumber: item.shopNumber,
-        }));
+        // Grouping logic
+        const groupedExpenses = filteredApiExpenses.reduce((acc, item) => {
+            const expenseName = item.expenseDetail;
+            // Split by space or hyphen to get the first word as the group key
+            const groupKey = expenseName.split(/[\s-]/)[0].toUpperCase();
+            
+            if (!acc[groupKey]) {
+                acc[groupKey] = {
+                    _id: groupKey,
+                    name: groupKey,
+                    amount: 0,
+                    shopNumber: item.shopNumber,
+                    originalNames: []
+                };
+            }
+            acc[groupKey].amount += parseFloat(item.totalAmount);
+            acc[groupKey].originalNames.push(expenseName);
+
+            return acc;
+        }, {} as Record<string, Expense>);
+
+        const formattedExpenses: Expense[] = Object.values(groupedExpenses);
 
         setExpenses(formattedExpenses);
       } else {
@@ -144,6 +161,16 @@ export default function ExpensesPage() {
     setIsDetailLoading(true);
     setDetailedItems([]);
 
+    if (!fromDate || !toDate) {
+      toast({
+        variant: 'destructive',
+        title: 'Date range not selected',
+        description: 'Please select a date range to view details.',
+      });
+      setIsDetailLoading(false);
+      return;
+    }
+
     const token = sessionStorage.getItem('accessToken');
     if (!token) {
         router.push('/login');
@@ -151,7 +178,13 @@ export default function ExpensesPage() {
     }
     
     try {
-        const url = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/expenses/expensesReport/item?expenseItem=${encodeURIComponent(expense.name)}`;
+        const fromTime = Math.floor(startOfDay(fromDate).getTime() / 1000);
+        const toTime = Math.floor(endOfDay(toDate).getTime() / 1000);
+        
+        // Joining original names to send to the API
+        const expenseItemsQuery = expense.originalNames.map(name => `expenseItem=${encodeURIComponent(name)}`).join('&');
+        const url = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/expenses/expensesReport/item?fromTime=${fromTime}&toTime=${toTime}&${expenseItemsQuery}`;
+        
         const response = await fetch(url, {
             method: 'GET',
             headers: {
@@ -395,7 +428,6 @@ export default function ExpensesPage() {
                       <Table>
                           <TableHeader>
                               <TableRow>
-                                  <TableHead>Particulars</TableHead>
                                   <TableHead>Date</TableHead>
                                   <TableHead className="text-right">Amount</TableHead>
                               </TableRow>
@@ -406,7 +438,6 @@ export default function ExpensesPage() {
                                 const itemAmount = parseFloat(item.amount);
                                 return (
                                   <TableRow key={index}>
-                                      <TableCell>{selectedExpense.name}</TableCell>
                                       <TableCell>{!isNaN(date.getTime()) ? format(date, 'yyyy-MM-dd') : 'Invalid Date'}</TableCell>
                                       <TableCell className="text-right">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(isNaN(itemAmount) ? 0 : itemAmount)}</TableCell>
                                   </TableRow>
@@ -430,3 +461,5 @@ export default function ExpensesPage() {
     </div>
   );
 }
+
+    
