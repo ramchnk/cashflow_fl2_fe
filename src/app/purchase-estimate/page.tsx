@@ -17,7 +17,6 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/layout/header';
 import { CalendarIcon, File, Printer, PlusCircle, Check, ChevronsUpDown } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { DateRange } from 'react-day-picker';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -41,6 +40,7 @@ import {
     CommandItem,
     CommandList,
 } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 
 interface EstimateItem {
@@ -81,7 +81,6 @@ export default function PurchaseEstimatePage() {
   const [isAddManuallyDialogOpen, setIsAddManuallyDialogOpen] = useState(false);
   const [manualSku, setManualSku] = useState('');
   const [manualEstInCase, setManualEstInCase] = useState<number | ''>('');
-  const [isComboboxOpen, setIsComboboxOpen] = useState(false);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -455,51 +454,40 @@ export default function PurchaseEstimatePage() {
                             Product
                           </Label>
                           <div className="col-span-3">
-                            <Popover open={isComboboxOpen} onOpenChange={setIsComboboxOpen} modal={false}>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    aria-expanded={isComboboxOpen}
-                                    className="w-full justify-between"
-                                    >
-                                    {manualSku
-                                        ? productMaster.find((p) => p.SKU === manualSku)?.SKU
-                                        : "Select product..."}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                    <Command>
-                                        <CommandInput placeholder="Search product..." />
-                                        <CommandList>
-                                            <CommandEmpty>No product found.</CommandEmpty>
-                                            <CommandGroup>
-                                                {productMaster
-                                                    .filter(p => !items.some(item => item.SKU === p.SKU))
-                                                    .map((p) => (
-                                                    <CommandItem
-                                                        key={p.SKU}
-                                                        value={p.SKU}
-                                                        onSelect={(currentValue) => {
-                                                            setManualSku(currentValue === manualSku ? "" : currentValue);
-                                                            setIsComboboxOpen(false);
-                                                        }}
-                                                    >
-                                                        <Check
-                                                        className={cn(
-                                                            "mr-2 h-4 w-4",
-                                                            manualSku === p.SKU ? "opacity-100" : "opacity-0"
-                                                        )}
-                                                        />
-                                                        {p.SKU}
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
+                            {manualSku ? (
+                                <div className="flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                    <span>{manualSku}</span>
+                                    <Button type="button" variant="ghost" size="sm" className="h-auto p-1" onClick={() => setManualSku('')}>Change</Button>
+                                </div>
+                            ) : (
+                                <Command>
+                                    <CommandInput placeholder="Search product..." />
+                                    <CommandList>
+                                        <CommandEmpty>No product found.</CommandEmpty>
+                                        <CommandGroup>
+                                            {productMaster
+                                                .filter(p => !items.some(item => item.SKU === p.SKU))
+                                                .map((p) => (
+                                                <CommandItem
+                                                    key={p.SKU}
+                                                    value={p.SKU}
+                                                    onSelect={(currentValue) => {
+                                                        setManualSku(currentValue);
+                                                    }}
+                                                >
+                                                    <Check
+                                                    className={cn(
+                                                        "mr-2 h-4 w-4",
+                                                        manualSku === p.SKU ? "opacity-100" : "opacity-0"
+                                                    )}
+                                                    />
+                                                    {p.SKU}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            )}
                           </div>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
@@ -656,3 +644,5 @@ export default function PurchaseEstimatePage() {
     </div>
   );
 }
+
+    
