@@ -442,7 +442,7 @@ export default function PurchaseEstimatePage() {
                         Add Manual Item
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
+                    <DialogContent className="sm:max-w-2xl">
                       <DialogHeader>
                         <DialogTitle>Add Manual Item</DialogTitle>
                         <DialogDescription>
@@ -656,5 +656,3 @@ export default function PurchaseEstimatePage() {
     </div>
   );
 }
-
-    
