@@ -455,7 +455,7 @@ export default function PurchaseEstimatePage() {
                             Product
                           </Label>
                           <div className="col-span-3">
-                            <Popover open={isComboboxOpen} onOpenChange={setIsComboboxOpen}>
+                            <Popover open={isComboboxOpen} onOpenChange={setIsComboboxOpen} modal={false}>
                                 <PopoverTrigger asChild>
                                     <Button
                                     variant="outline"
