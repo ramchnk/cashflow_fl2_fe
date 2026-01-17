@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/layout/header';
-import { CalendarIcon, File, Printer, PlusCircle } from 'lucide-react';
+import { CalendarIcon, File, Printer, PlusCircle, Check, ChevronsUpDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { DateRange } from 'react-day-picker';
 import { format, startOfDay, endOfDay } from 'date-fns';
@@ -33,6 +33,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
 
 
 interface EstimateItem {
@@ -73,6 +81,7 @@ export default function PurchaseEstimatePage() {
   const [isAddManuallyDialogOpen, setIsAddManuallyDialogOpen] = useState(false);
   const [manualSku, setManualSku] = useState('');
   const [manualEstInCase, setManualEstInCase] = useState<number | ''>('');
+  const [isComboboxOpen, setIsComboboxOpen] = useState(false);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -445,18 +454,53 @@ export default function PurchaseEstimatePage() {
                           <Label htmlFor="manual-product" className="text-right">
                             Product
                           </Label>
-                          <Select onValueChange={setManualSku} value={manualSku}>
-                              <SelectTrigger className="col-span-3">
-                                  <SelectValue placeholder="Select a product" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                  {productMaster
-                                    .filter(p => !items.some(item => item.SKU === p.SKU))
-                                    .map((p) => (
-                                      <SelectItem key={p.SKU} value={p.SKU}>{p.SKU}</SelectItem>
-                                  ))}
-                              </SelectContent>
-                          </Select>
+                          <div className="col-span-3">
+                            <Popover open={isComboboxOpen} onOpenChange={setIsComboboxOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={isComboboxOpen}
+                                    className="w-full justify-between"
+                                    >
+                                    {manualSku
+                                        ? productMaster.find((p) => p.SKU === manualSku)?.SKU
+                                        : "Select product..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <Command>
+                                        <CommandInput placeholder="Search product..." />
+                                        <CommandList>
+                                            <CommandEmpty>No product found.</CommandEmpty>
+                                            <CommandGroup>
+                                                {productMaster
+                                                    .filter(p => !items.some(item => item.SKU === p.SKU))
+                                                    .map((p) => (
+                                                    <CommandItem
+                                                        key={p.SKU}
+                                                        value={p.SKU}
+                                                        onSelect={(currentValue) => {
+                                                            setManualSku(currentValue === manualSku ? "" : currentValue);
+                                                            setIsComboboxOpen(false);
+                                                        }}
+                                                    >
+                                                        <Check
+                                                        className={cn(
+                                                            "mr-2 h-4 w-4",
+                                                            manualSku === p.SKU ? "opacity-100" : "opacity-0"
+                                                        )}
+                                                        />
+                                                        {p.SKU}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                          </div>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                           <Label htmlFor="manual-est-in-case" className="text-right">
