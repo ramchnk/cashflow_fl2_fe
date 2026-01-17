@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/layout/header';
-import { CalendarIcon, File, Printer } from 'lucide-react';
+import { CalendarIcon, File, Printer, PlusCircle } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import type { DateRange } from 'react-day-picker';
 import { format, startOfDay, endOfDay } from 'date-fns';
@@ -24,6 +24,15 @@ import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 
 interface EstimateItem {
@@ -60,6 +69,10 @@ export default function PurchaseEstimatePage() {
   const [filterColumn, setFilterColumn] = useState<keyof EstimateItem | 'none'>('estInCase');
   const [filterOperator, setFilterOperator] = useState<'>' | '<' | '='>('>');
   const [filterValue, setFilterValue] = useState<number | ''>(0);
+
+  const [isAddManuallyDialogOpen, setIsAddManuallyDialogOpen] = useState(false);
+  const [manualSku, setManualSku] = useState('');
+  const [manualEstInCase, setManualEstInCase] = useState<number | ''>('');
 
   const { toast } = useToast();
   const router = useRouter();
@@ -217,6 +230,59 @@ export default function PurchaseEstimatePage() {
     }
   };
 
+  const handleAddManualItem = () => {
+    if (!manualSku || manualEstInCase === '' || +manualEstInCase <= 0) {
+        toast({
+            variant: 'destructive',
+            title: 'Invalid Input',
+            description: 'Please select a product and enter a positive case quantity.',
+        });
+        return;
+    }
+
+    const productInfo = productMaster.find(p => p.SKU === manualSku);
+    if (!productInfo) {
+        toast({
+            variant: 'destructive',
+            title: 'Product not found',
+            description: 'The selected product could not be found in the master list.',
+        });
+        return;
+    }
+
+    const newItem: EstimateItem = {
+        SKU: manualSku,
+        totalSalesQty: 0, // Manual add
+        avgSalesPerDay: 0, // Manual add
+        inHand: productInfo.stock || 0,
+        purchasePrice: productInfo.purchasePrice || 0,
+        estInCase: +manualEstInCase,
+        estimatedQuantity: +manualEstInCase * getPackSize(manualSku),
+    };
+
+    setItems(prevItems => {
+      if (prevItems.some(item => item.SKU === newItem.SKU)) {
+        toast({
+          variant: 'destructive',
+          title: 'Item already exists',
+          description: 'This item is already in the estimate list.',
+        });
+        return prevItems;
+      }
+      const newItems = [...prevItems, newItem];
+      return newItems.sort((a, b) => b.estInCase - a.estInCase);
+    });
+    
+    toast({
+      title: 'Item Added',
+      description: `${manualSku} has been added to the estimate.`,
+    });
+
+    setIsAddManuallyDialogOpen(false);
+    setManualSku('');
+    setManualEstInCase('');
+  };
+
   const handleEstInCaseChange = (index: number, newEstInCaseStr: string) => {
     const newEstInCase = Number(newEstInCaseStr);
     if (isNaN(newEstInCase)) return;
@@ -360,6 +426,60 @@ export default function PurchaseEstimatePage() {
                 <Button onClick={handleGenerateEstimate} disabled={isLoading}>
                   {isLoading ? 'Generating...' : 'Generate Estimate'}
                 </Button>
+                <Dialog open={isAddManuallyDialogOpen} onOpenChange={setIsAddManuallyDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Manual Item
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Add Manual Item</DialogTitle>
+                        <DialogDescription>
+                          Select a product and specify the estimated case quantity to add it to the list.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="manual-product" className="text-right">
+                            Product
+                          </Label>
+                          <Select value={manualSku} onValueChange={setManualSku}>
+                              <SelectTrigger className="col-span-3">
+                                  <SelectValue placeholder="Select a product" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  {productMaster
+                                    .filter(p => !items.some(item => item.SKU === p.SKU))
+                                    .map(p => (
+                                      <SelectItem key={p.SKU} value={p.SKU}>
+                                          {p.SKU}
+                                      </SelectItem>
+                                  ))}
+                              </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="manual-est-in-case" className="text-right">
+                            Est. In Case
+                          </Label>
+                          <Input
+                            id="manual-est-in-case"
+                            type="number"
+                            value={manualEstInCase}
+                            onChange={(e) => setManualEstInCase(e.target.value === '' ? '' : Number(e.target.value))}
+                            onWheel={(e) => e.currentTarget.blur()}
+                            className="col-span-3"
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsAddManuallyDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleAddManualItem}>Add Item</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
               </div>
               <div className="mt-4 flex flex-wrap gap-4 items-end">
                 <div className="grid gap-2">
@@ -494,3 +614,5 @@ export default function PurchaseEstimatePage() {
     </div>
   );
 }
+
+    
