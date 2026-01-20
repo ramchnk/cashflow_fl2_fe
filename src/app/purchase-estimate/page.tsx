@@ -261,24 +261,39 @@ export default function PurchaseEstimatePage() {
     const packSize = getPackSize(manualSku);
     const newEstimatedQuantity = +manualEstInCase * packSize;
 
-    const newItem: EstimateItem = {
-        SKU: manualSku,
-        totalSalesQty: 0, // Manual add
-        avgSalesPerDay: 0, // Manual add
-        inHand: productInfo.stock || 0,
-        purchasePrice: productInfo.purchasePrice || 0,
-        estInCase: +manualEstInCase,
-        estimatedQuantity: newEstimatedQuantity,
-    };
-
     setItems(prevItems => {
-        const newItems = [...prevItems, newItem];
-        return newItems.sort((a, b) => b.estInCase - a.estInCase);
-    });
+        const existingItemIndex = prevItems.findIndex(item => item.SKU === manualSku);
 
-    toast({
-        title: 'Item Added',
-        description: `${manualSku} has been added to the estimate.`,
+        if (existingItemIndex > -1) {
+            // Update existing item
+            const newItems = [...prevItems];
+            newItems[existingItemIndex] = {
+                ...newItems[existingItemIndex],
+                estInCase: +manualEstInCase,
+                estimatedQuantity: newEstimatedQuantity,
+            };
+            toast({
+                title: 'Item Updated',
+                description: `${manualSku} quantity has been updated to ${manualEstInCase} cases.`,
+            });
+            return newItems.sort((a, b) => b.estInCase - a.estInCase);
+        } else {
+            // Add new item
+            const newItem: EstimateItem = {
+                SKU: manualSku,
+                totalSalesQty: 0, // Manual add
+                avgSalesPerDay: 0, // Manual add
+                inHand: productInfo.stock || 0,
+                purchasePrice: productInfo.purchasePrice || 0,
+                estInCase: +manualEstInCase,
+                estimatedQuantity: newEstimatedQuantity,
+            };
+            toast({
+                title: 'Item Added',
+                description: `${manualSku} has been added to the estimate.`,
+            });
+            return [...prevItems, newItem].sort((a, b) => b.estInCase - a.estInCase);
+        }
     });
 
     setIsAddManuallyDialogOpen(false);
@@ -429,18 +444,24 @@ export default function PurchaseEstimatePage() {
                 <Button onClick={handleGenerateEstimate} disabled={isLoading}>
                   {isLoading ? 'Generating...' : 'Generate Estimate'}
                 </Button>
-                <Dialog open={isAddManuallyDialogOpen} onOpenChange={setIsAddManuallyDialogOpen}>
+                <Dialog open={isAddManuallyDialogOpen} onOpenChange={(isOpen) => {
+                    setIsAddManuallyDialogOpen(isOpen);
+                    if (!isOpen) {
+                        setManualSku('');
+                        setManualEstInCase('');
+                    }
+                }}>
                     <DialogTrigger asChild>
                       <Button variant="outline">
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Add Manual Item
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-2xl">
+                    <DialogContent className="sm:max-w-md">
                       <DialogHeader>
                         <DialogTitle>Add Manual Item</DialogTitle>
                         <DialogDescription>
-                          Select a product and specify the estimated case quantity to add it to the list.
+                          Select a product and specify the estimated case quantity.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="grid gap-4 py-4">
@@ -451,7 +472,7 @@ export default function PurchaseEstimatePage() {
                           <div className="col-span-3">
                             {manualSku ? (
                                 <div className="flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm">
-                                    <span>{manualSku}</span>
+                                    <span className="truncate pr-2">{manualSku}</span>
                                     <Button type="button" variant="ghost" size="sm" className="h-auto p-1" onClick={() => setManualSku('')}>Change</Button>
                                 </div>
                             ) : (
@@ -461,13 +482,12 @@ export default function PurchaseEstimatePage() {
                                         <CommandEmpty>No product found.</CommandEmpty>
                                         <CommandGroup>
                                             {productMaster
-                                                .filter((p) => !items.some((item) => item.SKU === p.SKU))
                                                 .map((p) => (
                                                 <CommandItem
                                                     key={p.SKU}
                                                     value={p.SKU}
                                                     onSelect={(currentValue) => {
-                                                        setManualSku(currentValue);
+                                                        setManualSku(p.SKU);
                                                     }}
                                                 >
                                                     <Check
@@ -501,7 +521,7 @@ export default function PurchaseEstimatePage() {
                       </div>
                       <DialogFooter>
                         <Button variant="outline" onClick={() => setIsAddManuallyDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleAddManualItem}>Add Item</Button>
+                        <Button onClick={handleAddManualItem}>Add/Update Item</Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
