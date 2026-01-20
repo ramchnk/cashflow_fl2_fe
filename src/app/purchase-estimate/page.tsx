@@ -261,41 +261,24 @@ export default function PurchaseEstimatePage() {
     const packSize = getPackSize(manualSku);
     const newEstimatedQuantity = +manualEstInCase * packSize;
 
+    const newItem: EstimateItem = {
+        SKU: manualSku,
+        totalSalesQty: 0, // Manual add
+        avgSalesPerDay: 0, // Manual add
+        inHand: productInfo.stock || 0,
+        purchasePrice: productInfo.purchasePrice || 0,
+        estInCase: +manualEstInCase,
+        estimatedQuantity: newEstimatedQuantity,
+    };
+
     setItems(prevItems => {
-        const existingItemIndex = prevItems.findIndex(item => item.SKU === manualSku);
+        const newItems = [...prevItems, newItem];
+        return newItems.sort((a, b) => b.estInCase - a.estInCase);
+    });
 
-        if (existingItemIndex !== -1) {
-            // Item exists, update it
-            const newItems = [...prevItems];
-            newItems[existingItemIndex] = {
-                ...newItems[existingItemIndex],
-                estInCase: +manualEstInCase,
-                estimatedQuantity: newEstimatedQuantity,
-            };
-            toast({
-                title: 'Item Updated',
-                description: `${manualSku}'s case quantity has been updated to ${manualEstInCase}.`,
-            });
-            return newItems.sort((a, b) => b.estInCase - a.estInCase);
-        } else {
-            // Item doesn't exist, add it
-            const newItem: EstimateItem = {
-                SKU: manualSku,
-                totalSalesQty: 0, // Manual add
-                avgSalesPerDay: 0, // Manual add
-                inHand: productInfo.stock || 0,
-                purchasePrice: productInfo.purchasePrice || 0,
-                estInCase: +manualEstInCase,
-                estimatedQuantity: newEstimatedQuantity,
-            };
-
-            const newItems = [...prevItems, newItem];
-            toast({
-                title: 'Item Added',
-                description: `${manualSku} has been added to the estimate.`,
-            });
-            return newItems.sort((a, b) => b.estInCase - a.estInCase);
-        }
+    toast({
+        title: 'Item Added',
+        description: `${manualSku} has been added to the estimate.`,
     });
 
     setIsAddManuallyDialogOpen(false);
@@ -478,6 +461,7 @@ export default function PurchaseEstimatePage() {
                                         <CommandEmpty>No product found.</CommandEmpty>
                                         <CommandGroup>
                                             {productMaster
+                                                .filter((p) => !items.some((item) => item.SKU === p.SKU))
                                                 .map((p) => (
                                                 <CommandItem
                                                     key={p.SKU}
