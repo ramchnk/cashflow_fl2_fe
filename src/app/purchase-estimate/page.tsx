@@ -258,32 +258,44 @@ export default function PurchaseEstimatePage() {
         return;
     }
 
-    const newItem: EstimateItem = {
-        SKU: manualSku,
-        totalSalesQty: 0, // Manual add
-        avgSalesPerDay: 0, // Manual add
-        inHand: productInfo.stock || 0,
-        purchasePrice: productInfo.purchasePrice || 0,
-        estInCase: +manualEstInCase,
-        estimatedQuantity: +manualEstInCase * getPackSize(manualSku),
-    };
+    const packSize = getPackSize(manualSku);
+    const newEstimatedQuantity = +manualEstInCase * packSize;
 
     setItems(prevItems => {
-      if (prevItems.some(item => item.SKU === newItem.SKU)) {
-        toast({
-          variant: 'destructive',
-          title: 'Item already exists',
-          description: 'This item is already in the estimate list.',
-        });
-        return prevItems;
-      }
-      const newItems = [...prevItems, newItem];
-      return newItems.sort((a, b) => b.estInCase - a.estInCase);
-    });
-    
-    toast({
-      title: 'Item Added',
-      description: `${manualSku} has been added to the estimate.`,
+        const existingItemIndex = prevItems.findIndex(item => item.SKU === manualSku);
+
+        if (existingItemIndex !== -1) {
+            // Item exists, update it
+            const newItems = [...prevItems];
+            newItems[existingItemIndex] = {
+                ...newItems[existingItemIndex],
+                estInCase: +manualEstInCase,
+                estimatedQuantity: newEstimatedQuantity,
+            };
+            toast({
+                title: 'Item Updated',
+                description: `${manualSku}'s case quantity has been updated to ${manualEstInCase}.`,
+            });
+            return newItems.sort((a, b) => b.estInCase - a.estInCase);
+        } else {
+            // Item doesn't exist, add it
+            const newItem: EstimateItem = {
+                SKU: manualSku,
+                totalSalesQty: 0, // Manual add
+                avgSalesPerDay: 0, // Manual add
+                inHand: productInfo.stock || 0,
+                purchasePrice: productInfo.purchasePrice || 0,
+                estInCase: +manualEstInCase,
+                estimatedQuantity: newEstimatedQuantity,
+            };
+
+            const newItems = [...prevItems, newItem];
+            toast({
+                title: 'Item Added',
+                description: `${manualSku} has been added to the estimate.`,
+            });
+            return newItems.sort((a, b) => b.estInCase - a.estInCase);
+        }
     });
 
     setIsAddManuallyDialogOpen(false);
@@ -466,7 +478,6 @@ export default function PurchaseEstimatePage() {
                                         <CommandEmpty>No product found.</CommandEmpty>
                                         <CommandGroup>
                                             {productMaster
-                                                .filter(p => !items.some(item => item.SKU === p.SKU))
                                                 .map((p) => (
                                                 <CommandItem
                                                     key={p.SKU}
@@ -644,5 +655,3 @@ export default function PurchaseEstimatePage() {
     </div>
   );
 }
-
-    
