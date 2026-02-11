@@ -488,13 +488,13 @@ function PLStatementReport({ shopName, token }: { shopName: string | null, token
 
     const SectionHeader = ({ children, value }: { children: React.ReactNode, value?: number }) => (
         <TableRow className="bg-blue-100">
-            <TableCell colSpan={value ? 3: 4} className="font-extrabold text-blue-900 text-xl">{children}</TableCell>
-            {value != null && <TableCell className="text-right font-extrabold text-blue-900 text-xl">{formatNumber(value)}</TableCell>}
+            <TableCell colSpan={value ? 3: 4} className="font-extrabold text-blue-900 text-2xl">{children}</TableCell>
+            {value != null && <TableCell className="text-right font-extrabold text-blue-900 text-2xl">{formatNumber(value)}</TableCell>}
         </TableRow>
     );
     
     const TotalRow = ({ label, value, isDebit = false, isCredit = false }: { label: string, value: number, isDebit?: boolean, isCredit?: boolean }) => (
-         <TableRow className="bg-gray-200 font-extrabold text-xl">
+         <TableRow className="bg-gray-200 font-extrabold text-2xl">
             <TableCell colSpan={isDebit ? 2 : 3} className="text-right">{label}</TableCell>
             {isDebit && <TableCell className="text-right">{formatNumber(value)}</TableCell>}
             {isCredit && <TableCell className="text-right">{formatNumber(value)}</TableCell>}
@@ -503,7 +503,7 @@ function PLStatementReport({ shopName, token }: { shopName: string | null, token
     );
 
     const NetProfitRow = ({label, value}: {label: string, value: number}) => (
-        <TableRow className="bg-blue-900 text-white font-extrabold text-2xl">
+        <TableRow className="bg-blue-900 text-white font-extrabold text-3xl">
             <TableCell colSpan={3} className="text-right">{label}</TableCell>
             <TableCell className="text-right">{formatNumber(value)}</TableCell>
         </TableRow>
@@ -624,13 +624,13 @@ function PLStatementReport({ shopName, token }: { shopName: string | null, token
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-blue-200">
-                                <TableHead className="w-[5%] text-xl font-extrabold">S.No</TableHead>
-                                <TableHead className="text-xl font-extrabold">Particulars</TableHead>
-                                <TableHead className="text-right w-[20%] text-xl font-extrabold">Debit</TableHead>
-                                <TableHead className="text-right w-[20%] text-xl font-extrabold">Credit</TableHead>
+                                <TableHead className="w-[5%] text-2xl font-extrabold">S.No</TableHead>
+                                <TableHead className="text-2xl font-extrabold">Particulars</TableHead>
+                                <TableHead className="text-right w-[20%] text-2xl font-extrabold">Debit</TableHead>
+                                <TableHead className="text-right w-[20%] text-2xl font-extrabold">Credit</TableHead>
                             </TableRow>
                         </TableHeader>
-                        <TableBody className="text-xl font-bold">
+                        <TableBody className="text-2xl font-bold">
                             <TableRow>
                                 <TableCell rowSpan={2} className="font-extrabold align-top pt-6 text-2xl">LIQUOR</TableCell>
                                 <TableCell>
