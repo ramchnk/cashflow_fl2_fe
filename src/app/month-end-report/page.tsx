@@ -340,7 +340,7 @@ function PLStatementReport({ shopName, token }: { shopName: string | null, token
             if(datePicker) (datePicker as HTMLElement).style.display = 'none';
             buttons.forEach(btn => btn.style.visibility = 'hidden');
 
-            html2canvas(reportCard, { useCORS: true, scale: 2 })
+            html2canvas(reportCard, { useCORS: true, scale: 4 })
                 .then(canvas => {
                     const link = document.createElement('a');
                     link.download = `pl-statement-${format(new Date(), 'yyyy-MM-dd')}.png`;
