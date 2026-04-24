@@ -381,6 +381,35 @@ export default function PurchasePage() {
   }
 
 
+  const validateDuplicates = () => {
+    const counts: { [key: string]: number } = {};
+    const duplicates: string[] = [];
+
+    parsedItems.forEach(item => {
+      const key = `${item.brandName}-${item.packSize}`;
+      counts[key] = (counts[key] || 0) + 1;
+    });
+
+    for (const key in counts) {
+      if (counts[key] > 1) {
+        duplicates.push(key);
+      }
+    }
+
+    if (duplicates.length > 0) {
+      toast({
+        variant: "destructive",
+        title: "Duplicate Items Found",
+        description: `The following items are duplicates: ${duplicates.join(', ')}`,
+      });
+    } else {
+      toast({
+        title: "Validation Successful",
+        description: "No duplicate items found.",
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
@@ -542,9 +571,14 @@ export default function PurchasePage() {
                              </div>
                         </div>
                     </div>
-                     <Button onClick={handleSubmitPurchase} disabled={isSubmitting} className="self-end">
-                        {isSubmitting ? 'Submitting...' : 'Submit Purchase'}
-                    </Button>
+                    <div className="flex justify-end gap-4 w-full">
+                         <Button variant="secondary" onClick={validateDuplicates} disabled={isSubmitting}>
+                            Validate
+                        </Button>
+                         <Button onClick={handleSubmitPurchase} disabled={isSubmitting}>
+                            {isSubmitting ? 'Submitting...' : 'Submit Purchase'}
+                        </Button>
+                    </div>
                 </CardFooter>
             </Card>
           )}
