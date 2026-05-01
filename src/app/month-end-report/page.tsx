@@ -296,6 +296,8 @@ function PLStatementReport({ shopName, token }: { shopName: string | null, token
     const [tallyNarration, setTallyNarration] = useState('');
     const [tallyAmount, setTallyAmount] = useState<string>('');
     const [isCapturing, setIsCapturing] = useState(false);
+    const [otherIncomeTallyNarration, setOtherIncomeTallyNarration] = useState('');
+    const [otherIncomeTallyAmount, setOtherIncomeTallyAmount] = useState<string>('');
 
     const balances = useMemo(() => {
         const fetchBalances = async () => {
@@ -524,7 +526,8 @@ function PLStatementReport({ shopName, token }: { shopName: string | null, token
     const grossProfit = salesValue - costOfSales;
     const kitchenIncome = reportData?.kitchenIncome ?? 0;
     const emptyBottleSales = reportData?.emptyBottleSales ?? 0;
-    const totalIncome = grossProfit + kitchenIncome + emptyBottleSales;
+    const otherIncomeTallyAmtNum = parseFloat(otherIncomeTallyAmount) || 0;
+    const totalIncome = grossProfit + kitchenIncome + emptyBottleSales + otherIncomeTallyAmtNum;
     const shopExpenses = reportData?.shopExpenses ?? 0;
     const bankCharges = reportData?.bankCharges ?? 0;
     const billPayments = reportData?.billPayments ?? 0;
@@ -674,6 +677,46 @@ function PLStatementReport({ shopName, token }: { shopName: string | null, token
                                 <TableCell>Empty Bottle Sales</TableCell>
                                 <TableCell></TableCell>
                                 <TableCell className="text-right">{formatNumber(emptyBottleSales)}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>3</TableCell>
+                                <TableCell>
+                                    <div className="flex items-center gap-2">
+                                        <span className="whitespace-nowrap">Tally</span>
+                                        <div className="flex-grow">
+                                            <Input 
+                                                placeholder="Naration" 
+                                                value={otherIncomeTallyNarration} 
+                                                onChange={(e) => setOtherIncomeTallyNarration(e.target.value)}
+                                                className={cn("h-8 text-lg font-bold print:hidden", isCapturing && "hidden")}
+                                            />
+                                            <span className={cn("text-lg font-bold hidden print:block", isCapturing && "block")}>
+                                                {otherIncomeTallyNarration}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </TableCell>
+                                <TableCell></TableCell>
+                                <TableCell className="text-right">
+                                    <div className="flex justify-end">
+                                        <Input 
+                                            type="text"
+                                            inputMode="decimal"
+                                            placeholder="Amount" 
+                                            value={otherIncomeTallyAmount} 
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                                                    setOtherIncomeTallyAmount(val);
+                                                }
+                                            }}
+                                            className={cn("h-8 text-lg font-bold text-right print:hidden", isCapturing && "hidden")}
+                                        />
+                                        <span className={cn("text-lg font-bold hidden print:block", isCapturing && "block")}>
+                                            {otherIncomeTallyAmount}
+                                        </span>
+                                    </div>
+                                </TableCell>
                             </TableRow>
                             <TotalRow label="TOTAL INCOME" value={totalIncome} isCredit />
                             
