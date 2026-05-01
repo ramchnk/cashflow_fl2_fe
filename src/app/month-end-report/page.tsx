@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 // Interfaces for both reports
@@ -292,6 +293,9 @@ function PLStatementReport({ shopName, token }: { shopName: string | null, token
     const [endDate, setEndDate] = useState<Date | undefined>();
     const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
     const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
+    const [tallyNarration, setTallyNarration] = useState('');
+    const [tallyAmount, setTallyAmount] = useState<string>('');
+    const [isCapturing, setIsCapturing] = useState(false);
 
     const balances = useMemo(() => {
         const fetchBalances = async () => {
@@ -331,24 +335,30 @@ function PLStatementReport({ shopName, token }: { shopName: string | null, token
         }
     }
 
-    const handleCapture = () => {
+    const handleCapture = async () => {
         const reportCard = document.getElementById('report-card-pl');
         if (reportCard) {
+            setIsCapturing(true);
+            // Give React time to re-render
+            await new Promise(resolve => setTimeout(resolve, 100));
+
             const datePicker = reportCard.querySelector('#pl-date-picker-container');
             const buttons = reportCard.querySelectorAll('button');
             
             if(datePicker) (datePicker as HTMLElement).style.display = 'none';
             buttons.forEach(btn => btn.style.visibility = 'hidden');
 
-            html2canvas(reportCard, { useCORS: true, scale: 4 })
-                .then(canvas => {
-                    const link = document.createElement('a');
-                    link.download = `pl-statement-${format(new Date(), 'yyyy-MM-dd')}.png`;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                    if(datePicker) (datePicker as HTMLElement).style.display = 'flex';
-                    buttons.forEach(btn => btn.style.visibility = 'visible');
-                });
+            try {
+                const canvas = await html2canvas(reportCard, { useCORS: true, scale: 4 });
+                const link = document.createElement('a');
+                link.download = `pl-statement-${format(new Date(), 'yyyy-MM-dd')}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } finally {
+                if(datePicker) (datePicker as HTMLElement).style.display = 'flex';
+                buttons.forEach(btn => btn.style.visibility = 'visible');
+                setIsCapturing(false);
+            }
         }
     }
 
@@ -519,7 +529,8 @@ function PLStatementReport({ shopName, token }: { shopName: string | null, token
     const bankCharges = reportData?.bankCharges ?? 0;
     const billPayments = reportData?.billPayments ?? 0;
     const officeExpenses = reportData?.officeExpenses ?? 0;
-    const totalExpenses = shopExpenses + bankCharges + billPayments + officeExpenses;
+    const tallyAmtNum = parseFloat(tallyAmount) || 0;
+    const totalExpenses = shopExpenses + bankCharges + billPayments + officeExpenses + tallyAmtNum;
     const netProfit = totalIncome - totalExpenses;
 
     return (
@@ -689,6 +700,46 @@ function PLStatementReport({ shopName, token }: { shopName: string | null, token
                                 <TableCell>4</TableCell>
                                 <TableCell>Office Expense</TableCell>
                                 <TableCell className="text-right">{formatNumber(officeExpenses)}</TableCell>
+                                <TableCell></TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>5</TableCell>
+                                <TableCell>
+                                    <div className="flex items-center gap-2">
+                                        <span className="whitespace-nowrap">Tally</span>
+                                        <div className="flex-grow">
+                                            <Input 
+                                                placeholder="Naration" 
+                                                value={tallyNarration} 
+                                                onChange={(e) => setTallyNarration(e.target.value)}
+                                                className={cn("h-8 text-lg font-bold print:hidden", isCapturing && "hidden")}
+                                            />
+                                            <span className={cn("text-lg font-bold hidden print:block", isCapturing && "block")}>
+                                                {tallyNarration}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <div className="flex justify-end">
+                                        <Input 
+                                            type="text"
+                                            inputMode="decimal"
+                                            placeholder="Amount" 
+                                            value={tallyAmount} 
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                                                    setTallyAmount(val);
+                                                }
+                                            }}
+                                            className={cn("h-8 text-lg font-bold text-right print:hidden", isCapturing && "hidden")}
+                                        />
+                                        <span className={cn("text-lg font-bold hidden print:block", isCapturing && "block")}>
+                                            {tallyAmount}
+                                        </span>
+                                    </div>
+                                </TableCell>
                                 <TableCell></TableCell>
                             </TableRow>
                             <TotalRow label="TOTAL EXPENSES" value={totalExpenses} isDebit />
