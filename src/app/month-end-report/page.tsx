@@ -678,46 +678,47 @@ function PLStatementReport({ shopName, token }: { shopName: string | null, token
                                 <TableCell></TableCell>
                                 <TableCell className="text-right">{formatNumber(emptyBottleSales)}</TableCell>
                             </TableRow>
-                            <TableRow>
-                                <TableCell>3</TableCell>
-                                <TableCell>
-                                    <div className="flex items-center gap-2">
-                                        <span className="whitespace-nowrap">Tally</span>
-                                        <div className="flex-grow">
+                            {(!isCapturing || otherIncomeTallyAmtNum !== 0) && (
+                                <TableRow>
+                                    <TableCell>3</TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center">
+                                            <div className="flex-grow">
+                                                <Input 
+                                                    placeholder="Naration" 
+                                                    value={otherIncomeTallyNarration} 
+                                                    onChange={(e) => setOtherIncomeTallyNarration(e.target.value)}
+                                                    className={cn("h-10 text-2xl font-bold print:hidden", isCapturing && "hidden")}
+                                                />
+                                                <span className={cn("text-2xl font-bold hidden print:block", isCapturing && "block")}>
+                                                    {otherIncomeTallyNarration}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell></TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex justify-end">
                                             <Input 
-                                                placeholder="Naration" 
-                                                value={otherIncomeTallyNarration} 
-                                                onChange={(e) => setOtherIncomeTallyNarration(e.target.value)}
-                                                className={cn("h-8 text-lg font-bold print:hidden", isCapturing && "hidden")}
+                                                type="text"
+                                                inputMode="decimal"
+                                                placeholder="Amount" 
+                                                value={otherIncomeTallyAmount} 
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                                                        setOtherIncomeTallyAmount(val);
+                                                    }
+                                                }}
+                                                className={cn("h-10 text-2xl font-bold text-right print:hidden", isCapturing && "hidden")}
                                             />
-                                            <span className={cn("text-lg font-bold hidden print:block", isCapturing && "block")}>
-                                                {otherIncomeTallyNarration}
+                                            <span className={cn("text-2xl font-bold hidden print:block", isCapturing && "block")}>
+                                                {otherIncomeTallyAmount}
                                             </span>
                                         </div>
-                                    </div>
-                                </TableCell>
-                                <TableCell></TableCell>
-                                <TableCell className="text-right">
-                                    <div className="flex justify-end">
-                                        <Input 
-                                            type="text"
-                                            inputMode="decimal"
-                                            placeholder="Amount" 
-                                            value={otherIncomeTallyAmount} 
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                                    setOtherIncomeTallyAmount(val);
-                                                }
-                                            }}
-                                            className={cn("h-8 text-lg font-bold text-right print:hidden", isCapturing && "hidden")}
-                                        />
-                                        <span className={cn("text-lg font-bold hidden print:block", isCapturing && "block")}>
-                                            {otherIncomeTallyAmount}
-                                        </span>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
+                                    </TableCell>
+                                </TableRow>
+                            )}
                             <TotalRow label="TOTAL INCOME" value={totalIncome} isCredit />
                             
                             <SectionHeader>D) OTHER EXPENSES</SectionHeader>
@@ -745,46 +746,47 @@ function PLStatementReport({ shopName, token }: { shopName: string | null, token
                                 <TableCell className="text-right">{formatNumber(officeExpenses)}</TableCell>
                                 <TableCell></TableCell>
                             </TableRow>
-                            <TableRow>
-                                <TableCell>5</TableCell>
-                                <TableCell>
-                                    <div className="flex items-center gap-2">
-                                        <span className="whitespace-nowrap">Tally</span>
-                                        <div className="flex-grow">
+                            {(!isCapturing || tallyAmtNum !== 0) && (
+                                <TableRow>
+                                    <TableCell>5</TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center">
+                                            <div className="flex-grow">
+                                                <Input 
+                                                    placeholder="Naration" 
+                                                    value={tallyNarration} 
+                                                    onChange={(e) => setTallyNarration(e.target.value)}
+                                                    className={cn("h-10 text-2xl font-bold print:hidden", isCapturing && "hidden")}
+                                                />
+                                                <span className={cn("text-2xl font-bold hidden print:block", isCapturing && "block")}>
+                                                    {tallyNarration}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex justify-end">
                                             <Input 
-                                                placeholder="Naration" 
-                                                value={tallyNarration} 
-                                                onChange={(e) => setTallyNarration(e.target.value)}
-                                                className={cn("h-8 text-lg font-bold print:hidden", isCapturing && "hidden")}
+                                                type="text"
+                                                inputMode="decimal"
+                                                placeholder="Amount" 
+                                                value={tallyAmount} 
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                                                        setTallyAmount(val);
+                                                    }
+                                                }}
+                                                className={cn("h-10 text-2xl font-bold text-right print:hidden", isCapturing && "hidden")}
                                             />
-                                            <span className={cn("text-lg font-bold hidden print:block", isCapturing && "block")}>
-                                                {tallyNarration}
+                                            <span className={cn("text-2xl font-bold hidden print:block", isCapturing && "block")}>
+                                                {tallyAmount}
                                             </span>
                                         </div>
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <div className="flex justify-end">
-                                        <Input 
-                                            type="text"
-                                            inputMode="decimal"
-                                            placeholder="Amount" 
-                                            value={tallyAmount} 
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                                    setTallyAmount(val);
-                                                }
-                                            }}
-                                            className={cn("h-8 text-lg font-bold text-right print:hidden", isCapturing && "hidden")}
-                                        />
-                                        <span className={cn("text-lg font-bold hidden print:block", isCapturing && "block")}>
-                                            {tallyAmount}
-                                        </span>
-                                    </div>
-                                </TableCell>
-                                <TableCell></TableCell>
-                            </TableRow>
+                                    </TableCell>
+                                    <TableCell></TableCell>
+                                </TableRow>
+                            )}
                             <TotalRow label="TOTAL EXPENSES" value={totalExpenses} isDebit />
 
                         </TableBody>
