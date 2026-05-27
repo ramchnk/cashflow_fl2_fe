@@ -312,7 +312,7 @@ export default function ExpensesPage() {
                           setToDate(date);
                           setToDatePickerOpen(false);
                         }}
-                        disabled={{ before: fromDate }}
+                        disabled={fromDate ? { before: fromDate } : undefined}
                         initialFocus
                       />
                     </PopoverContent>

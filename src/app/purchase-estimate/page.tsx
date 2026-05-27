@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/layout/header';
-import { CalendarIcon, File, Printer, PlusCircle, Check, ChevronsUpDown } from 'lucide-react';
+import { CalendarIcon, File, Printer, PlusCircle, Check, ChevronsUpDown, HelpCircle } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -81,9 +81,81 @@ export default function PurchaseEstimatePage() {
   const [isAddManuallyDialogOpen, setIsAddManuallyDialogOpen] = useState(false);
   const [manualSku, setManualSku] = useState('');
   const [manualEstInCase, setManualEstInCase] = useState<number | ''>('');
+  const [permittedUnit, setPermittedUnit] = useState<string | null>(null);
+  const [availableUnit, setAvailableUnit] = useState<number | null>(null);
+  const [categoryUnits, setCategoryUnits] = useState({
+      BRANDY: 0,
+      WINE: 0,
+      VODKA: 0,
+      RUM: 0,
+      WHISKY: 0,
+      BEER: 0
+  });
 
   const { toast } = useToast();
   const router = useRouter();
+
+  useEffect(() => {
+    const fetchAccountInfo = async () => {
+      const token = sessionStorage.getItem('accessToken');
+      if (!token) return;
+
+      try {
+        const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/account/getAccountInfo', {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.account && data.account.permittedUnit) {
+            setPermittedUnit(data.account.permittedUnit);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch account info:", error);
+      }
+    };
+
+    const fetchDashboardData = async () => {
+      const token = sessionStorage.getItem('accessToken');
+      if (!token) return;
+
+      try {
+        const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/dashboard', {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const totalUnits = data.totalUnits || {};
+          const brandy = totalUnits.BRANDY || 0;
+          const wine = totalUnits.WINE || 0;
+          const vodka = totalUnits.VODKA || 0;
+          const rum = totalUnits.RUM || 0;
+          const whisky = totalUnits.WHISKY || 0;
+          const beer = totalUnits.BEER || 0;
+
+          setCategoryUnits({
+              BRANDY: brandy,
+              WINE: wine,
+              VODKA: vodka,
+              RUM: rum,
+              WHISKY: whisky,
+              BEER: beer
+          });
+
+          setAvailableUnit(brandy + wine + vodka + rum + whisky + beer);
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      }
+    };
+
+    fetchAccountInfo();
+    fetchDashboardData();
+  }, []);
   
   useEffect(() => {
     const fetchProductMaster = async () => {
@@ -376,6 +448,40 @@ export default function PurchaseEstimatePage() {
   }, 0);
   const totalCases = filteredItems.reduce((acc, item) => acc + item.estInCase, 0);
 
+  const getProposedUnits = () => {
+    let proposedLiquorMl = 0;
+    let proposedBeerMl = 0;
+    let proposedWineMl = 0;
+
+    const productMasterMap = new Map(productMaster.map(p => [p.SKU, p]));
+
+    filteredItems.forEach(item => {
+      const productInfo = productMasterMap.get(item.SKU);
+      const brand = (productInfo?.brand || '').toUpperCase();
+      const skuParts = item.SKU.split('-');
+      const sizePart = skuParts[skuParts.length - 1] || '';
+      const ml = parseInt(sizePart, 10) || 0;
+
+      const packSize = getPackSize(item.SKU);
+      const approvedQty = item.estInCase * packSize;
+      const mlTotal = approvedQty * ml;
+
+      if (brand === "BRANDY" || brand === "WHISKY" || brand === "RUM" || brand === "VODKA") {
+        proposedLiquorMl += mlTotal;
+      } else if (brand === "BEER") {
+        proposedBeerMl += mlTotal;
+      } else if (brand === "WINE") {
+        proposedWineMl += mlTotal;
+      }
+    });
+
+    const liquor = proposedLiquorMl / 750;
+    const beer = proposedBeerMl / 7800;
+    const wine = proposedWineMl / 2250;
+
+    return liquor + beer + wine;
+  };
+
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -570,7 +676,41 @@ export default function PurchaseEstimatePage() {
           <Card>
             <CardHeader>
               <div className="flex flex-wrap justify-between items-center gap-4">
-                  <CardTitle>Purchase Estimate</CardTitle>
+                  <div className="flex flex-wrap items-center gap-3">
+                      <CardTitle>Purchase Estimate</CardTitle>
+                      {permittedUnit && (
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 shadow-sm transition-all duration-300 hover:scale-105">
+                              Permitted Unit: {permittedUnit}
+                          </span>
+                      )}
+                      {availableUnit !== null && (
+                          <div className="flex items-center gap-1">
+                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800 shadow-sm transition-all duration-300 hover:scale-105">
+                                  Available Unit: {availableUnit.toFixed(2)}
+                              </span>
+                              <Dialog>
+                                  <DialogTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full p-0 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors print-hidden">
+                                          <HelpCircle className="h-4 w-4" />
+                                      </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="sm:max-w-[300px] border border-muted shadow-lg rounded-lg">
+                                      <DialogHeader className="border-b pb-3">
+                                          <DialogTitle className="text-xl font-semibold text-slate-800 dark:text-slate-100 font-headline">Units By Category</DialogTitle>
+                                      </DialogHeader>
+                                      <div className="space-y-3 py-4 text-base font-semibold text-slate-700 dark:text-slate-300 font-mono">
+                                          <div>BRANDY : {Math.round(categoryUnits.BRANDY)}</div>
+                                          <div>WINE : {Math.round(categoryUnits.WINE)}</div>
+                                          <div>VODKA : {Math.round(categoryUnits.VODKA)}</div>
+                                          <div>RUM : {Math.round(categoryUnits.RUM)}</div>
+                                          <div>WHISKY : {Math.round(categoryUnits.WHISKY)}</div>
+                                          <div>BEER : {Math.round(categoryUnits.BEER)}</div>
+                                      </div>
+                                  </DialogContent>
+                              </Dialog>
+                          </div>
+                      )}
+                  </div>
                   <div className="flex flex-wrap items-center gap-4 sm:gap-8 font-bold text-lg print-hidden">
                       {items.length > 0 && (
                         <>
@@ -582,6 +722,26 @@ export default function PurchaseEstimatePage() {
                                 <span>Total Estimated Value: </span>
                                 <span className="text-primary">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalEstimatedValue)}</span>
                             </div>
+                            <div>
+                                <span>Estimated Unit: </span>
+                                <span className="text-primary">{getProposedUnits().toFixed(2)}</span>
+                            </div>
+                            {(() => {
+                                const proposedUnits = getProposedUnits();
+                                const totalUnits = (availableUnit || 0) + proposedUnits;
+                                const permittedVal = permittedUnit ? (parseFloat(permittedUnit) || 0) : 0;
+                                const diff = permittedVal - totalUnits;
+                                if (permittedVal === 0) return null;
+                                return diff >= 0 ? (
+                                    <div className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 px-3 py-1 rounded-md text-base font-semibold">
+                                        Remaining: <span className="underline decoration-2">{diff.toFixed(2)} Units</span>
+                                    </div>
+                                ) : (
+                                    <div className="text-destructive bg-destructive/5 border border-destructive/20 px-3 py-1 rounded-md text-base font-semibold animate-pulse">
+                                        Over Stock: <span className="underline decoration-2">{Math.abs(diff).toFixed(2)} Units</span>
+                                    </div>
+                                );
+                            })()}
                         </>
                       )}
                   </div>

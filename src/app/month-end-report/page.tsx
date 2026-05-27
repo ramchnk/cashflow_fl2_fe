@@ -613,7 +613,7 @@ function PLStatementReport({ shopName, token }: { shopName: string | null, token
                                     setEndDate(date);
                                     setIsEndDatePickerOpen(false);
                                     }}
-                                    disabled={{ before: startDate }}
+                                    disabled={startDate ? { before: startDate } : undefined}
                                     initialFocus
                                 />
                                 </PopoverContent>
