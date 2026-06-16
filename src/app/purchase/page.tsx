@@ -21,11 +21,19 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Sheet } from 'lucide-react';
+import { CalendarIcon, Sheet, Check, ChevronsUpDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useUserStore } from '@/app/lib/user-store';
 import Header from '@/components/layout/header';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 interface ProductMasterItem {
   SKU: string;
@@ -73,6 +81,7 @@ export default function PurchasePage() {
   const [actualBillValue, setActualBillValue] = useState<string>('');
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [sheetLink, setSheetLink] = useState<string | null>(null);
+  const [openPopoverIndex, setOpenPopoverIndex] = useState<number | null>(null);
 
   const fetchData = async () => {
     const token = sessionStorage.getItem('accessToken');
@@ -267,6 +276,39 @@ export default function PurchasePage() {
         return newItems;
     });
   }
+
+  const handleSelectProduct = (index: number, selectedProduct: ProductMasterItem) => {
+    setParsedItems(prevItems => {
+        const newItems = [...prevItems];
+        const item = newItems[index];
+
+        const skuParts = selectedProduct.SKU.split('-');
+        const newPackSize = skuParts[skuParts.length - 1] || item.packSize;
+
+        const caseQty = parseFloat(item.qty);
+        const newCalculatedQty = getCalculatedQty(newPackSize, caseQty);
+        
+        const newNumericTotalValue = (selectedProduct.purchasePrice || 0) * newCalculatedQty;
+
+        newItems[index] = {
+            ...item,
+            brandName: selectedProduct.SKU,
+            packSize: newPackSize,
+            calculatedQty: newCalculatedQty,
+            numericTotalValue: newNumericTotalValue,
+            totalValue: new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+            }).format(newNumericTotalValue),
+            matchStatus: 'found',
+            apiSku: selectedProduct.SKU,
+            matchedProduct: selectedProduct
+        };
+        
+        return newItems;
+    });
+    setOpenPopoverIndex(null);
+  };
 
 
   const totalQty = parsedItems.reduce((acc, item) => {
@@ -515,7 +557,51 @@ export default function PurchasePage() {
                                 {parsedItems.map((item, index) => (
                                 <TableRow key={index}>
                                     <TableCell>{item.srNo}</TableCell>
-                                    <TableCell>{item.brandName}</TableCell>
+                                    <TableCell>
+                                        <Popover open={openPopoverIndex === index} onOpenChange={(open) => setOpenPopoverIndex(open ? index : null)}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    role="combobox"
+                                                    disabled={isSubmitting}
+                                                    className={cn(
+                                                        "h-auto p-1 font-normal justify-start text-left hover:bg-accent hover:text-accent-foreground w-full max-w-[300px]",
+                                                        item.matchStatus === 'not found' && "border border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive px-2 py-1"
+                                                    )}
+                                                >
+                                                    <span className="truncate mr-2">{item.brandName || "Select SKU"}</span>
+                                                    <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[350px] p-0" align="start">
+                                                <Command>
+                                                    <CommandInput placeholder="Search SKU..." />
+                                                    <CommandList>
+                                                        <CommandEmpty>No SKU found.</CommandEmpty>
+                                                        <CommandGroup className="max-h-[300px] overflow-y-auto">
+                                                            {productMaster?.productList?.map((product) => (
+                                                                <CommandItem
+                                                                    key={product.SKU}
+                                                                    value={product.SKU}
+                                                                    onSelect={() => {
+                                                                        handleSelectProduct(index, product);
+                                                                    }}
+                                                                >
+                                                                    <Check
+                                                                        className={cn(
+                                                                            "mr-2 h-4 w-4",
+                                                                            item.apiSku === product.SKU ? "opacity-100" : "opacity-0"
+                                                                        )}
+                                                                    />
+                                                                    {product.SKU}
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+                                    </TableCell>
                                     <TableCell>{item.packSize}</TableCell>
                                     <TableCell className="text-right">{item.qty}</TableCell>
                                     <TableCell className="text-right">
