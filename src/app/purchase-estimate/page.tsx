@@ -16,8 +16,9 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/layout/header';
-import { CalendarIcon, File, Printer, PlusCircle, Check, ChevronsUpDown, HelpCircle } from 'lucide-react';
+import { CalendarIcon, File, Printer, PlusCircle, Check, ChevronsUpDown, HelpCircle, Sheet } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
+import * as XLSX from 'xlsx';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
@@ -427,6 +428,227 @@ export default function PurchaseEstimatePage() {
       link.click();
       document.body.removeChild(link);
   };
+
+  const handleExcelDownload = () => {
+      if (filteredItems.length === 0 || productMaster.length === 0) return;
+
+      const productMasterMap = new Map(productMaster.map(p => [p.SKU, p]));
+
+      interface GroupedProduct {
+        SKU: string;
+        itemCode: string;
+        brandName: string;
+        packSizeNum: string;
+        avgSale: number | string;
+        cb: number | string;
+        req: number | string;
+        reqPass: string;
+        mlSize: number;
+      }
+
+      const orderedGroups: string[] = [];
+      const orderedBrandsByGroup: Record<string, string[]> = {};
+      const groupedData: Record<string, Record<string, GroupedProduct[]>> = {};
+
+      productMaster.forEach(p => {
+        const rangeVal = p.range ? String(p.range).trim() : '';
+        const brandVal = p.brand ? String(p.brand).trim() : '';
+        let groupHeader = '';
+        if (rangeVal) {
+          groupHeader = `${rangeVal.toUpperCase()} CATEGORY ${brandVal.toUpperCase()}`;
+        } else if (brandVal) {
+          groupHeader = brandVal.toUpperCase();
+        } else {
+          groupHeader = 'OTHER';
+        }
+
+        const brandName = p.SKU.split('-').slice(0, -1).join('-') || p.SKU;
+
+        if (!orderedGroups.includes(groupHeader)) {
+          orderedGroups.push(groupHeader);
+        }
+        if (!orderedBrandsByGroup[groupHeader]) {
+          orderedBrandsByGroup[groupHeader] = [];
+        }
+        if (!orderedBrandsByGroup[groupHeader].includes(brandName)) {
+          orderedBrandsByGroup[groupHeader].push(brandName);
+        }
+      });
+
+      filteredItems.forEach(item => {
+        const productInfo = productMasterMap.get(item.SKU);
+        const rangeVal = productInfo?.range ? String(productInfo.range).trim() : '';
+        const brandVal = productInfo?.brand ? String(productInfo.brand).trim() : '';
+        
+        let groupHeader = '';
+        if (rangeVal) {
+          groupHeader = `${rangeVal.toUpperCase()} CATEGORY ${brandVal.toUpperCase()}`;
+        } else if (brandVal) {
+          groupHeader = brandVal.toUpperCase();
+        } else {
+          groupHeader = 'OTHER';
+        }
+
+        const skuParts = item.SKU.split('-');
+        const brandName = skuParts.slice(0, -1).join('-') || item.SKU;
+        const sizePart = skuParts[skuParts.length - 1] || '';
+        const packSizeNum = sizePart.replace(/ML/i, '').trim();
+        const mlSize = parseInt(sizePart, 10) || 0;
+
+        const itemCode = productInfo?.itemCode || productInfo?.code || productInfo?.item_code || productInfo?.serialNumber || productInfo?.id || productInfo?.srNo || '';
+
+        const groupedObj: GroupedProduct = {
+          SKU: item.SKU,
+          itemCode: String(itemCode),
+          brandName,
+          packSizeNum,
+          avgSale: item.avgSalesPerDay > 0 ? Math.round(item.avgSalesPerDay) : '',
+          cb: item.inHand > 0 ? item.inHand : '',
+          req: item.estInCase > 0 ? item.estInCase : '',
+          reqPass: '',
+          mlSize,
+        };
+
+        if (!groupedData[groupHeader]) {
+          groupedData[groupHeader] = {};
+        }
+        if (!groupedData[groupHeader][brandName]) {
+          groupedData[groupHeader][brandName] = [];
+        }
+        groupedData[groupHeader][brandName].push(groupedObj);
+
+        if (!orderedGroups.includes(groupHeader)) {
+          orderedGroups.push(groupHeader);
+        }
+        if (!orderedBrandsByGroup[groupHeader]) {
+          orderedBrandsByGroup[groupHeader] = [];
+        }
+        if (!orderedBrandsByGroup[groupHeader].includes(brandName)) {
+          orderedBrandsByGroup[groupHeader].push(brandName);
+        }
+      });
+
+      interface FlatRow {
+        type: 'header' | 'product';
+        text?: string;
+        categoryTotal?: number | string;
+        itemCode?: string;
+        brandName?: string;
+        packSizeNum?: string;
+        avgSale?: string | number;
+        cb?: string | number;
+        req?: string | number;
+        reqPass?: string;
+      }
+
+      const allRows: FlatRow[] = [];
+
+      orderedGroups.forEach(groupHeader => {
+        const brandsObj = groupedData[groupHeader];
+        if (!brandsObj) return;
+
+        const activeBrands = orderedBrandsByGroup[groupHeader].filter(brandName => brandsObj[brandName] && brandsObj[brandName].length > 0);
+        if (activeBrands.length === 0) return;
+
+        // Calculate total REQ cases for this group
+        let categoryTotal = 0;
+        activeBrands.forEach(brandName => {
+          brandsObj[brandName].forEach(p => {
+            const reqVal = Number(p.req);
+            if (!isNaN(reqVal)) {
+              categoryTotal += reqVal;
+            }
+          });
+        });
+
+        const headerText = groupHeader;
+        allRows.push({ type: 'header', text: headerText, categoryTotal: categoryTotal });
+
+        activeBrands.forEach(brandName => {
+          const products = brandsObj[brandName];
+          products.sort((a, b) => b.mlSize - a.mlSize);
+
+          products.forEach(p => {
+            allRows.push({
+              type: 'product',
+              itemCode: p.itemCode,
+              brandName: p.brandName,
+              packSizeNum: p.packSizeNum,
+              avgSale: p.avgSale,
+              cb: p.cb,
+              req: p.req,
+              reqPass: p.reqPass,
+            });
+          });
+        });
+      });
+
+      if (allRows.length === 0) return;
+
+      const headers = [
+        'Item Code', 'Brand Name', 'Pack Size', 'Avg Sale', 'CB', 'REQ', 'REQ PASS'
+      ];
+
+      const grid: any[][] = [headers];
+
+      for (let r = 0; r < allRows.length; r++) {
+        const row = allRows[r];
+        const rowCells = new Array(7).fill('');
+
+        if (row.type === 'header') {
+          rowCells[0] = row.text;
+          rowCells[5] = row.categoryTotal;
+        } else {
+          rowCells[0] = row.itemCode;
+          rowCells[1] = row.brandName;
+          rowCells[2] = row.packSizeNum;
+          rowCells[3] = row.avgSale;
+          rowCells[4] = row.cb;
+          rowCells[5] = row.req;
+          rowCells[6] = row.reqPass;
+        }
+
+        grid.push(rowCells);
+      }
+
+      const merges: any[] = [];
+
+      let brandStart = -1;
+      let currentBrand = '';
+      for (let r = 0; r < allRows.length; r++) {
+        const row = allRows[r];
+        if (row.type === 'header') {
+          merges.push({ s: { r: r + 1, c: 0 }, e: { r: r + 1, c: 4 } });
+          if (brandStart !== -1 && (r - 1) > brandStart) {
+            merges.push({ s: { r: brandStart + 1, c: 1 }, e: { r: r, c: 1 } });
+          }
+          currentBrand = '';
+          brandStart = -1;
+        } else {
+          if (row.brandName !== currentBrand) {
+            if (brandStart !== -1 && (r - 1) > brandStart) {
+              merges.push({ s: { r: brandStart + 1, c: 1 }, e: { r: r, c: 1 } });
+            }
+            currentBrand = row.brandName || '';
+            brandStart = r;
+          }
+        }
+      }
+      if (brandStart !== -1 && (allRows.length - 1) > brandStart) {
+        merges.push({ s: { r: brandStart + 1, c: 1 }, e: { r: allRows.length, c: 1 } });
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(grid);
+      ws['!merges'] = merges;
+      ws['!cols'] = [
+        { wch: 12 }, { wch: 25 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 12 }
+      ];
+      ws['!views'] = [{ showGridLines: true }];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Purchase Estimate');
+      XLSX.writeFile(wb, `purchase_estimate_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+  };
   
   const filteredItems = items.filter(item => {
     if (filterColumn === 'none' || filterValue === '') return true;
@@ -716,7 +938,7 @@ export default function PurchaseEstimatePage() {
                         <>
                             <div>
                                 <span>Total Cases: </span>
-                                <span className="text-primary">{totalCases}</span>
+                                <span className="text-primary">{totalCases}</span>  
                             </div>
                             <div>
                                 <span>Total Estimated Value: </span>
@@ -746,6 +968,10 @@ export default function PurchaseEstimatePage() {
                       )}
                   </div>
                   <div className="flex gap-2 print-hidden">
+                      <Button variant="outline" onClick={handleExcelDownload} disabled={items.length === 0}>
+                        <Sheet className="mr-2 h-4 w-4"/>
+                        Excel
+                      </Button>
                       <Button variant="outline" onClick={handleCSV} disabled={items.length === 0}>
                         <File className="mr-2 h-4 w-4"/>
                         CSV
