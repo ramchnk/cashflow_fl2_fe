@@ -21,7 +21,16 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Sheet, Check, ChevronsUpDown } from 'lucide-react';
+import { CalendarIcon, Sheet, Check, ChevronsUpDown, Loader2, KeyRound } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useUserStore } from '@/app/lib/user-store';
@@ -82,6 +91,82 @@ export default function PurchasePage() {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [sheetLink, setSheetLink] = useState<string | null>(null);
   const [openPopoverIndex, setOpenPopoverIndex] = useState<number | null>(null);
+
+  const [isFetchDialogOpen, setIsFetchDialogOpen] = useState(false);
+  const [tasmacUsername, setTasmacUsername] = useState('');
+  const [tasmacPassword, setTasmacPassword] = useState('');
+  const [tasmacDate, setTasmacDate] = useState('');
+  const [isFetchingTasmac, setIsFetchingTasmac] = useState(false);
+
+  const handleFetchTasmac = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tasmacUsername || !tasmacPassword) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please enter both TASMAC Username and Password.",
+      });
+      return;
+    }
+
+    setIsFetchingTasmac(true);
+    try {
+      const response = await fetch('/api/fetch-tasmac', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: tasmacUsername,
+          password: tasmacPassword,
+          targetDate: tasmacDate || undefined,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        toast({
+          title: "Data Fetched Successfully",
+          description: `Successfully fetched indent ${result.data.indentNo} details.`,
+        });
+
+        // Set inputs
+        setPastedData(result.data.tsv);
+        setBillNumber(result.data.indentNo);
+        setActualBillValue(result.data.netAmount.toString());
+
+        // Parse date "DD/MM/YYYY" to Date object
+        if (result.data.indentDate) {
+          const parts = result.data.indentDate.split('/');
+          if (parts.length === 3) {
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1; // 0-indexed
+            const year = parseInt(parts[2], 10);
+            const parsedDate = new Date(year, month, day);
+            if (!isNaN(parsedDate.getTime())) {
+              setBillDate(parsedDate);
+            }
+          }
+        }
+
+        // Close dialog and reset password and date selection
+        setIsFetchDialogOpen(false);
+        setTasmacPassword('');
+        setTasmacDate('');
+      } else {
+        throw new Error(result.error || 'Failed to fetch data from TASMAC.');
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Fetch Failed",
+        description: error.message || "An unexpected error occurred during fetch.",
+      });
+    } finally {
+      setIsFetchingTasmac(false);
+    }
+  };
 
   const fetchData = async () => {
     const token = sessionStorage.getItem('accessToken');
@@ -459,22 +544,96 @@ export default function PurchasePage() {
         <div className="grid gap-8">
           <Card>
             <CardHeader>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center flex-wrap gap-4">
                     <div>
                         <CardTitle>Process Purchase Data</CardTitle>
                         <CardDescription>
                             மூன்றாம் தரப்பு போர்ட்டலில் இருந்து தரவை நகலெடுத்து கீழே உள்ள டெக்ஸ்ட் ஏரியாவில் ஒட்டவும். தரவு தானாகவே செயலாக்கப்படும்.
                         </CardDescription>
                     </div>
-                     {sheetLink && (
-                        <Button
-                            variant="outline"
-                            onClick={() => window.open(sheetLink, '_blank')}
-                        >
-                            <Sheet className="mr-2 h-4 w-4" />
-                            Open Sheet
-                        </Button>
-                    )}
+                    <div className="flex items-center gap-2">
+                        <Dialog open={isFetchDialogOpen} onOpenChange={setIsFetchDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="default" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+                                    <KeyRound className="mr-2 h-4 w-4" />
+                                    Fetch from TASMAC
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                                <DialogHeader>
+                                    <DialogTitle>Fetch Indent from TASMAC</DialogTitle>
+                                    <DialogDescription>
+                                        TASMAC போர்ட்டலில் இருந்து நேரடி கொள்முதல் தரவைப் பெற உங்கள் பயனர் பெயர் மற்றும் கடவுச்சொல்லை உள்ளிடவும்.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <form onSubmit={handleFetchTasmac} className="space-y-4 py-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="tasmac-username">TASMAC Username</Label>
+                                        <Input
+                                            id="tasmac-username"
+                                            placeholder="e.g. 22/2022-23"
+                                            value={tasmacUsername}
+                                            onChange={(e) => setTasmacUsername(e.target.value)}
+                                            disabled={isFetchingTasmac}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="tasmac-password">TASMAC Password</Label>
+                                        <Input
+                                            id="tasmac-password"
+                                            type="password"
+                                            placeholder="••••••••"
+                                            value={tasmacPassword}
+                                            onChange={(e) => setTasmacPassword(e.target.value)}
+                                            disabled={isFetchingTasmac}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="tasmac-date">Purchase Date (Optional)</Label>
+                                        <Input
+                                            id="tasmac-date"
+                                            type="date"
+                                            value={tasmacDate}
+                                            onChange={(e) => setTasmacDate(e.target.value)}
+                                            disabled={isFetchingTasmac}
+                                        />
+                                    </div>
+                                    <DialogFooter className="pt-4">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => setIsFetchDialogOpen(false)}
+                                            disabled={isFetchingTasmac}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button type="submit" disabled={isFetchingTasmac}>
+                                            {isFetchingTasmac ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    Fetching...
+                                                </>
+                                            ) : (
+                                                'Fetch'
+                                            )}
+                                        </Button>
+                                    </DialogFooter>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
+
+                        {sheetLink && (
+                            <Button
+                                variant="outline"
+                                onClick={() => window.open(sheetLink, '_blank')}
+                            >
+                                <Sheet className="mr-2 h-4 w-4" />
+                                Open Sheet
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
