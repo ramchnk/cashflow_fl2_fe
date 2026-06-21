@@ -219,6 +219,30 @@ function parseViewTable(html: string): { items: IndentItem[]; netAmount: number 
   return { items, netAmount };
 }
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+function jsonWithCors(data: any, init?: ResponseInit) {
+  const headers = new Headers(init?.headers);
+  for (const [key, value] of Object.entries(CORS_HEADERS)) {
+    headers.set(key, value);
+  }
+  return NextResponse.json(data, {
+    ...init,
+    headers,
+  });
+}
+
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: new Headers(CORS_HEADERS),
+  });
+}
+
 export async function POST(req: Request) {
   const session = new ProperSession();
   let credentialsSent = false;
@@ -227,14 +251,14 @@ export async function POST(req: Request) {
     const { username, password, targetDate } = await req.json();
 
     if (!username || !password) {
-      return NextResponse.json({ success: false, error: 'Username and Password are required.' }, { status: 400 });
+      return jsonWithCors({ success: false, error: 'Username and Password are required.' }, { status: 400 });
     }
 
     // Step 1: GET cpe.tasmace2e.in to obtain VerificationToken
     const pageRes = await session.request('https://cpe.tasmace2e.in/?i=B3Fq8HJw0D');
     const tokenMatch = pageRes.body.match(/name="__RequestVerificationToken" type="hidden" value="([^"]+)"/);
     if (!tokenMatch) {
-      return NextResponse.json({ success: false, error: 'Failed to retrieve Verification Token from TASMAC site.' }, { status: 502 });
+      return jsonWithCors({ success: false, error: 'Failed to retrieve Verification Token from TASMAC site.' }, { status: 502 });
     }
     const verificationToken = tokenMatch[1];
 
@@ -263,7 +287,7 @@ export async function POST(req: Request) {
       // Check if error message exists on the page
       const errorMsgMatch = loginRes.body.match(/class="text-danger"[^>]*>([\s\S]*?)<\/span>/i);
       const errorMsg = errorMsgMatch ? cleanHtmlText(errorMsgMatch[1]) : 'Invalid Username or Password.';
-      return NextResponse.json({ success: false, error: errorMsg }, { status: 401 });
+      return jsonWithCors({ success: false, error: errorMsg }, { status: 401 });
     }
 
     // Step 3: Landing Index
@@ -276,19 +300,19 @@ export async function POST(req: Request) {
       const nextUrl = loc.startsWith('http') ? loc : 'https://excise.tasmace2e.in' + loc;
       await session.request(nextUrl);
     } else if (ssoRes.statusCode !== 200) {
-      return NextResponse.json({ success: false, error: 'Excise SSO cross-subdomain handoff failed.' }, { status: 502 });
+      return jsonWithCors({ success: false, error: 'Excise SSO cross-subdomain handoff failed.' }, { status: 502 });
     }
 
     // Step 5: GET Stock Transfer Index
     const stockTransferRes = await session.request('https://excise.tasmace2e.in/StockTransfer/Index/1');
     if (stockTransferRes.statusCode !== 200) {
-      return NextResponse.json({ success: false, error: 'Failed to access Stock Transfer page.' }, { status: 502 });
+      return jsonWithCors({ success: false, error: 'Failed to access Stock Transfer page.' }, { status: 502 });
     }
 
     // Step 6: Parse Index Table
     const indents = parseIndexTable(stockTransferRes.body);
     if (indents.length === 0) {
-      return NextResponse.json({ success: false, error: 'No recent indents found in TASMAC account.' }, { status: 404 });
+      return jsonWithCors({ success: false, error: 'No recent indents found in TASMAC account.' }, { status: 404 });
     }
 
     // Target the latest indent or filter by date
@@ -302,7 +326,7 @@ export async function POST(req: Request) {
           targetIndent = matched;
         } else {
           const availableDates = Array.from(new Set(indents.map(i => i.indentDate))).join(', ');
-          return NextResponse.json({
+          return jsonWithCors({
             success: false,
             error: `No indent found on date ${formattedTargetDate}. Available dates on page 1: ${availableDates}`
           }, { status: 404 });
@@ -313,13 +337,13 @@ export async function POST(req: Request) {
     // Step 7: GET View Indent details page
     const viewRes = await session.request(`https://excise.tasmace2e.in/StockTransfer/View?indentOrderId=${targetIndent.indentOrderId}&backId=1`);
     if (viewRes.statusCode !== 200) {
-      return NextResponse.json({ success: false, error: `Failed to retrieve details for indent ${targetIndent.indentNo}.` }, { status: 502 });
+      return jsonWithCors({ success: false, error: `Failed to retrieve details for indent ${targetIndent.indentNo}.` }, { status: 502 });
     }
 
     // Step 8: Parse details and generate TSV
     const { items, netAmount } = parseViewTable(viewRes.body);
     if (items.length === 0) {
-      return NextResponse.json({ success: false, error: `No items found inside indent ${targetIndent.indentNo}.` }, { status: 502 });
+      return jsonWithCors({ success: false, error: `No items found inside indent ${targetIndent.indentNo}.` }, { status: 502 });
     }
 
     // Columns format: Sr.No \t Brand Name \t Pack Size \t Rate \t Qty \t Added Value \t Amount
@@ -331,7 +355,7 @@ export async function POST(req: Request) {
     tsvLines.unshift("Sr.No\tBrand Name\tPack Size\tRate\tQty\tAdded Value\tAmount");
     const tsvData = tsvLines.join('\n');
 
-    return NextResponse.json({
+    return jsonWithCors({
       success: true,
       data: {
         tsv: tsvData,
@@ -343,7 +367,7 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('Error during TASMAC data fetch:', error);
-    return NextResponse.json({ success: false, error: error.message || 'An error occurred during fetch.' }, { status: 500 });
+    return jsonWithCors({ success: false, error: error.message || 'An error occurred during fetch.' }, { status: 500 });
   } finally {
     // Crucial clean logout to prevent 15 min lockouts
     if (credentialsSent) {

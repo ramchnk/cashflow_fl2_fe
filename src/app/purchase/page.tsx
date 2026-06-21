@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
+import { Checkbox } from '@/components/ui/checkbox';
 import { CalendarIcon, Sheet, Check, ChevronsUpDown, Loader2, KeyRound } from 'lucide-react';
 import {
   Dialog,
@@ -97,6 +98,8 @@ export default function PurchasePage() {
   const [tasmacPassword, setTasmacPassword] = useState('');
   const [tasmacDate, setTasmacDate] = useState('');
   const [isFetchingTasmac, setIsFetchingTasmac] = useState(false);
+  const [routeThroughLocal, setRouteThroughLocal] = useState(true);
+  const [localPort, setLocalPort] = useState('9002');
 
   const handleFetchTasmac = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,7 +114,11 @@ export default function PurchasePage() {
 
     setIsFetchingTasmac(true);
     try {
-      const response = await fetch('/api/fetch-tasmac', {
+      const fetchUrl = routeThroughLocal 
+        ? `http://localhost:${localPort}/api/fetch-tasmac`
+        : '/api/fetch-tasmac';
+
+      const response = await fetch(fetchUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -600,6 +607,34 @@ export default function PurchasePage() {
                                             disabled={isFetchingTasmac}
                                         />
                                     </div>
+                                    <div className="flex items-center space-x-2 pt-2">
+                                        <Checkbox
+                                            id="route-local"
+                                            checked={routeThroughLocal}
+                                            onCheckedChange={(checked) => setRouteThroughLocal(checked === true)}
+                                            disabled={isFetchingTasmac}
+                                        />
+                                        <Label htmlFor="route-local" className="cursor-pointer font-medium text-sm">
+                                            Route through client machine (local dev server)
+                                        </Label>
+                                    </div>
+                                    {routeThroughLocal && (
+                                        <div className="space-y-2 pl-6">
+                                            <Label htmlFor="local-port">Local Dev Port</Label>
+                                            <Input
+                                                id="local-port"
+                                                type="text"
+                                                placeholder="9002"
+                                                value={localPort}
+                                                onChange={(e) => setLocalPort(e.target.value)}
+                                                disabled={isFetchingTasmac}
+                                                className="w-24"
+                                            />
+                                            <p className="text-xs text-muted-foreground">
+                                                Requires running <code>npm run dev</code> on your local machine to bypass Vercel's IP blocks.
+                                            </p>
+                                        </div>
+                                    )}
                                     <DialogFooter className="pt-4">
                                         <Button
                                             type="button"
