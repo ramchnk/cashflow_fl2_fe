@@ -22,7 +22,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CalendarIcon, Sheet, Check, ChevronsUpDown, Loader2, KeyRound } from 'lucide-react';
+import { CalendarIcon, Sheet, Check, ChevronsUpDown, Loader2, KeyRound, Database, Trash2, RefreshCw } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -63,6 +63,8 @@ interface PurchaseItem {
   matchStatus: 'found' | 'not found';
   apiSku?: string;
   matchedProduct?: ProductMasterItem;
+  tasmacBrandName?: string;
+  tasmacPackSize?: string;
 }
 
 interface ProductMasterResponse {
@@ -87,7 +89,7 @@ export default function PurchasePage() {
   const [billNumber, setBillNumber] = useState('');
   const [billDate, setBillDate] = useState<Date | undefined>(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { setShopName } = useUserStore();
+  const { shopName, setShopName } = useUserStore();
   const [actualBillValue, setActualBillValue] = useState<string>('');
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [sheetLink, setSheetLink] = useState<string | null>(null);
@@ -100,6 +102,17 @@ export default function PurchasePage() {
   const [isFetchingTasmac, setIsFetchingTasmac] = useState(false);
   const [routeThroughLocal, setRouteThroughLocal] = useState(true);
   const [localPort, setLocalPort] = useState('9002');
+  const [skuMappings, setSkuMappings] = useState<Record<string, string>>({});
+  const [isMappingDialogOpen, setIsMappingDialogOpen] = useState(false);
+  const [mappingSheetTab, setMappingSheetTab] = useState('Mapping');
+  const [isSyncingSheet, setIsSyncingSheet] = useState(false);
+  const [pastedMappingData, setPastedMappingData] = useState('');
+
+  const getMappingKey = (brand: string, size: string) => {
+    const cleanBrand = brand.trim().replace(/\s+/g, ' ').replace(/-/g, ' ').toUpperCase();
+    const cleanSize = size.trim().replace(/\s+/g, '').toUpperCase();
+    return `${cleanBrand}--${cleanSize}`;
+  };
 
   const handleFetchTasmac = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -241,6 +254,18 @@ export default function PurchasePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const key = `tasmac_sku_mappings_${shopName || 'default'}`;
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        setSkuMappings(JSON.parse(saved));
+      } else {
+        setSkuMappings({});
+      }
+    }
+  }, [shopName]);
+
   const getPackSizeNumber = (packSize: string): number => {
     const size = packSize.toUpperCase();
     if (size.includes('180ML')) return 48;
@@ -292,12 +317,34 @@ export default function PurchasePage() {
                 const normalizedBrandName = brandName.trim().replace(/-/g, ' ');
                 const skuToMatch = `${normalizedBrandName.toUpperCase()}-${sizeValue}ML`;
                 
+                // Lookup mapped SKU
+                const mappingKey = getMappingKey(brandName, packSize);
+                const mappedSku = skuMappings[mappingKey];
+
                 let matchStatus: 'found' | 'not found' = 'not found';
                 let matchedSku: string | undefined = undefined;
                 let matchedProduct: ProductMasterItem | undefined = undefined;
 
                 if (productMaster && productMaster.productList) {
                     const foundProduct = productMaster.productList.find((product: any) => {
+                        if (mappedSku) {
+                            // 1. Direct match
+                            if (product.SKU.toUpperCase() === mappedSku.toUpperCase()) return true;
+                            // 2. Match with dashes normalized
+                            const normProductSku = product.SKU.replace(/-/g, ' ').toUpperCase();
+                            const normMappedSku = mappedSku.replace(/-/g, ' ').toUpperCase();
+                            if (normProductSku === normMappedSku) return true;
+                            // 3. Match by appending size suffix if mappedSku doesn't have it
+                            const suffix = `${sizeValue.toUpperCase()}ML`;
+                            const mappedSkuWithSuffix = mappedSku.toUpperCase().endsWith(suffix)
+                                ? mappedSku
+                                : `${mappedSku}-${suffix}`;
+                            
+                            const normMappedSkuWithSuffix = mappedSkuWithSuffix.replace(/-/g, ' ').toUpperCase();
+                            if (normProductSku === normMappedSkuWithSuffix) return true;
+                            
+                            return false;
+                        }
                         const normalizedApiSku = product.SKU.replace(/-/g, ' ');
                         return normalizedApiSku.toUpperCase() === skuToMatch.replace(/-/g, ' ');
                     });
@@ -328,7 +375,9 @@ export default function PurchasePage() {
                     numericTotalValue,
                     matchStatus,
                     apiSku: matchedSku,
-                    matchedProduct
+                    matchedProduct,
+                    tasmacBrandName: brandName,
+                    tasmacPackSize: packSize
                 });
             }
         }
@@ -339,7 +388,7 @@ export default function PurchasePage() {
   useEffect(() => {
     processData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pastedData, productMaster]);
+  }, [pastedData, productMaster, skuMappings]);
 
   const handleBottleQtyChange = (index: number, newBottleQtyStr: string) => {
     const newBottleQty = parseFloat(newBottleQtyStr);
@@ -370,6 +419,28 @@ export default function PurchasePage() {
   }
 
   const handleSelectProduct = (index: number, selectedProduct: ProductMasterItem) => {
+    const originalItem = parsedItems[index];
+    if (originalItem) {
+        const rawBrand = originalItem.tasmacBrandName || originalItem.brandName;
+        const rawPack = originalItem.tasmacPackSize || originalItem.packSize;
+        const mappingKey = getMappingKey(rawBrand, rawPack);
+        
+        const newMappings = {
+            ...skuMappings,
+            [mappingKey]: selectedProduct.SKU
+        };
+        setSkuMappings(newMappings);
+        if (typeof window !== 'undefined') {
+            const key = `tasmac_sku_mappings_${shopName || 'default'}`;
+            localStorage.setItem(key, JSON.stringify(newMappings));
+        }
+        
+        toast({
+            title: "Mapping Saved",
+            description: `Mapped "${rawBrand}" (${rawPack}) to "${selectedProduct.SKU}".`,
+        });
+    }
+
     setParsedItems(prevItems => {
         const newItems = [...prevItems];
         const item = newItems[index];
@@ -544,6 +615,214 @@ export default function PurchasePage() {
     }
   };
 
+  const parseCSV = (text: string): string[][] => {
+    const lines: string[][] = [];
+    let row: string[] = [];
+    let inQuotes = false;
+    let currentToken = '';
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const nextChar = text[i + 1];
+
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          currentToken += '"';
+          i++; // skip next quote
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        row.push(currentToken.trim());
+        currentToken = '';
+      } else if ((char === '\n' || char === '\r') && !inQuotes) {
+        if (char === '\r' && nextChar === '\n') {
+          i++;
+        }
+        row.push(currentToken.trim());
+        lines.push(row);
+        row = [];
+        currentToken = '';
+      } else {
+        currentToken += char;
+      }
+    }
+    if (currentToken || row.length > 0) {
+      row.push(currentToken.trim());
+      lines.push(row);
+    }
+    return lines;
+  };
+
+  const handleSyncFromGoogleSheet = async () => {
+    if (!sheetLink) {
+      toast({
+        variant: "destructive",
+        title: "No Sheet Linked",
+        description: "There is no Google Sheet link associated with this account.",
+      });
+      return;
+    }
+
+    const match = sheetLink.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    const spreadsheetId = match ? match[1] : null;
+
+    if (!spreadsheetId) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Sheet Link",
+        description: "Failed to extract Spreadsheet ID from the account's sheet link.",
+      });
+      return;
+    }
+
+    setIsSyncingSheet(true);
+    try {
+      const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(mappingSheetTab)}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Failed to load sheet. Ensure tab name is exactly "${mappingSheetTab}" and sheet is shared.`);
+      }
+      
+      const csvText = await res.text();
+      const rows = parseCSV(csvText);
+
+      if (rows.length < 2) {
+        throw new Error("The sheet is empty or has insufficient rows.");
+      }
+
+      // Detect headers
+      const headers = rows[0].map(h => h.toLowerCase());
+      
+      let itemIdx = headers.findIndex(h => h.includes('item') || h.includes('tasmac'));
+      let mlIdx = headers.findIndex(h => h.includes('ml') || h.includes('size') || h.includes('pack'));
+      let skuIdx = headers.findIndex(h => h.includes('store') || h.includes('sku') || h.includes('account'));
+
+      // If headers not matched, use default layout B (Item - index 1), C (ML - index 2), E (Store SKU - index 4) or similar
+      if (itemIdx === -1) itemIdx = 1; // Default to Column B
+      if (mlIdx === -1) mlIdx = 2;   // Default to Column C
+      if (skuIdx === -1) {
+        // If not found, look for last non-empty column in first row or default to Column E (index 4)
+        skuIdx = headers.length > 4 ? 4 : headers.length - 1;
+      }
+
+      const newMappings = { ...skuMappings };
+      let importedCount = 0;
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const rawItem = row[itemIdx]?.trim();
+        const rawMl = row[mlIdx]?.trim();
+        const rawSku = row[skuIdx]?.trim();
+
+        if (rawItem && rawMl && rawSku) {
+          const key = getMappingKey(rawItem, rawMl);
+          newMappings[key] = rawSku;
+          importedCount++;
+        }
+      }
+
+      setSkuMappings(newMappings);
+      if (typeof window !== 'undefined') {
+        const key = `tasmac_sku_mappings_${shopName || 'default'}`;
+        localStorage.setItem(key, JSON.stringify(newMappings));
+      }
+
+      toast({
+        title: "Sync Successful",
+        description: `Successfully loaded ${importedCount} mappings from Google Sheet tab "${mappingSheetTab}".`,
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Sync Failed",
+        description: error.message || "An error occurred while syncing from the sheet.",
+      });
+    } finally {
+      setIsSyncingSheet(false);
+    }
+  };
+
+  const handleImportPastedMapping = () => {
+    if (!pastedMappingData.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Import Failed",
+        description: "Please paste your tab-separated mapping data first.",
+      });
+      return;
+    }
+
+    try {
+      const lines = pastedMappingData.trim().split('\n');
+      const newMappings = { ...skuMappings };
+      let importedCount = 0;
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        let parts = line.split('\t').map(p => p.trim());
+        
+        // Fallback: if no tabs are found but there are spaces, try to split by multiple spaces
+        if (parts.length === 1 && line.includes('  ')) {
+          parts = line.split(/ {2,}/).map(p => p.trim());
+        }
+        
+        const nonEmpties = parts.filter(p => p !== '');
+        
+        // Skip header lines
+        if (line.toLowerCase().includes('brand name') || line.toLowerCase().includes('store sku') || line.toLowerCase().includes('item\tml')) {
+          continue;
+        }
+
+        if (nonEmpties.length >= 3) {
+          const tasmacName = nonEmpties[0];
+          const ml = nonEmpties[1];
+          const storeSku = nonEmpties[nonEmpties.length - 1];
+
+          if (tasmacName && ml && storeSku) {
+            const key = getMappingKey(tasmacName, ml);
+            newMappings[key] = storeSku;
+            importedCount++;
+          }
+        }
+      }
+
+      setSkuMappings(newMappings);
+      if (typeof window !== 'undefined') {
+        const key = `tasmac_sku_mappings_${shopName || 'default'}`;
+        localStorage.setItem(key, JSON.stringify(newMappings));
+      }
+
+      setPastedMappingData('');
+      toast({
+        title: "Import Successful",
+        description: `Successfully imported ${importedCount} SKU mappings.`,
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Import Failed",
+        description: error.message || "An error occurred while importing pasted data.",
+      });
+    }
+  };
+
+  const handleDeleteMapping = (mappingKey: string) => {
+    const newMappings = { ...skuMappings };
+    delete newMappings[mappingKey];
+    setSkuMappings(newMappings);
+    
+    if (typeof window !== 'undefined') {
+      const key = `tasmac_sku_mappings_${shopName || 'default'}`;
+      localStorage.setItem(key, JSON.stringify(newMappings));
+    }
+    
+    toast({
+      title: "Mapping Deleted",
+      description: "SKU mapping removed successfully.",
+    });
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
@@ -656,6 +935,102 @@ export default function PurchasePage() {
                                         </Button>
                                     </DialogFooter>
                                 </form>
+                            </DialogContent>
+                        </Dialog>
+
+                        <Dialog open={isMappingDialogOpen} onOpenChange={setIsMappingDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" className="font-semibold">
+                                    <Database className="mr-2 h-4 w-4" />
+                                    SKU Mapping
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[650px] max-h-[85vh] overflow-y-auto">
+                                <DialogHeader>
+                                    <DialogTitle>Manage SKU Mappings</DialogTitle>
+                                    <DialogDescription>
+                                        TASMAC பெயர் மற்றும் அளவை உங்கள் கணக்கின் தனிப்பயன் SKU-வுடன் பொருத்தவும்.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                
+                                <div className="space-y-6 py-4">
+
+                                    {/* Paste Bulk Mapping */}
+                                    <div className="space-y-2 border-b pb-4">
+                                        <h3 className="font-semibold text-sm">Paste Mappings Manually</h3>
+                                        <p className="text-xs text-muted-foreground">
+                                            Google Sheet-ல் உள்ள Item, ML மற்றும் Store SKU காலம்களை நகலெடுத்து கீழே ஒட்டவும்.
+                                        </p>
+                                        <Textarea
+                                            placeholder="Example:&#10;DIAMOND XXX RUM&#9;375ml&#9;DIAMOND XXX RUM&#10;OAK VAT MATURED RUM&#9;180ml&#9;oak vat"
+                                            value={pastedMappingData}
+                                            onChange={(e) => setPastedMappingData(e.target.value)}
+                                            rows={4}
+                                            className="font-mono text-xs mt-2"
+                                        />
+                                        <Button 
+                                            type="button" 
+                                            onClick={handleImportPastedMapping}
+                                            size="sm"
+                                            className="mt-2"
+                                            disabled={!pastedMappingData.trim()}
+                                        >
+                                            Import Pasted Data
+                                        </Button>
+                                    </div>
+
+                                    {/* Saved Mappings List */}
+                                    <div className="space-y-2">
+                                        <h3 className="font-semibold text-sm">Saved SKU Mappings ({Object.keys(skuMappings).length})</h3>
+                                        {Object.keys(skuMappings).length === 0 ? (
+                                            <p className="text-xs text-muted-foreground italic bg-accent/20 p-4 rounded text-center">
+                                                No saved SKU mappings found for this account. Create some by importing or correcting mismatch items in the purchase table.
+                                            </p>
+                                        ) : (
+                                            <ScrollArea className="h-48 border rounded-md">
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead className="text-xs">TASMAC Brand (ML)</TableHead>
+                                                            <TableHead className="text-xs">Store SKU</TableHead>
+                                                            <TableHead className="w-[80px]"></TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {Object.entries(skuMappings).map(([key, value]) => {
+                                                            const [brand, ml] = key.split('--');
+                                                            return (
+                                                                <TableRow key={key}>
+                                                                    <TableCell className="text-xs font-mono py-2">
+                                                                        {brand} ({ml})
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs font-medium py-2">
+                                                                        {value}
+                                                                    </TableCell>
+                                                                    <TableCell className="py-2">
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            onClick={() => handleDeleteMapping(key)}
+                                                                            className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            );
+                                                        })}
+                                                    </TableBody>
+                                                </Table>
+                                            </ScrollArea>
+                                        )}
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button type="button" onClick={() => setIsMappingDialogOpen(false)}>
+                                        Close
+                                    </Button>
+                                </DialogFooter>
                             </DialogContent>
                         </Dialog>
 
