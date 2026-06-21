@@ -5,6 +5,7 @@ import querystring from 'querystring';
 
 // Enforce standard Node.js runtime instead of Edge
 export const runtime = 'nodejs';
+export const preferredRegion = 'bom1';
 
 function encryptPassword(password: string): string {
   const secretKey = "12345678901234567890123456789012";
