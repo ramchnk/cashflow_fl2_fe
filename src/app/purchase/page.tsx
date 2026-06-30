@@ -178,10 +178,14 @@ export default function PurchasePage() {
         throw new Error(result.error || 'Failed to fetch data from TASMAC.');
       }
     } catch (error: any) {
+      let desc = error.message || "An unexpected error occurred during fetch.";
+      if (routeThroughLocal && (error.message === 'Failed to fetch' || error.name === 'TypeError')) {
+        desc = "Could not connect to your local server. Please ensure you have run 'npm run dev' on your computer (port 9002), or uncheck the 'Route through client machine' checkbox to try using the Vercel server.";
+      }
       toast({
         variant: "destructive",
         title: "Fetch Failed",
-        description: error.message || "An unexpected error occurred during fetch.",
+        description: desc,
       });
     } finally {
       setIsFetchingTasmac(false);
@@ -418,11 +422,32 @@ export default function PurchasePage() {
     });
   }
 
+  const extractMl = (str: string): string => {
+    if (!str) return '';
+    const match = str.toUpperCase().match(/(\d+)\s*ML/);
+    if (match) return match[1];
+    const numMatch = str.match(/\d+/);
+    return numMatch ? numMatch[0] : '';
+  };
+
   const handleSelectProduct = (index: number, selectedProduct: ProductMasterItem) => {
     const originalItem = parsedItems[index];
     if (originalItem) {
         const rawBrand = originalItem.tasmacBrandName || originalItem.brandName;
         const rawPack = originalItem.tasmacPackSize || originalItem.packSize;
+
+        const originalMl = extractMl(rawPack);
+        const selectedMl = extractMl(selectedProduct.SKU);
+
+        if (originalMl && selectedMl && originalMl !== selectedMl) {
+            const proceed = window.confirm(
+                `Warning: ML Mismatch!\n` +
+                `The pasted item size is ${originalMl}ML, but you selected a product of size ${selectedMl}ML ("${selectedProduct.SKU}").\n` +
+                `Do you want to proceed with this mapping?`
+            );
+            if (!proceed) return;
+        }
+
         const mappingKey = getMappingKey(rawBrand, rawPack);
         
         const newMappings = {
