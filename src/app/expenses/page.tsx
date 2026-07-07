@@ -68,6 +68,7 @@ export default function ExpensesPage() {
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [fromDatePickerOpen, setFromDatePickerOpen] = useState(false);
   const [toDatePickerOpen, setToDatePickerOpen] = useState(false);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -252,6 +253,235 @@ export default function ExpensesPage() {
       document.body.removeChild(link);
   };
 
+  const handleExportPDF = async () => {
+    if (filteredExpenses.length === 0) return;
+    if (!fromDate || !toDate) {
+      toast({
+        variant: 'destructive',
+        title: 'Date range not selected',
+        description: 'Please select a date range to export PDF.',
+      });
+      return;
+    }
+
+    setIsExportingPDF(true);
+
+    const token = sessionStorage.getItem('accessToken');
+    if (!token) {
+        router.push('/login');
+        setIsExportingPDF(false);
+        return;
+    }
+
+    try {
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'pt',
+        format: 'a4'
+      });
+
+      // Page dimensions
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      // Table styling configuration matching user screenshot
+      const margin = 30;
+      const col1Width = 415;
+      const col2Width = 120;
+      const col1X = margin;
+      const col2X = margin + col1Width;
+      const headerHeight = 35;
+      const rowHeightDefault = 25;
+
+      let currentY = margin + 20;
+
+      // Helper function to draw header row
+      const drawHeader = () => {
+        // Draw Header background (dark blue: rgb(63, 119, 181))
+        doc.setFillColor(63, 119, 181);
+        doc.rect(col1X, currentY, col1Width, headerHeight, 'F');
+        doc.rect(col2X, currentY, col2Width, headerHeight, 'F');
+
+        // Draw Cell Borders (black)
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(1.5);
+        doc.rect(col1X, currentY, col1Width, headerHeight, 'D');
+        doc.rect(col2X, currentY, col2Width, headerHeight, 'D');
+
+        // Draw Header Text (white, bold)
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(12);
+
+        // Center "Expense Detail"
+        const header1Text = "Expense Detail";
+        const h1Width = doc.getTextWidth(header1Text);
+        doc.text(header1Text, col1X + (col1Width - h1Width) / 2, currentY + 22);
+
+        // Center "Amount"
+        const header2Text = "Amount";
+        const h2Width = doc.getTextWidth(header2Text);
+        doc.text(header2Text, col2X + (col2Width - h2Width) / 2, currentY + 22);
+
+        currentY += headerHeight;
+      };
+
+      // Draw first page header
+      drawHeader();
+
+      const fromTime = Math.floor(startOfDay(fromDate).getTime() / 1000);
+      const toTime = Math.floor(endOfDay(toDate).getTime() / 1000);
+
+      // Fetch details for all filtered expenses in parallel
+      const detailedPromises = filteredExpenses.map(async (expense) => {
+        try {
+          const expenseItemsQuery = expense.originalNames.map(name => `expenseItem=${encodeURIComponent(name)}`).join('&');
+          const url = `https://tnfl2-cb6ea45c64b3.herokuapp.com/services/expenses/expensesReport/item?fromTime=${fromTime}&toTime=${toTime}&${expenseItemsQuery}`;
+          
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (response.ok) {
+            const resData = await response.json();
+            return {
+              expense,
+              items: (resData.data || []) as DetailedItem[]
+            };
+          }
+        } catch (e) {
+          console.error("Error fetching items for", expense.name, e);
+        }
+        return { expense, items: [] as DetailedItem[] };
+      });
+
+      const allDetailedData = await Promise.all(detailedPromises);
+
+      // Loop through items
+      for (const group of allDetailedData) {
+        const { expense, items } = group;
+
+        const itemsToRender = items.length > 0 ? items : [{
+          saleDate: 0,
+          expenseList: {
+            amount: expense.amount,
+            narration: expense.name,
+            details: expense.name
+          }
+        }];
+
+        for (const item of itemsToRender) {
+          let detailText = '';
+          if (item.saleDate > 0) {
+            const date = new Date(item.saleDate * 1000);
+            const dateStr = !isNaN(date.getTime()) ? format(date, 'yyyy-MM-dd') : '';
+            const desc = item.expenseList?.narration || item.expenseList?.details || expense.name;
+            detailText = `${dateStr ? dateStr + ' - ' : ''}${desc}`.toUpperCase();
+          } else {
+            detailText = expense.name.toUpperCase();
+          }
+
+          const amountText = Math.round(item.expenseList?.amount || 0).toString();
+
+          // Check text wrapping for detailText
+          doc.setFont('Helvetica', 'bold');
+          doc.setFontSize(11);
+          const textLines = doc.splitTextToSize(detailText, col1Width - 15);
+          const linesCount = textLines.length;
+          const currentRecHeight = Math.max(rowHeightDefault, linesCount * 14 + 12);
+
+          // Check page overflow
+          if (currentY + currentRecHeight > pageHeight - margin - 30) {
+            doc.addPage();
+            currentY = margin + 20;
+            drawHeader();
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(11);
+          }
+
+          // Draw Row backgrounds (light blue: rgb(184, 209, 234))
+          doc.setFillColor(184, 209, 234);
+          doc.rect(col1X, currentY, col1Width, currentRecHeight, 'F');
+          doc.rect(col2X, currentY, col2Width, currentRecHeight, 'F');
+
+          // Draw Cell Borders (black)
+          doc.setDrawColor(0, 0, 0);
+          doc.setLineWidth(1.2);
+          doc.rect(col1X, currentY, col1Width, currentRecHeight, 'D');
+          doc.rect(col2X, currentY, col2Width, currentRecHeight, 'D');
+
+          // Draw Row Text
+          doc.setTextColor(0, 0, 0);
+
+          // Write detail text (multiline support)
+          const totalTextHeight = linesCount * 14;
+          const textStartY = currentY + (currentRecHeight - totalTextHeight) / 2 + 10;
+          for (let i = 0; i < linesCount; i++) {
+            doc.text(textLines[i], col1X + 10, textStartY + (i * 14));
+          }
+
+          // Write amount text (right-aligned)
+          const amtWidth = doc.getTextWidth(amountText);
+          const amtY = currentY + (currentRecHeight - 11) / 2 + 9;
+          doc.text(amountText, col2X + col2Width - amtWidth - 10, amtY);
+
+          currentY += currentRecHeight;
+        }
+      }
+
+      // Draw Total Row
+      const totalText = "TOTAL";
+      const totalAmountText = Math.round(totalAmount).toString();
+      const totalRecHeight = rowHeightDefault;
+
+      if (currentY + totalRecHeight > pageHeight - margin - 30) {
+        doc.addPage();
+        currentY = margin + 20;
+        drawHeader();
+      }
+
+      // Total row styled like header
+      doc.setFillColor(63, 119, 181);
+      doc.rect(col1X, currentY, col1Width, totalRecHeight, 'F');
+      doc.rect(col2X, currentY, col2Width, totalRecHeight, 'F');
+
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(1.5);
+      doc.rect(col1X, currentY, col1Width, totalRecHeight, 'D');
+      doc.rect(col2X, currentY, col2Width, totalRecHeight, 'D');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(12);
+
+      const totWidth = doc.getTextWidth(totalText);
+      doc.text(totalText, col1X + col1Width - totWidth - 10, currentY + 16);
+
+      const totAmtWidth = doc.getTextWidth(totalAmountText);
+      doc.text(totalAmountText, col2X + col2Width - totAmtWidth - 10, currentY + 16);
+
+      const formattedDate = format(new Date(), 'yyyy-MM-dd');
+      doc.save(`expenses_report_${formattedDate}.pdf`);
+
+      toast({
+        title: "Success",
+        description: "PDF report exported successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Export Failed',
+        description: error.message || 'Could not generate PDF.',
+      });
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
+
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -329,6 +559,9 @@ export default function ExpensesPage() {
                         <div className="flex gap-2">
                             <Button variant="outline" onClick={handleCopy} disabled={filteredExpenses.length === 0}>Copy</Button>
                             <Button variant="outline" onClick={handleCSV} disabled={filteredExpenses.length === 0}>CSV</Button>
+                            <Button variant="outline" onClick={handleExportPDF} disabled={filteredExpenses.length === 0 || isExportingPDF}>
+                                {isExportingPDF ? 'Exporting PDF...' : 'Export PDF'}
+                            </Button>
                             <Button variant="outline" onClick={handlePrint} disabled={filteredExpenses.length === 0}>Print</Button>
                         </div>
                         <div className="flex items-center gap-2">
