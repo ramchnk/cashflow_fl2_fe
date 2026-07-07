@@ -377,7 +377,7 @@ export default function ExpensesPage() {
           let detailText = '';
           if (item.saleDate > 0) {
             const date = new Date(item.saleDate * 1000);
-            const dateStr = !isNaN(date.getTime()) ? format(date, 'yyyy-MM-dd') : '';
+            const dateStr = !isNaN(date.getTime()) ? format(date, 'dd/MM/yyyy') : '';
             const desc = item.expenseList?.narration || item.expenseList?.details || expense.name;
             detailText = `${dateStr ? dateStr + ' - ' : ''}${desc}`.toUpperCase();
           } else {
