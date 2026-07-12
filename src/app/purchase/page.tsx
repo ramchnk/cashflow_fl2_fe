@@ -273,18 +273,30 @@ export default function PurchasePage() {
   const getPackSizeNumber = (packSize: string): number => {
     const size = packSize.toUpperCase();
     if (size.includes('180ML')) return 48;
-    if (size.includes('375ML')) return 24;
+    if (size.includes('375ML') || size.includes('200ML')) return 24;
     if (size.includes('750ML') || size.includes('650ML')) return 12;
     if (size.includes('1000ML')) return 9;
     if (size.includes('325ML') || size.includes('500ML')) return 24;
     return 1;
   }
 
-  const getCalculatedQty = (packSize: string, caseQty: number): number => {
+  const getCalculatedQty = (packSize: string, caseQtyVal: string | number): number => {
     let calculatedQty = 0;
-    if (!isNaN(caseQty)) {
+    const caseQtyStr = typeof caseQtyVal === 'number' ? caseQtyVal.toString() : caseQtyVal;
+    if (caseQtyStr && caseQtyStr.trim() !== '') {
         const packSizeNum = getPackSizeNumber(packSize);
-        calculatedQty = caseQty * packSizeNum;
+        const qtyTrimmed = caseQtyStr.trim();
+        if (qtyTrimmed.includes('.')) {
+            const parts = qtyTrimmed.split('.');
+            const intPart = parseInt(parts[0], 10) || 0;
+            const decPart = parseInt(parts[1], 10) || 0;
+            calculatedQty = (intPart * packSizeNum) + decPart;
+        } else {
+            const caseQty = parseFloat(qtyTrimmed);
+            if (!isNaN(caseQty)) {
+                calculatedQty = caseQty * packSizeNum;
+            }
+        }
     }
     return calculatedQty;
   };
@@ -314,8 +326,7 @@ export default function PurchasePage() {
 
             if (srNo && brandName && packSize && qty && totalValue) {
                 
-                const caseQty = parseFloat(qty);
-                const calculatedQty = getCalculatedQty(packSize, caseQty);
+                const calculatedQty = getCalculatedQty(packSize, qty);
 
                 const sizeValue = packSize.toLowerCase().replace('ml', '').trim();
                 const normalizedBrandName = brandName.trim().replace(/-/g, ' ');
@@ -403,13 +414,18 @@ export default function PurchasePage() {
         const item = newItems[index];
 
         const packSizeNum = getPackSizeNumber(item.packSize);
-        const newCaseQty = packSizeNum > 0 ? newBottleQty / packSizeNum : 0;
+        let newCaseQtyStr = '0';
+        if (packSizeNum > 0) {
+            const wholeCases = Math.floor(newBottleQty / packSizeNum);
+            const looseBottles = newBottleQty % packSizeNum;
+            newCaseQtyStr = looseBottles > 0 ? `${wholeCases}.${looseBottles}` : wholeCases.toString();
+        }
         
         const newNumericTotalValue = (item.matchedProduct?.purchasePrice || 0) * newBottleQty;
 
         newItems[index] = {
             ...item,
-            qty: newCaseQty.toFixed(2), // case qty
+            qty: newCaseQtyStr, // case qty
             calculatedQty: newBottleQty, // bottle qty
             numericTotalValue: newNumericTotalValue,
             totalValue: new Intl.NumberFormat('en-IN', {
@@ -473,8 +489,7 @@ export default function PurchasePage() {
         const skuParts = selectedProduct.SKU.split('-');
         const newPackSize = skuParts[skuParts.length - 1] || item.packSize;
 
-        const caseQty = parseFloat(item.qty);
-        const newCalculatedQty = getCalculatedQty(newPackSize, caseQty);
+        const newCalculatedQty = getCalculatedQty(newPackSize, item.qty);
         
         const newNumericTotalValue = (selectedProduct.purchasePrice || 0) * newCalculatedQty;
 
@@ -510,6 +525,32 @@ export default function PurchasePage() {
 
   const difference = (parseFloat(actualBillValue) || 0) - totalValue;
 
+  const validateDuplicates = (): boolean => {
+    const counts: { [key: string]: number } = {};
+    const duplicates: string[] = [];
+
+    parsedItems.forEach(item => {
+      const key = `${item.brandName}-${item.packSize}`;
+      counts[key] = (counts[key] || 0) + 1;
+    });
+
+    for (const key in counts) {
+      if (counts[key] > 1) {
+        duplicates.push(key);
+      }
+    }
+
+    if (duplicates.length > 0) {
+      toast({
+        variant: "destructive",
+        title: "Duplicate Items Found",
+        description: `The following items are duplicates: ${duplicates.join(', ')}`,
+      });
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmitPurchase = async () => {
     if (!billNumber || !billDate) {
         toast({
@@ -544,6 +585,10 @@ export default function PurchasePage() {
             title: "Validation Error",
             description: "There are no items to submit.",
         });
+        return;
+    }
+
+    if (!validateDuplicates()) {
         return;
     }
     
@@ -610,35 +655,6 @@ export default function PurchasePage() {
     }
   }
 
-
-  const validateDuplicates = () => {
-    const counts: { [key: string]: number } = {};
-    const duplicates: string[] = [];
-
-    parsedItems.forEach(item => {
-      const key = `${item.brandName}-${item.packSize}`;
-      counts[key] = (counts[key] || 0) + 1;
-    });
-
-    for (const key in counts) {
-      if (counts[key] > 1) {
-        duplicates.push(key);
-      }
-    }
-
-    if (duplicates.length > 0) {
-      toast({
-        variant: "destructive",
-        title: "Duplicate Items Found",
-        description: `The following items are duplicates: ${duplicates.join(', ')}`,
-      });
-    } else {
-      toast({
-        title: "Validation Successful",
-        description: "No duplicate items found.",
-      });
-    }
-  };
 
   const parseCSV = (text: string): string[][] => {
     const lines: string[][] = [];
@@ -1252,9 +1268,6 @@ export default function PurchasePage() {
                         </div>
                     </div>
                     <div className="flex justify-end gap-4 w-full">
-                         <Button variant="secondary" onClick={validateDuplicates} disabled={isSubmitting}>
-                            Validate
-                        </Button>
                          <Button onClick={handleSubmitPurchase} disabled={isSubmitting}>
                             {isSubmitting ? 'Submitting...' : 'Submit Purchase'}
                         </Button>
