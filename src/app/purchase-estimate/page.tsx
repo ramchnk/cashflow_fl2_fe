@@ -201,7 +201,7 @@ export default function PurchaseEstimatePage() {
   }, [router, toast]);
 
   const getPackSize = (sku: string) => {
-    const size = sku.split('-')[1]?.toUpperCase() || '';
+    const size = sku.toUpperCase();
     if (size.includes('180ML')) return 48;
     if (size.includes('375ML') || size.includes('200ML')) return 24;
     if (size.includes('750ML') || size.includes('650ML')) return 12;
