@@ -22,7 +22,13 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CalendarIcon, Sheet, Check, ChevronsUpDown, Loader2, KeyRound, Database, Trash2, RefreshCw } from 'lucide-react';
+import { CalendarIcon, Sheet, Check, ChevronsUpDown, Loader2, KeyRound, Database, Trash2, RefreshCw, ArrowUpRight, ArrowDownRight, AlertCircle } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -58,6 +64,10 @@ interface PurchaseItem {
   packSize: string;
   qty: string; // This is the case quantity
   calculatedQty: number; // This is the bottle quantity
+  rate?: string;
+  addedValue?: string;
+  itemPrice?: number;
+  taxRate?: number;
   totalValue: string;
   numericTotalValue: number;
   matchStatus: 'found' | 'not found';
@@ -272,13 +282,72 @@ export default function PurchasePage() {
 
   const getPackSizeNumber = (packSize: string): number => {
     const size = packSize.toUpperCase();
-    if (size.includes('180ML')) return 48;
-    if (size.includes('375ML') || size.includes('200ML')) return 24;
-    if (size.includes('750ML') || size.includes('650ML')) return 12;
-    if (size.includes('1000ML')) return 9;
-    if (size.includes('325ML') || size.includes('500ML')) return 24;
+    if (size.includes('180ML') || size.includes('180 ML')) return 48;
+    if (size.includes('375ML') || size.includes('375 ML') || size.includes('200ML') || size.includes('200 ML')) return 24;
+    if (size.includes('750ML') || size.includes('750 ML') || size.includes('650ML') || size.includes('650 ML')) return 12;
+    if (size.includes('1000ML') || size.includes('1000 ML') || size.includes('1LTR') || size.includes('1 LTR')) return 9;
+    if (size.includes('325ML') || size.includes('325 ML') || size.includes('500ML') || size.includes('500 ML') || size.includes('330ML') || size.includes('330 ML')) return 24;
+    
+    // Numeric fallback if packSize is just number e.g. "180", "375"
+    const numMatch = size.match(/\d+/);
+    if (numMatch) {
+      const num = parseInt(numMatch[0], 10);
+      if (num === 180) return 48;
+      if (num === 375 || num === 200 || num === 325 || num === 500 || num === 330) return 24;
+      if (num === 750 || num === 650) return 12;
+      if (num === 1000) return 9;
+    }
     return 1;
-  }
+  };
+
+  const getItemTaxRate = (
+    brandName?: string,
+    tasmacBrandName?: string,
+    apiSku?: string,
+    matchedProduct?: ProductMasterItem
+  ): number => {
+    // 1. Check matched product's brand / category property
+    const productBrand = (matchedProduct?.brand || matchedProduct?.category || matchedProduct?.group || '').toString().trim().toUpperCase();
+    if (productBrand === 'BEER' || productBrand.includes('BEER')) return 2.60;
+    if (productBrand === 'WINE' || productBrand.includes('WINE')) return 2.50;
+
+    // 2. Check all relevant names for keywords
+    const allNames = `${brandName || ''} ${tasmacBrandName || ''} ${apiSku || ''} ${matchedProduct?.SKU || ''}`.toUpperCase();
+
+    // Check for Beer keywords (Beer: 260%)
+    if (/\b(BEER|LAGER|DRAUGHT|ALE|STOUT|PILSNER)\b/i.test(allNames) || allNames.includes('BEER')) {
+      return 2.60;
+    }
+
+    // Check for Wine keywords (Wine: 250%)
+    if (/\b(WINE|PORT)\b/i.test(allNames) || allNames.includes('WINE')) {
+      return 2.50;
+    }
+
+    // 3. Default: Remaining liquor (Brandy, Whisky, Rum, Vodka, etc.) is 220%
+    return 2.20;
+  };
+
+  const calculateItemPrice = (
+    addedValue: string | number | undefined,
+    rate: string | number | undefined,
+    packSize: string,
+    taxRate: number = 2.20
+  ): number => {
+    const avNum = typeof addedValue === 'number' ? addedValue : (parseFloat(String(addedValue || '').replace(/,/g, '')) || 0);
+    const rateNum = typeof rate === 'number' ? rate : (parseFloat(String(rate || '').replace(/,/g, '')) || 0);
+    const packSizeNum = getPackSizeNumber(packSize);
+
+    if (packSizeNum <= 0) return 0;
+    if (avNum === 0 && rateNum === 0) return 0;
+
+    // Formula: =(((Rate1 * Tax) + Rate2) / PackQty) * 2% + (((Rate1 * Tax) + Rate2) / PackQty)
+    // Rate 1 = Added Value (from API)
+    // Rate 2 = Rate (from API)
+    // Tax = dynamic (Beer: 260% = 2.60, Wine: 250% = 2.50, Remaining Liquor: 220% = 2.20)
+    const base = ((avNum * taxRate) + rateNum) / packSizeNum;
+    return (base * 0.02) + base;
+  };
 
   const getCalculatedQty = (packSize: string, caseQtyVal: string | number): number => {
     let calculatedQty = 0;
@@ -314,14 +383,19 @@ export default function PurchasePage() {
     const startIndex = lines[0].toLowerCase().includes('brand name') ? 1 : 0;
 
     for (let i = startIndex; i < lines.length; i++) {
-        const columns = lines[i].split('\t'); // Assuming tab-separated values
+        let columns = lines[i].split('\t'); // Assuming tab-separated values
+        if (columns.length === 1 && lines[i].includes('  ')) {
+            columns = lines[i].split(/ {2,}|\t/).map(c => c.trim());
+        }
 
         if (columns.length >= 7) { // We need at least 7 columns to get Total Value
-            const srNo = columns[0];
-            const brandName = columns[1];
-            const packSize = columns[2];
-            const qty = columns[4]; 
-            let totalValue = columns[6];
+            const srNo = columns[0]?.trim();
+            const brandName = columns[1]?.trim();
+            const packSize = columns[2]?.trim();
+            const rate = columns[3]?.trim();
+            const qty = columns[4]?.trim(); 
+            const addedValue = columns[5]?.trim();
+            let totalValue = columns[6]?.trim();
             let numericTotalValue = 0;
 
             if (srNo && brandName && packSize && qty && totalValue) {
@@ -368,24 +442,32 @@ export default function PurchasePage() {
                         matchStatus = 'found';
                         matchedSku = foundProduct.SKU;
                         matchedProduct = foundProduct;
-
-                        if(foundProduct.purchasePrice && calculatedQty > 0) {
-                           const calculatedTotal = calculatedQty * foundProduct.purchasePrice;
-                            totalValue = new Intl.NumberFormat('en-IN', {
-                                style: 'currency',
-                                currency: 'INR',
-                            }).format(calculatedTotal);
-                            numericTotalValue = calculatedTotal;
-                        }
                     }
                 }
                 
+                const taxRate = getItemTaxRate(matchedSku || brandName, brandName, matchedSku, matchedProduct);
+                const itemPrice = calculateItemPrice(addedValue, rate, packSize, taxRate);
+
+                const unitPrice = itemPrice > 0 ? itemPrice : (matchedProduct?.purchasePrice || 0);
+                if (unitPrice > 0 && calculatedQty > 0) {
+                    const calculatedTotal = calculatedQty * unitPrice;
+                    totalValue = new Intl.NumberFormat('en-IN', {
+                        style: 'currency',
+                        currency: 'INR',
+                    }).format(calculatedTotal);
+                    numericTotalValue = calculatedTotal;
+                }
+
                 items.push({
                     srNo,
                     brandName: matchedSku || brandName,
                     packSize,
                     qty,
                     calculatedQty,
+                    rate,
+                    addedValue,
+                    itemPrice,
+                    taxRate,
                     totalValue,
                     numericTotalValue,
                     matchStatus,
@@ -421,7 +503,8 @@ export default function PurchasePage() {
             newCaseQtyStr = looseBottles > 0 ? `${wholeCases}.${looseBottles}` : wholeCases.toString();
         }
         
-        const newNumericTotalValue = (item.matchedProduct?.purchasePrice || 0) * newBottleQty;
+        const unitPrice = (item.itemPrice && item.itemPrice > 0) ? item.itemPrice : (item.matchedProduct?.purchasePrice || 0);
+        const newNumericTotalValue = unitPrice * newBottleQty;
 
         newItems[index] = {
             ...item,
@@ -490,14 +573,19 @@ export default function PurchasePage() {
         const newPackSize = skuParts[skuParts.length - 1] || item.packSize;
 
         const newCalculatedQty = getCalculatedQty(newPackSize, item.qty);
+        const newTaxRate = getItemTaxRate(selectedProduct.SKU, item.tasmacBrandName, selectedProduct.SKU, selectedProduct);
+        const newItemPrice = calculateItemPrice(item.addedValue, item.rate, newPackSize, newTaxRate);
         
-        const newNumericTotalValue = (selectedProduct.purchasePrice || 0) * newCalculatedQty;
+        const unitPrice = newItemPrice > 0 ? newItemPrice : (selectedProduct.purchasePrice || 0);
+        const newNumericTotalValue = unitPrice * newCalculatedQty;
 
         newItems[index] = {
             ...item,
             brandName: selectedProduct.SKU,
             packSize: newPackSize,
             calculatedQty: newCalculatedQty,
+            itemPrice: newItemPrice,
+            taxRate: newTaxRate,
             numericTotalValue: newNumericTotalValue,
             totalValue: new Intl.NumberFormat('en-IN', {
                 style: 'currency',
@@ -1141,13 +1229,29 @@ export default function PurchasePage() {
             </CardContent>
           </Card>
 
-          {parsedItems.length > 0 && (
+          {parsedItems.length > 0 && (() => {
+            const priceChangedCount = parsedItems.filter(item => {
+              const masterPrice = item.matchedProduct?.purchasePrice;
+              return item.matchStatus === 'found' && typeof item.itemPrice === 'number' && item.itemPrice > 0 && typeof masterPrice === 'number' && masterPrice > 0 && Math.abs(item.itemPrice - masterPrice) >= 0.01;
+            }).length;
+
+            return (
             <Card>
                 <CardHeader>
-                    <CardTitle>Purchase Order Preview</CardTitle>
-                    <CardDescription>
-                        Review the parsed items below before submitting.
-                    </CardDescription>
+                    <div className="flex justify-between items-center flex-wrap gap-2">
+                        <div>
+                            <CardTitle>Purchase Order Preview</CardTitle>
+                            <CardDescription>
+                                Review the parsed items below before submitting.
+                            </CardDescription>
+                        </div>
+                        {priceChangedCount > 0 && (
+                            <Badge variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 text-xs flex items-center gap-1.5 font-medium">
+                                <AlertCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                                <span>{priceChangedCount} item{priceChangedCount > 1 ? 's have' : ' has'} rate difference vs Product Master</span>
+                            </Badge>
+                        )}
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <ScrollArea className="h-96">
@@ -1159,79 +1263,163 @@ export default function PurchasePage() {
                                     <TableHead>Pack Size</TableHead>
                                     <TableHead className="text-right">Case</TableHead>
                                     <TableHead className="text-right">QTY</TableHead>
+                                    <TableHead className="text-right">Item Price</TableHead>
                                     <TableHead className="text-right">Total Value</TableHead>
                                     <TableHead>Status</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {parsedItems.map((item, index) => (
-                                <TableRow key={index}>
-                                    <TableCell>{item.srNo}</TableCell>
-                                    <TableCell>
-                                        <Popover open={openPopoverIndex === index} onOpenChange={(open) => setOpenPopoverIndex(open ? index : null)}>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="ghost"
-                                                    role="combobox"
-                                                    disabled={isSubmitting}
-                                                    className={cn(
-                                                        "h-auto p-1 font-normal justify-start text-left hover:bg-accent hover:text-accent-foreground w-full max-w-[300px]",
-                                                        item.matchStatus === 'not found' && "border border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive px-2 py-1"
-                                                    )}
+                                {parsedItems.map((item, index) => {
+                                  const itemPrice = item.itemPrice;
+                                  const masterPrice = item.matchedProduct?.purchasePrice;
+                                  const hasItemPrice = typeof itemPrice === 'number' && itemPrice > 0;
+                                  const hasMasterPrice = typeof masterPrice === 'number' && masterPrice > 0;
+                                  const priceDiff = (typeof itemPrice === 'number' && typeof masterPrice === 'number') ? (itemPrice - masterPrice) : 0;
+                                  const hasSignificantDiff = (typeof itemPrice === 'number' && typeof masterPrice === 'number') && Math.abs(priceDiff) >= 0.01;
+                                  const percentDiff = (hasSignificantDiff && typeof masterPrice === 'number' && masterPrice > 0) ? ((priceDiff / masterPrice) * 100) : 0;
+
+                                  return (
+                                  <TableRow key={index} className={cn(hasSignificantDiff && "bg-amber-50/20 dark:bg-amber-950/10")}>
+                                      <TableCell>{item.srNo}</TableCell>
+                                      <TableCell>
+                                          <Popover open={openPopoverIndex === index} onOpenChange={(open) => setOpenPopoverIndex(open ? index : null)}>
+                                              <PopoverTrigger asChild>
+                                                  <Button
+                                                      variant="ghost"
+                                                      role="combobox"
+                                                      disabled={isSubmitting}
+                                                      className={cn(
+                                                          "h-auto p-1 font-normal justify-start text-left hover:bg-accent hover:text-accent-foreground w-full max-w-[300px]",
+                                                          item.matchStatus === 'not found' && "border border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive px-2 py-1"
+                                                      )}
+                                                  >
+                                                      <span className="truncate mr-2">{item.brandName || "Select SKU"}</span>
+                                                      <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+                                                  </Button>
+                                              </PopoverTrigger>
+                                              <PopoverContent className="w-[350px] p-0" align="start">
+                                                  <Command>
+                                                      <CommandInput placeholder="Search SKU..." />
+                                                      <CommandList>
+                                                          <CommandEmpty>No SKU found.</CommandEmpty>
+                                                          <CommandGroup className="max-h-[300px] overflow-y-auto">
+                                                              {productMaster?.productList?.map((product) => (
+                                                                  <CommandItem
+                                                                      key={product.SKU}
+                                                                      value={product.SKU}
+                                                                      onSelect={() => {
+                                                                          handleSelectProduct(index, product);
+                                                                      }}
+                                                                  >
+                                                                      <Check
+                                                                          className={cn(
+                                                                              "mr-2 h-4 w-4",
+                                                                              item.apiSku === product.SKU ? "opacity-100" : "opacity-0"
+                                                                          )}
+                                                                      />
+                                                                      {product.SKU}
+                                                                  </CommandItem>
+                                                              ))}
+                                                          </CommandGroup>
+                                                      </CommandList>
+                                                  </Command>
+                                              </PopoverContent>
+                                          </Popover>
+                                      </TableCell>
+                                      <TableCell>{item.packSize}</TableCell>
+                                      <TableCell className="text-right">{item.qty}</TableCell>
+                                      <TableCell className="text-right">
+                                        <Input
+                                            type="number"
+                                            value={item.calculatedQty}
+                                            onChange={(e) => handleBottleQtyChange(index, e.target.value)}
+                                            onWheel={(e) => e.currentTarget.blur()}
+                                            className="text-right h-8 w-24 ml-auto"
+                                            disabled={isSubmitting}
+                                        />
+                                      </TableCell>
+                                      <TableCell className="text-right font-medium">
+                                        {item.itemPrice ? (
+                                          <TooltipProvider delayDuration={150}>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <div className="cursor-help inline-flex flex-col items-end">
+                                                  <span className={cn(hasSignificantDiff && (priceDiff > 0 ? "text-amber-700 dark:text-amber-300 font-semibold" : "text-blue-700 dark:text-blue-300 font-semibold"))}>
+                                                    {new Intl.NumberFormat('en-IN', {
+                                                      style: 'currency',
+                                                      currency: 'INR',
+                                                      minimumFractionDigits: 2,
+                                                      maximumFractionDigits: 4,
+                                                    }).format(item.itemPrice)}
+                                                  </span>
+                                                  {hasSignificantDiff ? (
+                                                    priceDiff > 0 ? (
+                                                      <span className="text-[10px] flex items-center gap-0.5 text-amber-600 dark:text-amber-400 font-medium">
+                                                        <ArrowUpRight className="h-3 w-3 inline" />
+                                                        +₹{priceDiff.toFixed(2)} ({percentDiff > 0 ? `+${percentDiff.toFixed(1)}%` : ''})
+                                                      </span>
+                                                    ) : (
+                                                      <span className="text-[10px] flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-medium">
+                                                        <ArrowDownRight className="h-3 w-3 inline" />
+                                                        -₹{Math.abs(priceDiff).toFixed(2)} ({percentDiff.toFixed(1)}%)
+                                                      </span>
+                                                    )
+                                                  ) : null}
+                                                </div>
+                                              </TooltipTrigger>
+                                              <TooltipContent side="left" className="text-xs space-y-1 p-2.5 bg-popover text-popover-foreground border shadow-lg">
+                                                <div className="font-semibold border-b pb-1">Rate Breakdown</div>
+                                                <div className="flex justify-between gap-4">
+                                                  <span className="text-muted-foreground">TASMAC New Rate:</span>
+                                                  <span className="font-mono font-medium">
+                                                    ₹{item.itemPrice.toFixed(4)}
+                                                  </span>
+                                                </div>
+                                                <div className="flex justify-between gap-4">
+                                                  <span className="text-muted-foreground">Product Master Price:</span>
+                                                  <span className="font-mono font-medium">
+                                                    {hasMasterPrice ? `₹${masterPrice.toFixed(2)}` : 'Not Set'}
+                                                  </span>
+                                                </div>
+                                                {hasSignificantDiff && (
+                                                  <div className="flex justify-between gap-4 pt-1 border-t">
+                                                    <span className="text-muted-foreground">Difference:</span>
+                                                    <span className={cn("font-mono font-semibold", priceDiff > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400")}>
+                                                      {priceDiff > 0 ? `+₹${priceDiff.toFixed(2)} (+${percentDiff.toFixed(2)}%)` : `-₹${Math.abs(priceDiff).toFixed(2)} (${percentDiff.toFixed(2)}%)`}
+                                                    </span>
+                                                  </div>
+                                                )}
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        ) : (
+                                          <span className="text-muted-foreground">-</span>
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="text-right">{item.totalValue}</TableCell>
+                                      <TableCell>
+                                          <div className="flex flex-col gap-1 items-start">
+                                              <Badge variant={item.matchStatus === 'found' ? 'default' : 'destructive'} className={item.matchStatus === 'found' ? 'bg-green-600' : ''}>
+                                                  {item.matchStatus === 'found' ? 'Found' : 'Not Found'}
+                                              </Badge>
+                                              {hasSignificantDiff && (
+                                                <Badge
+                                                  variant="outline"
+                                                  className={cn(
+                                                    "text-[10px] px-1.5 py-0 font-medium whitespace-nowrap",
+                                                    priceDiff > 0
+                                                      ? "border-amber-500 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40"
+                                                      : "border-blue-500 text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40"
+                                                  )}
                                                 >
-                                                    <span className="truncate mr-2">{item.brandName || "Select SKU"}</span>
-                                                    <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-[350px] p-0" align="start">
-                                                <Command>
-                                                    <CommandInput placeholder="Search SKU..." />
-                                                    <CommandList>
-                                                        <CommandEmpty>No SKU found.</CommandEmpty>
-                                                        <CommandGroup className="max-h-[300px] overflow-y-auto">
-                                                            {productMaster?.productList?.map((product) => (
-                                                                <CommandItem
-                                                                    key={product.SKU}
-                                                                    value={product.SKU}
-                                                                    onSelect={() => {
-                                                                        handleSelectProduct(index, product);
-                                                                    }}
-                                                                >
-                                                                    <Check
-                                                                        className={cn(
-                                                                            "mr-2 h-4 w-4",
-                                                                            item.apiSku === product.SKU ? "opacity-100" : "opacity-0"
-                                                                        )}
-                                                                    />
-                                                                    {product.SKU}
-                                                                </CommandItem>
-                                                            ))}
-                                                        </CommandGroup>
-                                                    </CommandList>
-                                                </Command>
-                                            </PopoverContent>
-                                        </Popover>
-                                    </TableCell>
-                                    <TableCell>{item.packSize}</TableCell>
-                                    <TableCell className="text-right">{item.qty}</TableCell>
-                                    <TableCell className="text-right">
-                                      <Input
-                                          type="number"
-                                          value={item.calculatedQty}
-                                          onChange={(e) => handleBottleQtyChange(index, e.target.value)}
-                                          onWheel={(e) => e.currentTarget.blur()}
-                                          className="text-right h-8 w-24 ml-auto"
-                                          disabled={isSubmitting}
-                                      />
-                                    </TableCell>
-                                    <TableCell className="text-right">{item.totalValue}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={item.matchStatus === 'found' ? 'default' : 'destructive'} className={item.matchStatus === 'found' ? 'bg-green-600' : ''}>
-                                            {item.matchStatus === 'found' ? 'Found' : 'Not Found'}
-                                        </Badge>
-                                    </TableCell>
-                                </TableRow>
-                                ))}
+                                                  {priceDiff > 0 ? `▲ Price Up` : `▼ Price Down`}
+                                                </Badge>
+                                              )}
+                                          </div>
+                                      </TableCell>
+                                  </TableRow>
+                                  );
+                                })}
                             </TableBody>
                         </Table>
                     </ScrollArea>
@@ -1274,7 +1462,8 @@ export default function PurchasePage() {
                     </div>
                 </CardFooter>
             </Card>
-          )}
+            );
+          })()}
 
         </div>
       </main>
