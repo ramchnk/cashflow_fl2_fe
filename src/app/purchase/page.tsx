@@ -104,6 +104,8 @@ export default function PurchasePage() {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [sheetLink, setSheetLink] = useState<string | null>(null);
   const [openPopoverIndex, setOpenPopoverIndex] = useState<number | null>(null);
+  const [openRatePopoverIndex, setOpenRatePopoverIndex] = useState<number | null>(null);
+  const [updatingPriceIndex, setUpdatingPriceIndex] = useState<number | null>(null);
 
   const [isFetchDialogOpen, setIsFetchDialogOpen] = useState(false);
   const [tasmacUsername, setTasmacUsername] = useState('');
@@ -743,6 +745,96 @@ export default function PurchasePage() {
     }
   }
 
+  const handleUpdatePurchasePrice = async (item: PurchaseItem, index: number) => {
+    const sku = item.apiSku || item.matchedProduct?.SKU;
+    if (!sku) {
+      toast({
+        variant: "destructive",
+        title: "Missing SKU",
+        description: "Please select or match a valid SKU before updating the purchase price.",
+      });
+      return;
+    }
+
+    if (typeof item.itemPrice !== 'number' || isNaN(item.itemPrice) || item.itemPrice <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Price",
+        description: "TASMAC calculated price is not available for this item.",
+      });
+      return;
+    }
+
+    const token = sessionStorage.getItem('accessToken');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
+    const calculatedPurchasePrice = parseFloat(item.itemPrice.toFixed(4));
+
+    setUpdatingPriceIndex(index);
+    try {
+      const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/productmaster/updatePurchasePrice', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          SKU: sku,
+          purchasePrice: calculatedPurchasePrice
+        })
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Purchase Price Updated",
+          description: `Successfully updated purchase price for "${sku}" to ₹${calculatedPurchasePrice.toFixed(4)}.`,
+        });
+
+        // Update productMaster state
+        setProductMaster(prev => {
+          if (!prev || !prev.productList) return prev;
+          const updatedList = prev.productList.map(p => {
+            if (p.SKU === sku) {
+              return { ...p, purchasePrice: calculatedPurchasePrice };
+            }
+            return p;
+          });
+          return { ...prev, productList: updatedList };
+        });
+
+        // Update parsedItems state for items matching this SKU
+        setParsedItems(prev => {
+          return prev.map(pItem => {
+            if (pItem.apiSku === sku || pItem.matchedProduct?.SKU === sku) {
+              return {
+                ...pItem,
+                matchedProduct: pItem.matchedProduct ? {
+                  ...pItem.matchedProduct,
+                  purchasePrice: calculatedPurchasePrice
+                } : pItem.matchedProduct
+              };
+            }
+            return pItem;
+          });
+        });
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to update purchase price (${response.status})`);
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error.message || "An unexpected error occurred while updating the purchase price.",
+      });
+    } finally {
+      setUpdatingPriceIndex(null);
+    }
+  };
+
 
   const parseCSV = (text: string): string[][] => {
     const lines: string[][] = [];
@@ -1340,38 +1432,52 @@ export default function PurchasePage() {
                                       </TableCell>
                                       <TableCell className="text-right font-medium">
                                         {item.itemPrice ? (
-                                          <TooltipProvider delayDuration={150}>
-                                            <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                <div className="cursor-help inline-flex flex-col items-end">
-                                                  <span className={cn(hasSignificantDiff && (priceDiff > 0 ? "text-amber-700 dark:text-amber-300 font-semibold" : "text-blue-700 dark:text-blue-300 font-semibold"))}>
-                                                    {new Intl.NumberFormat('en-IN', {
-                                                      style: 'currency',
-                                                      currency: 'INR',
-                                                      minimumFractionDigits: 2,
-                                                      maximumFractionDigits: 4,
-                                                    }).format(item.itemPrice)}
-                                                  </span>
-                                                  {hasSignificantDiff ? (
-                                                    priceDiff > 0 ? (
-                                                      <span className="text-[10px] flex items-center gap-0.5 text-amber-600 dark:text-amber-400 font-medium">
-                                                        <ArrowUpRight className="h-3 w-3 inline" />
-                                                        +₹{priceDiff.toFixed(2)} ({percentDiff > 0 ? `+${percentDiff.toFixed(1)}%` : ''})
-                                                      </span>
-                                                    ) : (
-                                                      <span className="text-[10px] flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-medium">
-                                                        <ArrowDownRight className="h-3 w-3 inline" />
-                                                        -₹{Math.abs(priceDiff).toFixed(2)} ({percentDiff.toFixed(1)}%)
-                                                      </span>
-                                                    )
-                                                  ) : null}
-                                                </div>
-                                              </TooltipTrigger>
-                                              <TooltipContent side="left" className="text-xs space-y-1 p-2.5 bg-popover text-popover-foreground border shadow-lg">
-                                                <div className="font-semibold border-b pb-1">Rate Breakdown</div>
+                                          <Popover
+                                            open={openRatePopoverIndex === index}
+                                            onOpenChange={(open) => setOpenRatePopoverIndex(open ? index : null)}
+                                          >
+                                            <PopoverTrigger asChild>
+                                              <button
+                                                type="button"
+                                                className="cursor-pointer inline-flex flex-col items-end text-right hover:opacity-80 transition-opacity focus:outline-none focus:ring-1 focus:ring-ring rounded px-1.5 py-0.5"
+                                                title="Click to view rate breakdown & update price"
+                                              >
+                                                <span className={cn(hasSignificantDiff && (priceDiff > 0 ? "text-amber-700 dark:text-amber-300 font-semibold" : "text-blue-700 dark:text-blue-300 font-semibold"))}>
+                                                  {new Intl.NumberFormat('en-IN', {
+                                                    style: 'currency',
+                                                    currency: 'INR',
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 4,
+                                                  }).format(item.itemPrice)}
+                                                </span>
+                                                {hasSignificantDiff ? (
+                                                  priceDiff > 0 ? (
+                                                    <span className="text-[10px] flex items-center gap-0.5 text-amber-600 dark:text-amber-400 font-medium">
+                                                      <ArrowUpRight className="h-3 w-3 inline" />
+                                                      +₹{priceDiff.toFixed(2)} ({percentDiff > 0 ? `+${percentDiff.toFixed(1)}%` : ''})
+                                                    </span>
+                                                  ) : (
+                                                    <span className="text-[10px] flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-medium">
+                                                      <ArrowDownRight className="h-3 w-3 inline" />
+                                                      -₹{Math.abs(priceDiff).toFixed(2)} ({percentDiff.toFixed(1)}%)
+                                                    </span>
+                                                  )
+                                                ) : null}
+                                              </button>
+                                            </PopoverTrigger>
+                                            <PopoverContent side="left" className="text-xs space-y-2.5 p-3 w-72 bg-popover text-popover-foreground border shadow-xl">
+                                              <div className="flex items-center justify-between border-b pb-1.5">
+                                                <div className="font-semibold text-sm">Rate Breakdown</div>
+                                                {item.apiSku && (
+                                                  <Badge variant="outline" className="text-[10px] font-mono max-w-[130px] truncate px-1.5 py-0">
+                                                    {item.apiSku}
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                              <div className="space-y-1.5">
                                                 <div className="flex justify-between gap-4">
                                                   <span className="text-muted-foreground">TASMAC New Rate:</span>
-                                                  <span className="font-mono font-medium">
+                                                  <span className="font-mono font-semibold text-foreground">
                                                     ₹{item.itemPrice.toFixed(4)}
                                                   </span>
                                                 </div>
@@ -1382,16 +1488,41 @@ export default function PurchasePage() {
                                                   </span>
                                                 </div>
                                                 {hasSignificantDiff && (
-                                                  <div className="flex justify-between gap-4 pt-1 border-t">
+                                                  <div className="flex justify-between gap-4 pt-1 border-t border-dashed">
                                                     <span className="text-muted-foreground">Difference:</span>
                                                     <span className={cn("font-mono font-semibold", priceDiff > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400")}>
                                                       {priceDiff > 0 ? `+₹${priceDiff.toFixed(2)} (+${percentDiff.toFixed(2)}%)` : `-₹${Math.abs(priceDiff).toFixed(2)} (${percentDiff.toFixed(2)}%)`}
                                                     </span>
                                                   </div>
                                                 )}
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </TooltipProvider>
+                                              </div>
+                                              <div className="pt-2 border-t">
+                                                <Button
+                                                  size="sm"
+                                                  className="w-full h-8 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center gap-1.5 shadow-sm"
+                                                  disabled={updatingPriceIndex === index || !item.apiSku}
+                                                  onClick={() => handleUpdatePurchasePrice(item, index)}
+                                                >
+                                                  {updatingPriceIndex === index ? (
+                                                    <>
+                                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                      Updating Price...
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <RefreshCw className="h-3.5 w-3.5" />
+                                                      Update Price
+                                                    </>
+                                                  )}
+                                                </Button>
+                                                {!item.apiSku && (
+                                                  <p className="text-[10px] text-destructive text-center mt-1">
+                                                    Select/match SKU first to update price
+                                                  </p>
+                                                )}
+                                              </div>
+                                            </PopoverContent>
+                                          </Popover>
                                         ) : (
                                           <span className="text-muted-foreground">-</span>
                                         )}
