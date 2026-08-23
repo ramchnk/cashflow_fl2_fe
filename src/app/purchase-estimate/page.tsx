@@ -42,6 +42,7 @@ import {
     CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import RangeAnalytics from '@/components/purchase-estimate/range-analytics';
 
 
 interface EstimateItem {
@@ -708,9 +709,11 @@ export default function PurchaseEstimatePage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
-      <main className="flex-1 container mx-auto p-4 md:p-8">
-        <div className="space-y-6">
-          <Card className="print-hidden">
+      <main className="flex-1 max-w-[1700px] w-full mx-auto p-4 md:p-6">
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
+          {/* 80% Main Purchase Estimate Content */}
+          <div className="w-full lg:w-[78%] space-y-6 print:w-full">
+            <Card className="print-hidden">
             <CardHeader>
               <CardTitle>Generate Purchase Estimate</CardTitle>
             </CardHeader>
@@ -1040,6 +1043,12 @@ export default function PurchaseEstimatePage() {
               </Table>
             </CardContent>
           </Card>
+          </div>
+
+          {/* 20% Product Range Analytics Sidebar */}
+          <div className="w-full lg:w-[22%] space-y-6 print:hidden">
+            <RangeAnalytics productMaster={productMaster} items={filteredItems} />
+          </div>
         </div>
       </main>
     </div>
