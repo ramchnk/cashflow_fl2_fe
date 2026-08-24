@@ -1,9 +1,11 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   Table,
   TableHeader,
@@ -16,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/layout/header';
-import { CalendarIcon, File, Printer, PlusCircle, Check, ChevronsUpDown, HelpCircle, Sheet } from 'lucide-react';
+import { CalendarIcon, File, Printer, PlusCircle, Check, ChevronsUpDown, HelpCircle, Sheet, Layers } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 import * as XLSX from 'xlsx';
 import { format, startOfDay, endOfDay } from 'date-fns';
@@ -43,6 +45,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import RangeAnalytics from '@/components/purchase-estimate/range-analytics';
+import { useUserStore } from '@/app/lib/user-store';
 
 
 interface EstimateItem {
@@ -79,6 +82,7 @@ export default function PurchaseEstimatePage() {
   const [filterColumn, setFilterColumn] = useState<keyof EstimateItem | 'none'>('estInCase');
   const [filterOperator, setFilterOperator] = useState<'>' | '<' | '='>('>');
   const [filterValue, setFilterValue] = useState<number | ''>(0);
+  const [groupByRange, setGroupByRange] = useState(true);
 
   const [isAddManuallyDialogOpen, setIsAddManuallyDialogOpen] = useState(false);
   const [manualSku, setManualSku] = useState('');
@@ -96,6 +100,7 @@ export default function PurchaseEstimatePage() {
 
   const { toast } = useToast();
   const router = useRouter();
+  const { shopName } = useUserStore();
 
   useEffect(() => {
     const fetchAccountInfo = async () => {
@@ -375,20 +380,19 @@ export default function PurchaseEstimatePage() {
     setManualEstInCase('');
   };
 
-  const handleEstInCaseChange = (index: number, newEstInCaseStr: string) => {
+  const handleEstInCaseChange = (sku: string, newEstInCaseStr: string) => {
     const newEstInCase = Number(newEstInCaseStr);
     if (isNaN(newEstInCase)) return;
 
     setItems(prevItems => {
         const newItems = [...prevItems];
-        const itemToUpdate = filteredItems[index]; // Get item from filtered list
-        const originalIndex = prevItems.findIndex(i => i.SKU === itemToUpdate.SKU); // Find its index in original list
-        const item = prevItems[originalIndex];
+        const originalIndex = prevItems.findIndex(i => i.SKU === sku);
+        if (originalIndex === -1) return prevItems;
 
+        const item = prevItems[originalIndex];
         if (!item) return prevItems;
 
         const packSize = getPackSize(item.SKU);
-
         const newEstimatedQuantity = newEstInCase * packSize;
         
         newItems[originalIndex] = {
@@ -651,6 +655,10 @@ export default function PurchaseEstimatePage() {
       XLSX.writeFile(wb, `purchase_estimate_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
   };
   
+  const productMasterMap = useMemo(() => {
+    return new Map(productMaster.map(p => [p.SKU, p]));
+  }, [productMaster]);
+
   const filteredItems = items.filter(item => {
     if (filterColumn === 'none' || filterValue === '') return true;
     const itemValue = item[filterColumn];
@@ -663,6 +671,96 @@ export default function PurchaseEstimatePage() {
         default: return true;
     }
   });
+
+  const groupedItems = useMemo(() => {
+    if (!groupByRange) return null;
+
+    const map = new Map<string, EstimateItem[]>();
+    const orderPriority = ['ORDINARY', 'MEDIUM', 'PREMIUM', 'SUPER PREMIUM', 'BEER', 'WINE', 'OTHER'];
+
+    filteredItems.forEach((item) => {
+      const productInfo = productMasterMap.get(item.SKU);
+      const rangeName = productInfo?.range && String(productInfo.range).trim() 
+        ? String(productInfo.range).trim().toUpperCase() 
+        : 'OTHER';
+
+      if (!map.has(rangeName)) {
+        map.set(rangeName, []);
+      }
+      map.get(rangeName)!.push(item);
+    });
+
+    const groups = Array.from(map.entries()).map(([rangeName, groupItems]) => {
+      const totalRangeCases = groupItems.reduce((acc, i) => acc + i.estInCase, 0);
+      const totalRangeValue = groupItems.reduce((acc, i) => {
+        const packSize = getPackSize(i.SKU);
+        return acc + (i.estInCase * packSize * i.purchasePrice);
+      }, 0);
+      return {
+        rangeName,
+        items: groupItems,
+        totalCases: totalRangeCases,
+        totalValue: totalRangeValue,
+      };
+    });
+
+    groups.sort((a, b) => {
+      const idxA = orderPriority.indexOf(a.rangeName);
+      const idxB = orderPriority.indexOf(b.rangeName);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.rangeName.localeCompare(b.rangeName);
+    });
+
+    return groups;
+  }, [filteredItems, groupByRange, productMasterMap]);
+
+  const rangeSummaryData = useMemo(() => {
+    const map = new Map<string, { skuCount: number; estCases: number; totalQty: number; totalValue: number }>();
+    const orderPriority = ['ORDINARY', 'MEDIUM', 'PREMIUM', 'SUPER PREMIUM', 'BEER', 'WINE', 'OTHER'];
+
+    filteredItems.forEach((item) => {
+      const productInfo = productMasterMap.get(item.SKU);
+      const rangeName = productInfo?.range && String(productInfo.range).trim() 
+        ? String(productInfo.range).trim().toUpperCase() 
+        : 'OTHER';
+
+      const packSize = getPackSize(item.SKU);
+      const approvedQty = item.estInCase * packSize;
+      const itemValue = approvedQty * item.purchasePrice;
+
+      if (!map.has(rangeName)) {
+        map.set(rangeName, { skuCount: 0, estCases: 0, totalQty: 0, totalValue: 0 });
+      }
+      const current = map.get(rangeName)!;
+      current.skuCount += 1;
+      current.estCases += item.estInCase;
+      current.totalQty += approvedQty;
+      current.totalValue += itemValue;
+    });
+
+    const list = Array.from(map.entries()).map(([rangeName, data]) => ({
+      rangeName,
+      ...data,
+    }));
+
+    list.sort((a, b) => {
+      const idxA = orderPriority.indexOf(a.rangeName);
+      const idxB = orderPriority.indexOf(b.rangeName);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.rangeName.localeCompare(b.rangeName);
+    });
+
+    return list;
+  }, [filteredItems, productMasterMap]);
+
+  const totalSummaryCases = useMemo(() => rangeSummaryData.reduce((acc, r) => acc + r.estCases, 0), [rangeSummaryData]);
+  const totalSummaryValue = useMemo(() => rangeSummaryData.reduce((acc, r) => acc + r.totalValue, 0), [rangeSummaryData]);
+  const totalSummaryQty = useMemo(() => rangeSummaryData.reduce((acc, r) => acc + r.totalQty, 0), [rangeSummaryData]);
+  const totalSummarySkus = useMemo(() => rangeSummaryData.reduce((acc, r) => acc + r.skuCount, 0), [rangeSummaryData]);
 
   const totalEstimatedValue = filteredItems.reduce((acc, item) => {
     const packSize = getPackSize(item.SKU);
@@ -857,7 +955,7 @@ export default function PurchaseEstimatePage() {
                     </DialogContent>
                   </Dialog>
               </div>
-              <div className="mt-4 flex flex-wrap gap-4 items-end">
+              <div className="mt-4 flex flex-wrap gap-4 items-end justify-between">
                 <div className="grid gap-2">
                   <Label>Filter</Label>
                   <div className="flex flex-wrap gap-2">
@@ -893,6 +991,18 @@ export default function PurchaseEstimatePage() {
                         disabled={filterColumn === 'none'}
                     />
                   </div>
+                </div>
+
+                <div className="flex items-center space-x-2 bg-muted/60 px-3 py-2 rounded-lg border">
+                  <Switch
+                    id="group-by-range"
+                    checked={groupByRange}
+                    onCheckedChange={setGroupByRange}
+                  />
+                  <Label htmlFor="group-by-range" className="text-sm font-semibold cursor-pointer flex items-center gap-1.5">
+                    <Layers className="h-4 w-4 text-primary" />
+                    Group items by Range
+                  </Label>
                 </div>
               </div>
             </CardContent>
@@ -1007,10 +1117,70 @@ export default function PurchaseEstimatePage() {
                         Loading estimate...
                       </TableCell>
                     </TableRow>
-                  ) : filteredItems.length > 0 ? (
-                    filteredItems.map((item, index) => {
-                       const packSize = getPackSize(item.SKU);
-                       const approvedQty = item.estInCase * packSize;
+                  ) : filteredItems.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                        {items.length > 0 ? 'No items match the current filter.' : 'Generate an estimate to see results.'}
+                      </TableCell>
+                    </TableRow>
+                  ) : groupByRange && groupedItems ? (
+                    groupedItems.map((group) => (
+                      <React.Fragment key={group.rangeName}>
+                        <TableRow className="bg-primary/10 hover:bg-primary/15 font-bold border-t-2 border-primary/20">
+                          <TableCell colSpan={6} className="py-2.5">
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-primary text-primary-foreground font-bold px-2.5 py-0.5 text-xs tracking-wider">
+                                {group.rangeName}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground font-normal">
+                                ({group.items.length} {group.items.length === 1 ? 'item' : 'items'})
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right py-2.5">
+                            <span className="text-xs font-bold text-primary">
+                              {group.totalCases} Cases
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right py-2.5 print-hidden">
+                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                              {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(group.totalValue)}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                        {group.items.map((item) => {
+                          const packSize = getPackSize(item.SKU);
+                          const approvedQty = item.estInCase * packSize;
+                          return (
+                            <TableRow key={item.SKU} className="hover:bg-muted/40 transition-colors">
+                              <TableCell className="pl-6 font-medium">{item.SKU}</TableCell>
+                              <TableCell className="text-right print-hidden">{item.totalSalesQty}</TableCell>
+                              <TableCell className="text-right print-hidden">{Math.round(item.avgSalesPerDay)}</TableCell>
+                              <TableCell className="text-right print-hidden">{item.inHand}</TableCell>
+                              <TableCell className="text-right print-hidden">
+                                {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.purchasePrice)}
+                              </TableCell>
+                              <TableCell className="text-right print-hidden">{item.estimatedQuantity}</TableCell>
+                              <TableCell className="text-right font-medium">
+                                <span className="hidden print:inline font-bold">{item.estInCase}</span>
+                                <Input
+                                  type="number"
+                                  value={item.estInCase}
+                                  onChange={(e) => handleEstInCaseChange(item.SKU, e.target.value)}
+                                  onWheel={(e) => e.currentTarget.blur()}
+                                  className="text-right h-8 print:hidden"
+                                />
+                              </TableCell>
+                              <TableCell className="text-right font-bold print-hidden">{approvedQty}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </React.Fragment>
+                    ))
+                  ) : (
+                    filteredItems.map((item) => {
+                      const packSize = getPackSize(item.SKU);
+                      const approvedQty = item.estInCase * packSize;
                       return (
                         <TableRow key={item.SKU}>
                           <TableCell>{item.SKU}</TableCell>
@@ -1019,30 +1189,113 @@ export default function PurchaseEstimatePage() {
                           <TableCell className="text-right print-hidden">{item.inHand}</TableCell>
                           <TableCell className="text-right print-hidden">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.purchasePrice)}</TableCell>
                           <TableCell className="text-right print-hidden">{item.estimatedQuantity}</TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right font-medium">
+                            <span className="hidden print:inline font-bold">{item.estInCase}</span>
                             <Input
                               type="number"
                               value={item.estInCase}
-                              onChange={(e) => handleEstInCaseChange(index, e.target.value)}
+                              onChange={(e) => handleEstInCaseChange(item.SKU, e.target.value)}
                               onWheel={(e) => e.currentTarget.blur()}
-                              className="text-right h-8"
+                              className="text-right h-8 print:hidden"
                             />
                           </TableCell>
                           <TableCell className="text-right font-bold print-hidden">{approvedQty}</TableCell>
                         </TableRow>
-                      )
+                      );
                     })
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                        {items.length > 0 ? 'No items match the current filter.' : 'Generate an estimate to see results.'}
-                      </TableCell>
-                    </TableRow>
                   )}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
+
+          {/* Print Only: New Page with Range-wise Case Summary */}
+          {filteredItems.length > 0 && (
+            <div className="hidden print:block" style={{ pageBreakBefore: 'always', breakBefore: 'page' }}>
+              <div className="border border-slate-300 rounded-lg p-6 space-y-4 bg-white text-slate-900">
+                <div className="flex justify-between items-start border-b border-slate-300 pb-4">
+                  <div>
+                    <h2 className="text-xl font-bold uppercase tracking-wider text-slate-900">
+                      Purchase Estimate - Range-wise Summary
+                    </h2>
+                    {dateRange?.from && dateRange?.to && (
+                      <p className="text-xs text-slate-600 mt-1 font-medium">
+                        Sales Period: {format(dateRange.from, 'dd/MM/yyyy')} to {format(dateRange.to, 'dd/MM/yyyy')} ({purchaseDays} Days Purchase)
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right text-xs text-slate-600 space-y-0.5">
+                    <div>Generated: {format(new Date(), 'dd/MM/yyyy hh:mm a')}</div>
+                    {shopName && <div className="font-bold text-slate-800">Shop: {shopName}</div>}
+                  </div>
+                </div>
+
+                <table className="w-full text-xs text-left border-collapse border border-slate-300">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-800 font-bold uppercase text-[11px]">
+                      <th className="border border-slate-300 px-3 py-2 text-center">S.No</th>
+                      <th className="border border-slate-300 px-3 py-2">Range Category</th>
+                      <th className="border border-slate-300 px-3 py-2 text-right">No. of SKUs</th>
+                      <th className="border border-slate-300 px-3 py-2 text-right">Est. Quantity (Btls)</th>
+                      <th className="border border-slate-300 px-3 py-2 text-right font-extrabold text-slate-900">Total Est. Cases</th>
+                      <th className="border border-slate-300 px-3 py-2 text-right">% Share (Cases)</th>
+                      <th className="border border-slate-300 px-3 py-2 text-right">Est. Amount (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rangeSummaryData.map((row, idx) => {
+                      const casePercent = totalSummaryCases > 0 ? (row.estCases / totalSummaryCases) * 100 : 0;
+                      return (
+                        <tr key={row.rangeName} className="border-b border-slate-200">
+                          <td className="border border-slate-300 px-3 py-2 text-center font-mono">{idx + 1}</td>
+                          <td className="border border-slate-300 px-3 py-2 font-bold">{row.rangeName}</td>
+                          <td className="border border-slate-300 px-3 py-2 text-right">{row.skuCount}</td>
+                          <td className="border border-slate-300 px-3 py-2 text-right">{row.totalQty.toLocaleString('en-IN')}</td>
+                          <td className="border border-slate-300 px-3 py-2 text-right font-extrabold text-slate-900 text-sm">
+                            {row.estCases}
+                          </td>
+                          <td className="border border-slate-300 px-3 py-2 text-right font-mono">{casePercent.toFixed(1)}%</td>
+                          <td className="border border-slate-300 px-3 py-2 text-right font-semibold">
+                            {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(row.totalValue)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-200 text-slate-900 font-extrabold text-xs">
+                      <td colSpan={2} className="border border-slate-400 px-3 py-2.5 text-left uppercase">Total</td>
+                      <td className="border border-slate-400 px-3 py-2.5 text-right">{totalSummarySkus}</td>
+                      <td className="border border-slate-400 px-3 py-2.5 text-right">{totalSummaryQty.toLocaleString('en-IN')}</td>
+                      <td className="border border-slate-400 px-3 py-2.5 text-right text-sm font-black text-slate-900">
+                        {totalSummaryCases} Cases
+                      </td>
+                      <td className="border border-slate-400 px-3 py-2.5 text-right font-mono">100.0%</td>
+                      <td className="border border-slate-400 px-3 py-2.5 text-right text-sm">
+                        {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(totalSummaryValue)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+
+                {permittedUnit && (
+                  <div className="border border-slate-300 rounded p-3 text-xs bg-slate-50 flex justify-between items-center mt-4">
+                    <div>
+                      <span className="font-bold text-slate-700">Permitted Limit: </span>
+                      <span>{permittedUnit} Units</span>
+                      {availableUnit !== null && (
+                        <span className="ml-4 font-bold text-slate-700">Available: {availableUnit.toFixed(2)} Units</span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="font-bold text-slate-700">Proposed Purchase: </span>
+                      <span className="font-extrabold text-slate-900">{getProposedUnits().toFixed(2)} Units</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           </div>
 
           {/* 20% Product Range Analytics Sidebar */}
