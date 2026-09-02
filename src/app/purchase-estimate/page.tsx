@@ -418,20 +418,60 @@ export default function PurchaseEstimatePage() {
 
   const handleCSV = () => {
       if (filteredItems.length === 0) return;
-      const header = "Item Name,Total Sales Qty,AVG Sales/Day,In Hand,Purchase Price per Item,Estimated Quantity,Est In Case,Approved Qty";
-      const rows = filteredItems.map(i => {
+
+      const csvLines: string[] = [];
+
+      // 1. Range-wise Summary Section
+      csvLines.push('"PURCHASE ESTIMATE - RANGE-WISE SUMMARY"');
+      if (dateRange?.from && dateRange?.to) {
+        csvLines.push(`"Sales Period: ${format(dateRange.from, 'dd/MM/yyyy')} to ${format(dateRange.to, 'dd/MM/yyyy')} (${purchaseDays} Days Purchase)"`);
+      }
+      csvLines.push(`"Generated: ${format(new Date(), 'dd/MM/yyyy hh:mm a')}${shopName ? ` | Shop: ${shopName}` : ''}"`);
+      csvLines.push('');
+      csvLines.push('S.No,Range Category,No. of SKUs,Est. Quantity (Btls),Total Est. Cases,% Share (Cases),Est. Amount (₹)');
+
+      rangeSummaryData.forEach((row, idx) => {
+        const casePercent = totalSummaryCases > 0 ? (row.estCases / totalSummaryCases) * 100 : 0;
+        csvLines.push(
+          `${idx + 1},"${row.rangeName.replace(/"/g, '""')}",${row.skuCount},${row.totalQty},${row.estCases},"${casePercent.toFixed(1)}%",${Math.round(row.totalValue)}`
+        );
+      });
+
+      csvLines.push(
+        `"Total",,${totalSummarySkus},${totalSummaryQty},${totalSummaryCases},"100.0%",${Math.round(totalSummaryValue)}`
+      );
+
+      if (permittedUnit || availableUnit !== null) {
+        csvLines.push('');
+        if (permittedUnit) csvLines.push(`"Permitted Limit: ${permittedUnit} Units"`);
+        if (availableUnit !== null) csvLines.push(`"Available: ${availableUnit.toFixed(2)} Units"`);
+        csvLines.push(`"Proposed Purchase: ${getProposedUnits().toFixed(2)} Units"`);
+      }
+
+      csvLines.push('');
+      csvLines.push('');
+
+      // 2. Item Details Section
+      csvLines.push('"PURCHASE ESTIMATE - ITEM DETAILS"');
+      csvLines.push('Item Name,Total Sales Qty,AVG Sales/Day,In Hand,Purchase Price per Item,Estimated Quantity,Est In Case,Approved Qty');
+
+      filteredItems.forEach((i) => {
         const packSize = getPackSize(i.SKU);
         const approvedQty = i.estInCase * packSize;
-        return `"${i.SKU.replace(/"/g, '""')}",${i.totalSalesQty},${Math.round(i.avgSalesPerDay)},${i.inHand},${i.purchasePrice},${i.estimatedQuantity},${i.estInCase},${approvedQty}`;
+        csvLines.push(
+          `"${i.SKU.replace(/"/g, '""')}",${i.totalSalesQty},${Math.round(i.avgSalesPerDay)},${i.inHand},${i.purchasePrice},${i.estimatedQuantity},${i.estInCase},${approvedQty}`
+        );
       });
-      let csvContent = "data:text/csv;charset=utf-8," + header + "\n" + rows.join("\n");
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `purchase_estimate_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+
+      const blob = new Blob(['\uFEFF' + csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `purchase_estimate_${format(new Date(), 'yyyy-MM-dd')}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
   };
 
   const handleExcelDownload = () => {
@@ -650,7 +690,82 @@ export default function PurchaseEstimatePage() {
       ];
       ws['!views'] = [{ showGridLines: true }];
 
+      // Build Range-wise Summary Sheet
+      const summaryGrid: any[][] = [];
+      summaryGrid.push(['PURCHASE ESTIMATE - RANGE-WISE SUMMARY']);
+      if (dateRange?.from && dateRange?.to) {
+        summaryGrid.push([`Sales Period: ${format(dateRange.from, 'dd/MM/yyyy')} to ${format(dateRange.to, 'dd/MM/yyyy')} (${purchaseDays} Days Purchase)`]);
+      } else {
+        summaryGrid.push(['']);
+      }
+      summaryGrid.push([`Generated: ${format(new Date(), 'dd/MM/yyyy hh:mm a')}${shopName ? ` | Shop: ${shopName}` : ''}`]);
+      summaryGrid.push([]); // blank separator
+
+      // Table Header
+      summaryGrid.push([
+        'S.No',
+        'Range Category',
+        'No. of SKUs',
+        'Est. Quantity (Btls)',
+        'Total Est. Cases',
+        '% Share (Cases)',
+        'Est. Amount (₹)'
+      ]);
+
+      // Table Rows
+      rangeSummaryData.forEach((row, idx) => {
+        const casePercent = totalSummaryCases > 0 ? (row.estCases / totalSummaryCases) * 100 : 0;
+        summaryGrid.push([
+          idx + 1,
+          row.rangeName,
+          row.skuCount,
+          row.totalQty,
+          row.estCases,
+          `${casePercent.toFixed(1)}%`,
+          Math.round(row.totalValue)
+        ]);
+      });
+
+      // Total Row
+      const totalRowIndex = summaryGrid.length;
+      summaryGrid.push([
+        'Total',
+        '',
+        totalSummarySkus,
+        totalSummaryQty,
+        totalSummaryCases,
+        '100.0%',
+        Math.round(totalSummaryValue)
+      ]);
+
+      // Units Info
+      if (permittedUnit || availableUnit !== null) {
+        summaryGrid.push([]);
+        if (permittedUnit) summaryGrid.push(['Permitted Limit:', `${permittedUnit} Units`]);
+        if (availableUnit !== null) summaryGrid.push(['Available Units:', `${availableUnit.toFixed(2)} Units`]);
+        summaryGrid.push(['Proposed Purchase:', `${getProposedUnits().toFixed(2)} Units`]);
+      }
+
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryGrid);
+      wsSummary['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } },
+        { s: { r: totalRowIndex, c: 0 }, e: { r: totalRowIndex, c: 1 } },
+      ];
+      wsSummary['!cols'] = [
+        { wch: 8 },
+        { wch: 22 },
+        { wch: 14 },
+        { wch: 22 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 20 }
+      ];
+      wsSummary['!views'] = [{ showGridLines: true }];
+
       const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Range-wise Summary');
       XLSX.utils.book_append_sheet(wb, ws, 'Purchase Estimate');
       XLSX.writeFile(wb, `purchase_estimate_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
   };
