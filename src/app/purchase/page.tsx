@@ -165,7 +165,7 @@ export default function PurchasePage() {
 
         // Set inputs
         setPastedData(result.data.tsv);
-        setBillNumber(result.data.indentNo);
+        setBillNumber('');
         setActualBillValue(result.data.netAmount.toString());
 
         // Parse date "DD/MM/YYYY" to Date object
@@ -642,11 +642,20 @@ export default function PurchasePage() {
   };
 
   const handleSubmitPurchase = async () => {
-    if (!billNumber || !billDate) {
+    if (!billNumber || !billNumber.trim()) {
         toast({
             variant: "destructive",
             title: "Validation Error",
-            description: "Please enter Bill Number and Bill Date.",
+            description: "Please enter Bill Number.",
+        });
+        return;
+    }
+
+    if (!billDate) {
+        toast({
+            variant: "destructive",
+            title: "Validation Error",
+            description: "Please select Bill Date.",
         });
         return;
     }
@@ -1269,17 +1278,7 @@ export default function PurchasePage() {
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="bill-number">Bill Number</Label>
-                      <Input
-                        id="bill-number"
-                        placeholder="Enter bill number"
-                        value={billNumber}
-                        onChange={(e) => setBillNumber(e.target.value)}
-                        disabled={isSubmitting}
-                      />
-                    </div>
+                 <div className="mb-4 max-w-xs">
                     <div className="space-y-2">
                         <Label htmlFor="bill-date">Bill Date</Label>
                         <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
@@ -1566,7 +1565,18 @@ export default function PurchasePage() {
                                 Total Value: {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalValue)}
                             </div>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-4">
+                             <div className="space-y-2 text-base">
+                                <Label htmlFor="bill-number">Bill Number</Label>
+                                <Input
+                                    id="bill-number"
+                                    placeholder="Enter bill number"
+                                    value={billNumber}
+                                    onChange={(e) => setBillNumber(e.target.value)}
+                                    disabled={isSubmitting}
+                                    className="w-48"
+                                />
+                             </div>
                              <div className="space-y-2 text-base">
                                 <Label htmlFor="actual-bill-value">Actual Bill Value</Label>
                                 <Input
