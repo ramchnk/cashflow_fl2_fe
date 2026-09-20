@@ -68,6 +68,7 @@ interface PurchaseItem {
   addedValue?: string;
   itemPrice?: number;
   taxRate?: number;
+  customTaxPercent?: number;
   totalValue: string;
   numericTotalValue: number;
   matchStatus: 'found' | 'not found';
@@ -334,7 +335,8 @@ export default function PurchasePage() {
     addedValue: string | number | undefined,
     rate: string | number | undefined,
     packSize: string,
-    taxRate: number = 2.20
+    taxRate: number = 2.20,
+    customTaxPercent?: number
   ): number => {
     const avNum = typeof addedValue === 'number' ? addedValue : (parseFloat(String(addedValue || '').replace(/,/g, '')) || 0);
     const rateNum = typeof rate === 'number' ? rate : (parseFloat(String(rate || '').replace(/,/g, '')) || 0);
@@ -343,11 +345,20 @@ export default function PurchasePage() {
     if (packSizeNum <= 0) return 0;
     if (avNum === 0 && rateNum === 0) return 0;
 
-    // Formula: =(((Rate1 * Tax) + Rate2) / PackQty) * 2% + (((Rate1 * Tax) + Rate2) / PackQty)
-    // Rate 1 = Added Value (from API)
-    // Rate 2 = Rate (from API)
-    // Tax = dynamic (Beer: 260% = 2.60, Wine: 250% = 2.50, Remaining Liquor: 220% = 2.20)
-    const base = ((avNum * taxRate) + rateNum) / packSizeNum;
+    let base = 0;
+    if (avNum === 0) {
+      // When Added Value is 0.00, Tax Rate is calculated on Rate (default 58% or user customTaxPercent)
+      const taxPercentValue = typeof customTaxPercent === 'number' ? customTaxPercent : 58;
+      const taxMultiplier = taxPercentValue / 100;
+      base = ((rateNum * taxMultiplier) + rateNum) / packSizeNum;
+    } else {
+      // Formula: =(((Rate1 * Tax) + Rate2) / PackQty) * 2% + (((Rate1 * Tax) + Rate2) / PackQty)
+      // Rate 1 = Added Value (from API)
+      // Rate 2 = Rate (from API)
+      // Tax = dynamic (Beer: 260% = 2.60, Wine: 250% = 2.50, Remaining Liquor: 220% = 2.20)
+      base = ((avNum * taxRate) + rateNum) / packSizeNum;
+    }
+
     return (base * 0.02) + base;
   };
 
@@ -447,8 +458,12 @@ export default function PurchasePage() {
                     }
                 }
                 
+                const avNum = parseFloat(String(addedValue || '').replace(/,/g, '')) || 0;
+                const isZeroAddedValue = avNum === 0;
+                const customTaxPercent = isZeroAddedValue ? 58 : undefined;
+
                 const taxRate = getItemTaxRate(matchedSku || brandName, brandName, matchedSku, matchedProduct);
-                const itemPrice = calculateItemPrice(addedValue, rate, packSize, taxRate);
+                const itemPrice = calculateItemPrice(addedValue, rate, packSize, taxRate, customTaxPercent);
 
                 const unitPrice = itemPrice > 0 ? itemPrice : (matchedProduct?.purchasePrice || 0);
                 if (unitPrice > 0 && calculatedQty > 0) {
@@ -470,6 +485,7 @@ export default function PurchasePage() {
                     addedValue,
                     itemPrice,
                     taxRate,
+                    customTaxPercent,
                     totalValue,
                     numericTotalValue,
                     matchStatus,
@@ -488,6 +504,33 @@ export default function PurchasePage() {
     processData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pastedData, productMaster, skuMappings]);
+
+  const handleTaxPercentChange = (index: number, newPercentStr: string) => {
+    const newPercent = parseFloat(newPercentStr);
+
+    setParsedItems(prevItems => {
+        const newItems = [...prevItems];
+        const item = newItems[index];
+
+        const parsedPercent = isNaN(newPercent) ? 0 : newPercent;
+        const newItemPrice = calculateItemPrice(item.addedValue, item.rate, item.packSize, item.taxRate, parsedPercent);
+        const unitPrice = newItemPrice > 0 ? newItemPrice : (item.matchedProduct?.purchasePrice || 0);
+        const newNumericTotalValue = unitPrice * item.calculatedQty;
+
+        newItems[index] = {
+            ...item,
+            customTaxPercent: isNaN(newPercent) ? undefined : newPercent,
+            itemPrice: newItemPrice,
+            numericTotalValue: newNumericTotalValue,
+            totalValue: new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+            }).format(newNumericTotalValue),
+        };
+        
+        return newItems;
+    });
+  };
 
   const handleBottleQtyChange = (index: number, newBottleQtyStr: string) => {
     const newBottleQty = parseFloat(newBottleQtyStr);
@@ -521,7 +564,7 @@ export default function PurchasePage() {
         
         return newItems;
     });
-  }
+  };
 
   const extractMl = (str: string): string => {
     if (!str) return '';
@@ -576,7 +619,7 @@ export default function PurchasePage() {
 
         const newCalculatedQty = getCalculatedQty(newPackSize, item.qty);
         const newTaxRate = getItemTaxRate(selectedProduct.SKU, item.tasmacBrandName, selectedProduct.SKU, selectedProduct);
-        const newItemPrice = calculateItemPrice(item.addedValue, item.rate, newPackSize, newTaxRate);
+        const newItemPrice = calculateItemPrice(item.addedValue, item.rate, newPackSize, newTaxRate, item.customTaxPercent);
         
         const unitPrice = newItemPrice > 0 ? newItemPrice : (selectedProduct.purchasePrice || 0);
         const newNumericTotalValue = unitPrice * newCalculatedQty;
@@ -588,6 +631,7 @@ export default function PurchasePage() {
             calculatedQty: newCalculatedQty,
             itemPrice: newItemPrice,
             taxRate: newTaxRate,
+            customTaxPercent: item.customTaxPercent,
             numericTotalValue: newNumericTotalValue,
             totalValue: new Intl.NumberFormat('en-IN', {
                 style: 'currency',
@@ -1355,6 +1399,7 @@ export default function PurchasePage() {
                                     <TableHead>Pack Size</TableHead>
                                     <TableHead className="text-right">Case</TableHead>
                                     <TableHead className="text-right">QTY</TableHead>
+                                    <TableHead className="text-right">Tax %</TableHead>
                                     <TableHead className="text-right">Item Price</TableHead>
                                     <TableHead className="text-right">Total Value</TableHead>
                                     <TableHead>Status</TableHead>
@@ -1369,6 +1414,7 @@ export default function PurchasePage() {
                                   const priceDiff = (typeof itemPrice === 'number' && typeof masterPrice === 'number') ? (itemPrice - masterPrice) : 0;
                                   const hasSignificantDiff = (typeof itemPrice === 'number' && typeof masterPrice === 'number') && Math.abs(priceDiff) >= 0.01;
                                   const percentDiff = (hasSignificantDiff && typeof masterPrice === 'number' && masterPrice > 0) ? ((priceDiff / masterPrice) * 100) : 0;
+                                  const isZeroAV = (parseFloat(String(item.addedValue || '').replace(/,/g, '')) || 0) === 0;
 
                                   return (
                                   <TableRow key={index} className={cn(hasSignificantDiff && "bg-amber-50/20 dark:bg-amber-950/10")}>
@@ -1430,6 +1476,27 @@ export default function PurchasePage() {
                                             disabled={isSubmitting}
                                         />
                                       </TableCell>
+                                      <TableCell className="text-right">
+                                        {isZeroAV ? (
+                                          <div className="flex items-center justify-end gap-1">
+                                            <Input
+                                              type="number"
+                                              step="0.1"
+                                              value={item.customTaxPercent !== undefined ? item.customTaxPercent : 58}
+                                              onChange={(e) => handleTaxPercentChange(index, e.target.value)}
+                                              onWheel={(e) => e.currentTarget.blur()}
+                                              className="text-right h-8 w-16 px-1.5 py-0.5 text-xs font-semibold bg-amber-50/60 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 focus-visible:ring-amber-500"
+                                              title="Edit Tax % for 0.00 Added Value item"
+                                              disabled={isSubmitting}
+                                            />
+                                            <span className="text-xs font-medium text-amber-700 dark:text-amber-400">%</span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-xs text-muted-foreground font-medium">
+                                            {item.taxRate ? `${(item.taxRate * 100).toFixed(0)}%` : '220%'}
+                                          </span>
+                                        )}
+                                      </TableCell>
                                       <TableCell className="text-right font-medium">
                                         {item.itemPrice ? (
                                           <Popover
@@ -1479,6 +1546,14 @@ export default function PurchasePage() {
                                                   <span className="text-muted-foreground">TASMAC New Rate:</span>
                                                   <span className="font-mono font-semibold text-foreground">
                                                     ₹{item.itemPrice.toFixed(4)}
+                                                  </span>
+                                                </div>
+                                                <div className="flex justify-between gap-4">
+                                                  <span className="text-muted-foreground">Tax Applied:</span>
+                                                  <span className="font-mono font-medium">
+                                                    {isZeroAV
+                                                      ? `${item.customTaxPercent ?? 58}% (on Rate)`
+                                                      : `${item.taxRate ? (item.taxRate * 100).toFixed(0) : '220'}% (on AV)`}
                                                   </span>
                                                 </div>
                                                 <div className="flex justify-between gap-4">
