@@ -22,7 +22,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Sheet, Check, ChevronsUpDown, Loader2, KeyRound, Database, Trash2, RefreshCw, ArrowUpRight, ArrowDownRight, AlertCircle } from 'lucide-react';
+import { CalendarIcon, Sheet, Check, ChevronsUpDown, Loader2, KeyRound, Database, Trash2, RefreshCw, ArrowUpRight, ArrowDownRight, AlertCircle, Save } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -87,6 +87,16 @@ interface AccountInfoResponse {
     account: {
         shopName?: string;
         sheetLink?: string;
+        tasmac?: {
+            userName?: string;
+            password?: string;
+        };
+        tasmacCredentials?: {
+            userName?: string;
+            password?: string;
+        };
+        tasmacUserName?: string;
+        tasmacPassword?: string;
         [key: string]: any;
     }
 }
@@ -113,6 +123,7 @@ export default function PurchasePage() {
   const [tasmacPassword, setTasmacPassword] = useState('');
   const [tasmacDate, setTasmacDate] = useState('');
   const [isFetchingTasmac, setIsFetchingTasmac] = useState(false);
+  const [isSavingCredentials, setIsSavingCredentials] = useState(false);
   const [routeThroughLocal, setRouteThroughLocal] = useState(true);
   const [localPort, setLocalPort] = useState('9002');
   const [skuMappings, setSkuMappings] = useState<Record<string, string>>({});
@@ -120,6 +131,61 @@ export default function PurchasePage() {
   const [mappingSheetTab, setMappingSheetTab] = useState('Mapping');
   const [isSyncingSheet, setIsSyncingSheet] = useState(false);
   const [pastedMappingData, setPastedMappingData] = useState('');
+
+  const handleSaveTasmacCredentials = async () => {
+    if (!tasmacUsername || !tasmacPassword) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please enter both TASMAC Username and Password to save.",
+      });
+      return;
+    }
+
+    const token = sessionStorage.getItem('accessToken');
+    if (!token) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Error",
+        description: "Please login again.",
+      });
+      router.push('/login');
+      return;
+    }
+
+    setIsSavingCredentials(true);
+    try {
+      const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/account/tasmacCredentials', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userName: tasmacUsername,
+          password: tasmacPassword,
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "TASMAC credentials saved successfully.",
+        });
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to save TASMAC credentials.');
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: error.message || "Failed to save TASMAC credentials.",
+      });
+    } finally {
+      setIsSavingCredentials(false);
+    }
+  };
 
   const getMappingKey = (brand: string, size: string) => {
     const cleanBrand = brand.trim().replace(/\s+/g, ' ').replace(/-/g, ' ').toUpperCase();
@@ -183,9 +249,8 @@ export default function PurchasePage() {
           }
         }
 
-        // Close dialog and reset password and date selection
+        // Close dialog and reset date selection
         setIsFetchDialogOpen(false);
-        setTasmacPassword('');
         setTasmacDate('');
       } else {
         throw new Error(result.error || 'Failed to fetch data from TASMAC.');
@@ -240,6 +305,22 @@ export default function PurchasePage() {
                 }
                 if (data.account.sheetLink) {
                     setSheetLink(data.account.sheetLink);
+                }
+                const tasmacCreds = data.account.tasmac || data.account.tasmacCredentials;
+                if (tasmacCreds) {
+                    if (tasmacCreds.userName) {
+                        setTasmacUsername(tasmacCreds.userName);
+                    }
+                    if (tasmacCreds.password) {
+                        setTasmacPassword(tasmacCreds.password);
+                    }
+                } else {
+                    if (data.account.tasmacUserName) {
+                        setTasmacUsername(data.account.tasmacUserName);
+                    }
+                    if (data.account.tasmacPassword) {
+                        setTasmacPassword(data.account.tasmacPassword);
+                    }
                 }
             }
         } else {
@@ -1122,9 +1203,6 @@ export default function PurchasePage() {
                             <DialogContent className="sm:max-w-[425px]">
                                 <DialogHeader>
                                     <DialogTitle>Fetch Indent from TASMAC</DialogTitle>
-                                    <DialogDescription>
-                                        TASMAC போர்ட்டலில் இருந்து நேரடி கொள்முதல் தரவைப் பெற உங்கள் பயனர் பெயர் மற்றும் கடவுச்சொல்லை உள்ளிடவும்.
-                                    </DialogDescription>
                                 </DialogHeader>
                                 <form onSubmit={handleFetchTasmac} className="space-y-4 py-4">
                                     <div className="space-y-2">
@@ -1149,6 +1227,24 @@ export default function PurchasePage() {
                                             disabled={isFetchingTasmac}
                                             required
                                         />
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleSaveTasmacCredentials}
+                                            disabled={isSavingCredentials || isFetchingTasmac || !tasmacUsername || !tasmacPassword}
+                                            className="h-8 px-3 text-xs flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+                                            title="Save credentials to account"
+                                        >
+                                            {isSavingCredentials ? (
+                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            ) : (
+                                                <Save className="h-3.5 w-3.5 text-primary" />
+                                            )}
+                                            <span>Save Credentials</span>
+                                        </Button>
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="tasmac-date">Purchase Date (Optional)</Label>
@@ -1183,9 +1279,6 @@ export default function PurchasePage() {
                                                 disabled={isFetchingTasmac}
                                                 className="w-24"
                                             />
-                                            <p className="text-xs text-muted-foreground">
-                                                Requires running <code>npm run dev</code> on your local machine to bypass Vercel's IP blocks.
-                                            </p>
                                         </div>
                                     )}
 
