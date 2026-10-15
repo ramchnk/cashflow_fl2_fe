@@ -189,7 +189,7 @@ export default function Home() {
         return false;
     }
 
-    if (from !== 'expenses' && (balances[from] ?? 0) < amount) {
+    if (from !== 'expenses' && from !== 'addition' && (balances[from] ?? 0) < amount) {
       toast({
         variant: "destructive",
         title: "Transaction Failed",
@@ -252,6 +252,10 @@ export default function Home() {
           toastDescription = `Logged collection of ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)} from ${fromDetails.name}.`;
         }
 
+        if (from === 'addition') {
+          toastDescription = `Directly deposited ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)} to ${toDetails.name}.`;
+        }
+
         toast({
           title: "Transaction Successful",
           description: toastDescription,
@@ -279,14 +283,14 @@ export default function Home() {
 
   const totalBalance = Object.entries(balances)
     .reduce((acc, [key, value]) => {
-        if (key.toLowerCase() === 'expenses' || key.toLowerCase() === 'readytocollect') return acc;
+        if (key.toLowerCase() === 'expenses' || key.toLowerCase() === 'readytocollect' || key.toLowerCase() === 'addition') return acc;
         return acc + (typeof value === 'number' ? value : 0)
     }, 0);
 
   const profit = totalBalance - investAmount;
 
   const accountKeys = Object.keys(balances);
-  const regularAccounts = accountKeys.filter(key => key !== 'stock' && key !== 'expenses' && key !== 'readyToCollect');
+  const regularAccounts = accountKeys.filter(key => key !== 'stock' && key !== 'expenses' && key !== 'readyToCollect' && key.toLowerCase() !== 'addition');
   const stockAccount = accountKeys.find(key => key === 'stock');
 
   const onFiltersChange = (newPartyFilter: string, newDateRange?: DateRange) => {

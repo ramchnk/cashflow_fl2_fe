@@ -30,15 +30,24 @@ export default function SimpleListView({ transactions }: { transactions: Transac
             <TableBody>
                 {transactions.map(tx => {
                     const isDeduction = tx.to === 'expenses';
+                    const isAddition = tx.from.toLowerCase() === 'addition';
+
+                    let particularsText = `${getPartyDetails(tx.from).name} → ${getPartyDetails(tx.to).name}`;
+                    if (isDeduction) {
+                        particularsText = `Expense from ${getPartyDetails(tx.from).name}`;
+                    } else if (isAddition) {
+                        particularsText = `Direct Deposit to ${getPartyDetails(tx.to).name}`;
+                    }
+
                     return (
                         <TableRow key={tx.id}>
                             <TableCell className="text-muted-foreground w-28">{formatDate(tx.date)}</TableCell>
                             <TableCell>
-                                 <div className="font-medium">{isDeduction ? `Expense from ${getPartyDetails(tx.from).name}` : `${getPartyDetails(tx.from).name} → ${getPartyDetails(tx.to).name}`}</div>
+                                 <div className="font-medium">{particularsText}</div>
                                  {tx.description && <div className="text-xs text-muted-foreground">{tx.description}</div>}
                             </TableCell>
-                            <TableCell className={`font-bold text-right ${isDeduction ? 'text-destructive' : 'text-foreground'}`}>
-                                {formatCurrency(tx.amount)}
+                            <TableCell className={`font-bold text-right ${isDeduction ? 'text-destructive' : isAddition ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>
+                                {isDeduction ? '-' : isAddition ? '+' : ''}{formatCurrency(tx.amount)}
                             </TableCell>
                         </TableRow>
                     )

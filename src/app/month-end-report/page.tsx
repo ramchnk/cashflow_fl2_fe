@@ -196,7 +196,7 @@ function CashFlowReport({ shopName, token }: { shopName: string | null, token: s
     const reportDetails = Object.keys(reportBalances)
         .filter(key => {
             const lowerKey = key.toLowerCase();
-            if (lowerKey === 'expenses' || lowerKey === 'readytocollect') return false;
+            if (lowerKey === 'expenses' || lowerKey === 'readytocollect' || lowerKey === 'addition') return false;
             if (lowerKey === 'cashinhand' && key !== cashInHandKey) return false;
             return true;
         })

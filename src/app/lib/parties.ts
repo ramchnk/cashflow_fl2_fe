@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Landmark, HandCoins, Store, Boxes, ReceiptText, Wallet, PiggyBank, Building2, TrendingUp, PackageCheck } from 'lucide-react';
+import { Landmark, HandCoins, Store, Boxes, ReceiptText, Wallet, PiggyBank, Building2, TrendingUp, PackageCheck, PlusCircle } from 'lucide-react';
 
 export type Party = string;
 
@@ -33,6 +33,9 @@ export function getPartyDetails(party: Party): PartyDetails {
   }
    if (lowerCaseParty === 'readytocollect') {
     return { name: 'Ready to Collect', icon: PackageCheck };
+  }
+   if (lowerCaseParty === 'addition') {
+    return { name: 'Direct Deposit', icon: PlusCircle };
   }
 
   // Handle dynamic bank accounts

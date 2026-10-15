@@ -65,7 +65,7 @@ type TransferSchema = z.infer<ReturnType<typeof createTransferSchema>>;
 
 function GeneralTransferForm({ onTransaction, balances, isSubmitting }: TransactionFormProps) {
   const allParties = Object.keys(balances);
-  const fromParties = allParties.filter(party => !['stock', 'tasmac', 'expenses', 'readytocollect'].includes(party.toLowerCase()));
+  const fromParties = allParties.filter(party => !['stock', 'tasmac', 'expenses', 'readytocollect', 'addition'].includes(party.toLowerCase()));
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
 
   
@@ -96,7 +96,7 @@ function GeneralTransferForm({ onTransaction, balances, isSubmitting }: Transact
       });
     }
 
-    return allParties.filter(p => p !== 'expenses' && p.toLowerCase() !== fromLowerCase);
+    return allParties.filter(p => p !== 'expenses' && p.toLowerCase() !== 'addition' && p.toLowerCase() !== fromLowerCase);
   }, [fromValue, allParties]);
   
   const onSubmit = async (values: TransferSchema) => {
@@ -257,7 +257,7 @@ type DeductionSchema = z.infer<ReturnType<typeof createDeductionSchema>>;
 
 function DeductionForm({ onTransaction, balances, isSubmitting }: TransactionFormProps) {
   const allParties = Object.keys(balances);
-  const fromParties = allParties.filter(party => !['stock', 'tasmac', 'expenses'].includes(party.toLowerCase()));
+  const fromParties = allParties.filter(party => !['stock', 'tasmac', 'expenses', 'addition'].includes(party.toLowerCase()));
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
 
   const form = useForm<DeductionSchema>({
@@ -491,6 +491,157 @@ function CollectedForm({ onTransaction, isSubmitting }: TransactionFormProps) {
 }
 
 
+const createAdditionSchema = (bankParties: Party[]) => z.object({
+  to: z.string().min(1, "Destination bank account is required."),
+  amount: z.coerce.number().positive("Amount must be positive."),
+  date: z.date({
+    required_error: "A date is required.",
+  }),
+  description: z.string().optional(),
+});
+
+type AdditionSchema = z.infer<ReturnType<typeof createAdditionSchema>>;
+
+function AdditionForm({ onTransaction, balances, isSubmitting }: TransactionFormProps) {
+  const allParties = Object.keys(balances);
+  const bankParties = allParties.filter(party => party.toLowerCase().includes('bank'));
+  const targetAccounts = bankParties.length > 0 
+    ? bankParties 
+    : allParties.filter(party => !['stock', 'tasmac', 'expenses', 'readytocollect', 'addition'].includes(party.toLowerCase()));
+  const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
+
+  const form = useForm<AdditionSchema>({
+    resolver: zodResolver(createAdditionSchema(targetAccounts)),
+    defaultValues: {
+      to: targetAccounts[0] || '',
+      amount: undefined,
+      date: new Date(),
+      description: "",
+    },
+  });
+
+  const onSubmit = async (values: AdditionSchema) => {
+    const success = await onTransaction('addition', values.to, values.amount, values.date, values.description);
+    if (success) {
+      form.reset({
+        to: targetAccounts[0] || '',
+        amount: undefined,
+        date: new Date(),
+        description: "",
+      });
+    }
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="to"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Deposit to Bank Account</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select bank account" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {targetAccounts.map(party => (
+                    <SelectItem key={party} value={party}>
+                      {getPartyDetails(party).name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="amount"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Amount</FormLabel>
+              <FormControl>
+                <Input type="number" placeholder="0.00" {...field} onWheel={(e) => e.currentTarget.blur()} onChange={event => field.onChange(event.target.value === '' ? undefined : +event.target.value)} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description (Optional)</FormLabel>
+              <FormControl>
+                <Textarea placeholder="Add a note for this addition / deposit..." {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="date"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel>Date</FormLabel>
+              <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <FormControl>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full pl-3 text-left font-normal",
+                        !field.value && "text-muted-foreground"
+                      )}
+                    >
+                      {field.value ? (
+                        format(field.value, "PPP")
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </FormControl>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={field.value}
+                    onSelect={(date) => {
+                      field.onChange(date);
+                      setIsDatePickerOpen(false);
+                    }}
+                    disabled={(date) =>
+                      date > new Date() || date < new Date("1900-01-01")
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white" disabled={isSubmitting}>
+          {isSubmitting ? 'Submitting...' : 'Submit Addition'}
+        </Button>
+      </form>
+    </Form>
+  );
+}
+
+
 export default function TransactionForm(props: TransactionFormProps) {
   return (
     <Accordion type="single" collapsible className="w-full">
@@ -499,13 +650,13 @@ export default function TransactionForm(props: TransactionFormProps) {
           <div className="flex flex-col items-start">
              <CardTitle>Log a Transaction</CardTitle>
              <CardDescription className="text-left">
-                Record a new transfer, expense, or collection.
+                Record a new transfer, expense, collection, or direct deposit addition.
             </CardDescription>
           </div>
         </AccordionTrigger>
         <AccordionContent className="pt-4">
             <Tabs defaultValue="transfer" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="transfer">Transfer</TabsTrigger>
                     <TabsTrigger 
                         value="deduction"
@@ -518,6 +669,12 @@ export default function TransactionForm(props: TransactionFormProps) {
                         className="data-[state=active]:bg-yellow-400 data-[state=active]:text-yellow-900"
                     >
                     Collected
+                    </TabsTrigger>
+                    <TabsTrigger 
+                        value="addition"
+                        className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+                    >
+                    Addition
                     </TabsTrigger>
                 </TabsList>
                 <TabsContent value="transfer">
@@ -533,6 +690,11 @@ export default function TransactionForm(props: TransactionFormProps) {
                 <TabsContent value="collected">
                     <div className="pt-4">
                         <CollectedForm {...props} />
+                    </div>
+                </TabsContent>
+                <TabsContent value="addition">
+                    <div className="pt-4">
+                        <AdditionForm {...props} />
                     </div>
                 </TabsContent>
             </Tabs>

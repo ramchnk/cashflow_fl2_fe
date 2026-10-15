@@ -102,8 +102,10 @@ export default function LedgerView({ transactions, accountFilter }: LedgerViewPr
                     credit = tx.amount;
                     debit = null;
                     closingBalance = currentOpeningBalance + credit;
-                    particulars = `From: ${getPartyDetails(tx.from).name}`;
-                     if(tx.description) particulars += ` (${tx.description})`;
+                    particulars = tx.from.toLowerCase() === 'addition'
+                        ? 'Direct Deposit'
+                        : `From: ${getPartyDetails(tx.from).name}`;
+                    if(tx.description) particulars += ` (${tx.description})`;
                 } else {
                     return null; // Should not happen if API filtering is correct
                 }
