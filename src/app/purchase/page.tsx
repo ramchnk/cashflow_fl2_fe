@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import {
@@ -22,7 +22,8 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Sheet, Check, ChevronsUpDown, Loader2, KeyRound, Database, Trash2, RefreshCw, ArrowUpRight, ArrowDownRight, AlertCircle, Save } from 'lucide-react';
+import Link from 'next/link';
+import { CalendarIcon, Sheet, Check, ChevronsUpDown, Loader2, KeyRound, Database, Trash2, RefreshCw, ArrowUpRight, ArrowDownRight, AlertCircle, Save, Layers, GitMerge } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -40,7 +41,7 @@ import {
 } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useUserStore } from '@/app/lib/user-store';
+import { useUserStore, isShopThree } from '@/app/lib/user-store';
 import Header from '@/components/layout/header';
 import {
   Command,
@@ -78,6 +79,13 @@ interface PurchaseItem {
   tasmacPackSize?: string;
 }
 
+interface MergeDialogData {
+  sku: string;
+  indices: number[];
+  items: PurchaseItem[];
+  mergedPreview: PurchaseItem;
+}
+
 interface ProductMasterResponse {
   productList: ProductMasterItem[];
   [key: string]: any;
@@ -110,7 +118,7 @@ export default function PurchasePage() {
   const [billNumber, setBillNumber] = useState('');
   const [billDate, setBillDate] = useState<Date | undefined>(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { shopName, setShopName } = useUserStore();
+  const { shopName, setShopName, shopNumber, setShopNumber } = useUserStore();
   const [actualBillValue, setActualBillValue] = useState<string>('');
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [sheetLink, setSheetLink] = useState<string | null>(null);
@@ -131,6 +139,7 @@ export default function PurchasePage() {
   const [mappingSheetTab, setMappingSheetTab] = useState('Mapping');
   const [isSyncingSheet, setIsSyncingSheet] = useState(false);
   const [pastedMappingData, setPastedMappingData] = useState('');
+  const [mergeDialogData, setMergeDialogData] = useState<MergeDialogData | null>(null);
 
   const handleSaveTasmacCredentials = async () => {
     if (!tasmacUsername || !tasmacPassword) {
@@ -291,6 +300,15 @@ export default function PurchasePage() {
 
         if (productResponse.ok) {
             const data = await productResponse.json();
+            if (data?.productList && Array.isArray(data.productList)) {
+                const seen = new Set<string>();
+                data.productList = data.productList.filter((p: any) => {
+                    if (!p?.SKU) return false;
+                    if (seen.has(p.SKU)) return false;
+                    seen.add(p.SKU);
+                    return true;
+                });
+            }
             setProductMaster(data || {});
         } else {
             if(productResponse.status === 401) throw new Error('Session Expired');
@@ -302,6 +320,10 @@ export default function PurchasePage() {
             if (data.account) {
                  if (data.account.shopName) {
                     setShopName(data.account.shopName);
+                }
+                const sNum = data.account.shopNumber ?? data.account.shopNo ?? (data as any).shopNumber;
+                if (sNum !== undefined && sNum !== null) {
+                    setShopNumber(sNum);
                 }
                 if (data.account.sheetLink) {
                     setSheetLink(data.account.sheetLink);
@@ -655,6 +677,161 @@ export default function PurchasePage() {
     return numMatch ? numMatch[0] : '';
   };
 
+  const computeMergedItem = (itemsToMerge: PurchaseItem[]): PurchaseItem => {
+    const baseItem = itemsToMerge[0];
+    const matchedItem = itemsToMerge.find(it => it.matchStatus === 'found') || baseItem;
+    const itemWithPrice = itemsToMerge.find(it => it.itemPrice && it.itemPrice > 0) || matchedItem;
+
+    const packSizeNum = getPackSizeNumber(baseItem.packSize);
+
+    let totalBottles = 0;
+    let newCaseQtyStr = '0';
+
+    if (packSizeNum > 0) {
+      totalBottles = itemsToMerge.reduce((sum, it) => sum + (it.calculatedQty || 0), 0);
+      const wholeCases = Math.floor(totalBottles / packSizeNum);
+      const looseBottles = totalBottles % packSizeNum;
+      newCaseQtyStr = looseBottles > 0 ? `${wholeCases}.${looseBottles}` : wholeCases.toString();
+    } else {
+      const sumCases = itemsToMerge.reduce((sum, it) => {
+        const q = parseFloat(it.qty);
+        return sum + (isNaN(q) ? 0 : q);
+      }, 0);
+      newCaseQtyStr = sumCases.toString();
+      totalBottles = itemsToMerge.reduce((sum, it) => sum + (it.calculatedQty || 0), 0) || sumCases;
+    }
+
+    const unitPrice = (itemWithPrice.itemPrice && itemWithPrice.itemPrice > 0)
+      ? itemWithPrice.itemPrice
+      : (matchedItem.matchedProduct?.purchasePrice || 0);
+
+    const numericTotalValue = unitPrice > 0
+      ? unitPrice * totalBottles
+      : itemsToMerge.reduce((sum, it) => sum + (it.numericTotalValue || 0), 0);
+
+    const totalValue = new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+    }).format(numericTotalValue);
+
+    return {
+      ...baseItem,
+      brandName: matchedItem.brandName || baseItem.brandName,
+      apiSku: matchedItem.apiSku || baseItem.apiSku,
+      matchedProduct: matchedItem.matchedProduct || baseItem.matchedProduct,
+      matchStatus: matchedItem.matchStatus || baseItem.matchStatus,
+      packSize: baseItem.packSize,
+      qty: newCaseQtyStr,
+      calculatedQty: totalBottles,
+      itemPrice: unitPrice > 0 ? unitPrice : baseItem.itemPrice,
+      taxRate: itemWithPrice.taxRate ?? baseItem.taxRate,
+      customTaxPercent: itemWithPrice.customTaxPercent ?? baseItem.customTaxPercent,
+      numericTotalValue,
+      totalValue,
+    };
+  };
+
+  const mergeItemsByIndices = (indices: number[], precomputedMergedItem?: PurchaseItem) => {
+    if (indices.length <= 1) return;
+    const sortedIndices = [...indices].sort((a, b) => a - b);
+    const targetIndex = sortedIndices[0];
+
+    setParsedItems(prev => {
+      const itemsToMerge = sortedIndices.map(idx => prev[idx]).filter(Boolean);
+      const mergedItem = precomputedMergedItem || computeMergedItem(itemsToMerge);
+      const next = [...prev];
+      next[targetIndex] = mergedItem;
+      for (let i = sortedIndices.length - 1; i >= 1; i--) {
+        next.splice(sortedIndices[i], 1);
+      }
+      return next;
+    });
+
+    toast({
+      title: "Items Merged",
+      description: `Merged duplicate rows into a single item. Total Cases: ${precomputedMergedItem?.qty || ''}.`,
+    });
+  };
+
+  const duplicateGroups = useMemo(() => {
+    const groups: Record<string, { sku: string; indices: number[]; items: PurchaseItem[] }> = {};
+    parsedItems.forEach((item, idx) => {
+      const key = (item.apiSku || item.brandName).trim().toUpperCase();
+      if (!key) return;
+      if (!groups[key]) {
+        groups[key] = { sku: item.apiSku || item.brandName, indices: [], items: [] };
+      }
+      groups[key].indices.push(idx);
+      groups[key].items.push(item);
+    });
+    return Object.values(groups).filter(g => g.indices.length > 1);
+  }, [parsedItems]);
+
+  const duplicateGroupMap = useMemo(() => {
+    const map = new Map<string, { sku: string; indices: number[]; items: PurchaseItem[] }>();
+    duplicateGroups.forEach(g => {
+      map.set(g.sku.toUpperCase(), g);
+    });
+    return map;
+  }, [duplicateGroups]);
+
+  const handleMergeAllDuplicates = () => {
+    if (duplicateGroups.length === 0) return;
+
+    setParsedItems(prev => {
+      const groups: Record<string, number[]> = {};
+      prev.forEach((item, idx) => {
+        const key = (item.apiSku || item.brandName).trim().toUpperCase();
+        if (!key) return;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(idx);
+      });
+
+      const toRemove = new Set<number>();
+      const next = [...prev];
+
+      Object.values(groups).forEach(indices => {
+        if (indices.length <= 1) return;
+        const sorted = [...indices].sort((a, b) => a - b);
+        const targetIdx = sorted[0];
+        const itemsToMerge = sorted.map(i => prev[i]);
+        next[targetIdx] = computeMergedItem(itemsToMerge);
+        for (let i = 1; i < sorted.length; i++) {
+          toRemove.add(sorted[i]);
+        }
+      });
+
+      return next.filter((_, idx) => !toRemove.has(idx));
+    });
+
+    toast({
+      title: "All Duplicates Merged",
+      description: `Successfully merged all duplicate items. Cases have been summed.`,
+    });
+  };
+
+  const handleOpenMergeForSku = (skuName: string) => {
+    const key = skuName.trim().toUpperCase();
+    const group = duplicateGroups.find(g => g.sku.toUpperCase() === key);
+    if (!group || group.indices.length <= 1) return;
+
+    const itemsToMerge = group.indices.map(idx => parsedItems[idx]).filter(Boolean);
+    const preview = computeMergedItem(itemsToMerge);
+
+    setMergeDialogData({
+      sku: group.sku,
+      indices: group.indices,
+      items: itemsToMerge,
+      mergedPreview: preview,
+    });
+  };
+
+  const handleConfirmMergeFromDialog = () => {
+    if (!mergeDialogData) return;
+    mergeItemsByIndices(mergeDialogData.indices, mergeDialogData.mergedPreview);
+    setMergeDialogData(null);
+  };
+
   const handleSelectProduct = (index: number, selectedProduct: ProductMasterItem) => {
     const originalItem = parsedItems[index];
     if (originalItem) {
@@ -691,41 +868,63 @@ export default function PurchasePage() {
         });
     }
 
+    const skuParts = selectedProduct.SKU.split('-');
+    const newPackSize = skuParts[skuParts.length - 1] || originalItem?.packSize || '';
+
+    const newCalculatedQty = getCalculatedQty(newPackSize, originalItem?.qty || '0');
+    const newTaxRate = getItemTaxRate(selectedProduct.SKU, originalItem?.tasmacBrandName, selectedProduct.SKU, selectedProduct);
+    const newItemPrice = calculateItemPrice(originalItem?.addedValue, originalItem?.rate, newPackSize, newTaxRate, originalItem?.customTaxPercent);
+    
+    const unitPrice = newItemPrice > 0 ? newItemPrice : (selectedProduct.purchasePrice || 0);
+    const newNumericTotalValue = unitPrice * newCalculatedQty;
+
+    const updatedItem: PurchaseItem = {
+        ...originalItem,
+        brandName: selectedProduct.SKU,
+        packSize: newPackSize,
+        calculatedQty: newCalculatedQty,
+        itemPrice: newItemPrice,
+        taxRate: newTaxRate,
+        customTaxPercent: originalItem?.customTaxPercent,
+        numericTotalValue: newNumericTotalValue,
+        totalValue: new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+        }).format(newNumericTotalValue),
+        matchStatus: 'found',
+        apiSku: selectedProduct.SKU,
+        matchedProduct: selectedProduct
+    };
+
     setParsedItems(prevItems => {
         const newItems = [...prevItems];
-        const item = newItems[index];
-
-        const skuParts = selectedProduct.SKU.split('-');
-        const newPackSize = skuParts[skuParts.length - 1] || item.packSize;
-
-        const newCalculatedQty = getCalculatedQty(newPackSize, item.qty);
-        const newTaxRate = getItemTaxRate(selectedProduct.SKU, item.tasmacBrandName, selectedProduct.SKU, selectedProduct);
-        const newItemPrice = calculateItemPrice(item.addedValue, item.rate, newPackSize, newTaxRate, item.customTaxPercent);
-        
-        const unitPrice = newItemPrice > 0 ? newItemPrice : (selectedProduct.purchasePrice || 0);
-        const newNumericTotalValue = unitPrice * newCalculatedQty;
-
-        newItems[index] = {
-            ...item,
-            brandName: selectedProduct.SKU,
-            packSize: newPackSize,
-            calculatedQty: newCalculatedQty,
-            itemPrice: newItemPrice,
-            taxRate: newTaxRate,
-            customTaxPercent: item.customTaxPercent,
-            numericTotalValue: newNumericTotalValue,
-            totalValue: new Intl.NumberFormat('en-IN', {
-                style: 'currency',
-                currency: 'INR',
-            }).format(newNumericTotalValue),
-            matchStatus: 'found',
-            apiSku: selectedProduct.SKU,
-            matchedProduct: selectedProduct
-        };
-        
+        newItems[index] = updatedItem;
         return newItems;
     });
     setOpenPopoverIndex(null);
+
+    // Check for duplicate items with the newly mapped SKU
+    const duplicateIndices: number[] = [];
+    parsedItems.forEach((it, idx) => {
+      if (idx === index) return;
+      const key = (it.apiSku || it.brandName).trim().toUpperCase();
+      if (key === selectedProduct.SKU.trim().toUpperCase()) {
+        duplicateIndices.push(idx);
+      }
+    });
+
+    if (duplicateIndices.length > 0) {
+      const allIndices = [...duplicateIndices, index].sort((a, b) => a - b);
+      const itemsToMerge = allIndices.map(idx => idx === index ? updatedItem : parsedItems[idx]);
+      const preview = computeMergedItem(itemsToMerge);
+
+      setMergeDialogData({
+        sku: selectedProduct.SKU,
+        indices: allIndices,
+        items: itemsToMerge,
+        mergedPreview: preview,
+      });
+    }
   };
 
 
@@ -741,25 +940,12 @@ export default function PurchasePage() {
   const difference = (parseFloat(actualBillValue) || 0) - totalValue;
 
   const validateDuplicates = (): boolean => {
-    const counts: { [key: string]: number } = {};
-    const duplicates: string[] = [];
-
-    parsedItems.forEach(item => {
-      const key = `${item.brandName}-${item.packSize}`;
-      counts[key] = (counts[key] || 0) + 1;
-    });
-
-    for (const key in counts) {
-      if (counts[key] > 1) {
-        duplicates.push(key);
-      }
-    }
-
-    if (duplicates.length > 0) {
+    if (duplicateGroups.length > 0) {
+      const duplicateNames = duplicateGroups.map(g => `${g.sku} (${g.indices.length} rows)`).join(', ');
       toast({
         variant: "destructive",
         title: "Duplicate Items Found",
-        description: `The following items are duplicates: ${duplicates.join(', ')}`,
+        description: `Please merge duplicate items before submitting: ${duplicateNames}. Use the 'Merge All Duplicates' button above the table.`,
       });
       return false;
     }
@@ -1193,6 +1379,14 @@ export default function PurchasePage() {
                         </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
+                        {isShopThree(shopNumber, shopName) && (
+                            <Button variant="outline" asChild className="font-semibold border-primary/40 text-primary hover:bg-primary/5">
+                                <Link href="/tasmac-scanner">
+                                    <Layers className="mr-2 h-4 w-4" />
+                                    TASMAC Scanner
+                                </Link>
+                            </Button>
+                        )}
                         <Dialog open={isFetchDialogOpen} onOpenChange={setIsFetchDialogOpen}>
                             <DialogTrigger asChild>
                                 <Button variant="default" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
@@ -1402,6 +1596,99 @@ export default function PurchasePage() {
                             </DialogContent>
                         </Dialog>
 
+                        <Dialog open={!!mergeDialogData} onOpenChange={(open) => { if (!open) setMergeDialogData(null); }}>
+                            <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-y-auto">
+                                <DialogHeader>
+                                    <DialogTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                                        <GitMerge className="h-5 w-5" />
+                                        Duplicate Items Detected
+                                    </DialogTitle>
+                                    <DialogDescription>
+                                        Mapping resulted in duplicate entries for <span className="font-semibold text-foreground font-mono">{mergeDialogData?.sku}</span>. You can merge these rows to sum the cases.
+                                    </DialogDescription>
+                                </DialogHeader>
+
+                                {mergeDialogData && (
+                                    <div className="space-y-4 py-2">
+                                        <div className="space-y-2">
+                                            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                                Duplicate Rows to Merge ({mergeDialogData.indices.length} rows)
+                                            </div>
+                                            <div className="border rounded-lg divide-y text-xs bg-muted/20 overflow-hidden">
+                                                {mergeDialogData.items.map((it, idx) => (
+                                                    <div key={idx} className="p-3 flex items-center justify-between gap-4">
+                                                        <div className="space-y-0.5">
+                                                            <div className="font-medium text-foreground">
+                                                                Row {mergeDialogData.indices[idx] + 1} {it.srNo ? `(Sr. No ${it.srNo})` : ''}
+                                                            </div>
+                                                            <div className="text-muted-foreground font-mono text-[11px]">
+                                                                {it.tasmacBrandName || it.brandName} • {it.packSize}
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right shrink-0">
+                                                            <div className="font-semibold text-foreground">
+                                                                {it.qty} Cases <span className="text-muted-foreground font-normal">({it.calculatedQty} bottles)</span>
+                                                            </div>
+                                                            <div className="text-muted-foreground font-medium">
+                                                                {it.totalValue}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Merged Preview Box */}
+                                        <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 rounded-lg">
+                                            <div className="flex items-center justify-between gap-4 text-emerald-950 dark:text-emerald-100">
+                                                <div className="space-y-0.5">
+                                                    <div className="text-[11px] uppercase tracking-wider font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                                                        <Check className="h-3.5 w-3.5" />
+                                                        Merged Result (Sum of Cases)
+                                                    </div>
+                                                    <div className="font-semibold text-sm font-mono text-emerald-900 dark:text-emerald-200">
+                                                        {mergeDialogData.mergedPreview.brandName}
+                                                    </div>
+                                                    <div className="text-xs text-emerald-700 dark:text-emerald-300">
+                                                        Pack Size: {mergeDialogData.mergedPreview.packSize}
+                                                    </div>
+                                                </div>
+                                                <div className="text-right shrink-0">
+                                                    <div className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
+                                                        {mergeDialogData.mergedPreview.qty} Cases
+                                                    </div>
+                                                    <div className="text-xs font-semibold text-emerald-800 dark:text-emerald-200">
+                                                        {mergeDialogData.mergedPreview.calculatedQty} Bottles
+                                                    </div>
+                                                    <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                                        Total: {mergeDialogData.mergedPreview.totalValue}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <DialogFooter className="gap-2 sm:gap-0">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setMergeDialogData(null)}
+                                    >
+                                        Keep Separate
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium flex items-center gap-1.5 shadow-sm"
+                                        onClick={handleConfirmMergeFromDialog}
+                                    >
+                                        <GitMerge className="h-4 w-4" />
+                                        Merge Items ({mergeDialogData?.mergedPreview.qty} Cases)
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+
                         {sheetLink && (
                             <Button
                                 variant="outline"
@@ -1474,15 +1761,51 @@ export default function PurchasePage() {
                                 Review the parsed items below before submitting.
                             </CardDescription>
                         </div>
-                        {priceChangedCount > 0 && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {duplicateGroups.length > 0 && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-amber-500 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/40 px-2.5 py-1 text-xs flex items-center gap-1.5 font-semibold"
+                              onClick={handleMergeAllDuplicates}
+                            >
+                              <GitMerge className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                              <span>Merge All Duplicates ({duplicateGroups.length})</span>
+                            </Button>
+                          )}
+                          {priceChangedCount > 0 && (
                             <Badge variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 text-xs flex items-center gap-1.5 font-medium">
                                 <AlertCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                                 <span>{priceChangedCount} item{priceChangedCount > 1 ? 's have' : ' has'} rate difference vs Product Master</span>
                             </Badge>
-                        )}
+                          )}
+                        </div>
                     </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                    {duplicateGroups.length > 0 && (
+                      <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3 text-amber-900 dark:text-amber-200">
+                        <div className="flex items-center gap-2.5">
+                          <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+                          <div>
+                            <p className="text-sm font-semibold">
+                              Duplicate items found in purchase table ({duplicateGroups.length} SKU{duplicateGroups.length > 1 ? 's' : ''})
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {duplicateGroups.map(g => `${g.sku} (${g.indices.length} rows)`).join(', ')}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs flex items-center gap-1.5 shadow-sm"
+                          onClick={handleMergeAllDuplicates}
+                        >
+                          <GitMerge className="h-3.5 w-3.5" />
+                          Merge All Duplicates
+                        </Button>
+                      </div>
+                    )}
                     <ScrollArea className="h-96">
                         <Table>
                             <TableHeader>
@@ -1500,6 +1823,8 @@ export default function PurchasePage() {
                             </TableHeader>
                             <TableBody>
                                 {parsedItems.map((item, index) => {
+                                  const itemSku = (item.apiSku || item.brandName || '').trim().toUpperCase();
+                                  const isDuplicate = duplicateGroupMap.has(itemSku);
                                   const itemPrice = item.itemPrice;
                                   const masterPrice = item.matchedProduct?.purchasePrice;
                                   const hasItemPrice = typeof itemPrice === 'number' && itemPrice > 0;
@@ -1510,7 +1835,7 @@ export default function PurchasePage() {
                                   const isZeroAV = (parseFloat(String(item.addedValue || '').replace(/,/g, '')) || 0) === 0;
 
                                   return (
-                                  <TableRow key={index} className={cn(hasSignificantDiff && "bg-amber-50/20 dark:bg-amber-950/10")}>
+                                  <TableRow key={index} className={cn(hasSignificantDiff && "bg-amber-50/20 dark:bg-amber-950/10", isDuplicate && "bg-amber-100/30 dark:bg-amber-900/10 border-l-2 border-l-amber-500")}>
                                       <TableCell>{item.srNo}</TableCell>
                                       <TableCell>
                                           <Popover open={openPopoverIndex === index} onOpenChange={(open) => setOpenPopoverIndex(open ? index : null)}>
@@ -1534,9 +1859,9 @@ export default function PurchasePage() {
                                                       <CommandList>
                                                           <CommandEmpty>No SKU found.</CommandEmpty>
                                                           <CommandGroup className="max-h-[300px] overflow-y-auto">
-                                                              {productMaster?.productList?.map((product) => (
+                                                              {productMaster?.productList?.map((product, pIdx) => (
                                                                   <CommandItem
-                                                                      key={product.SKU}
+                                                                      key={`${product.SKU}-${pIdx}`}
                                                                       value={product.SKU}
                                                                       onSelect={() => {
                                                                           handleSelectProduct(index, product);
@@ -1701,6 +2026,18 @@ export default function PurchasePage() {
                                               <Badge variant={item.matchStatus === 'found' ? 'default' : 'destructive'} className={item.matchStatus === 'found' ? 'bg-green-600' : ''}>
                                                   {item.matchStatus === 'found' ? 'Found' : 'Not Found'}
                                               </Badge>
+                                              {isDuplicate && (
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  className="h-5 px-1.5 text-[10px] text-amber-700 dark:text-amber-300 bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900 border border-amber-400/50 flex items-center gap-1 font-semibold rounded"
+                                                  onClick={() => handleOpenMergeForSku(item.apiSku || item.brandName)}
+                                                  title="Click to merge duplicate rows for this SKU"
+                                                >
+                                                  <GitMerge className="h-3 w-3" />
+                                                  Duplicate • Merge
+                                                </Button>
+                                              )}
                                               {hasSignificantDiff && (
                                                 <Badge
                                                   variant="outline"

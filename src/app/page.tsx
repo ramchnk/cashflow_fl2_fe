@@ -28,7 +28,7 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-  const { shopName, setShopName } = useUserStore();
+  const { shopName, setShopName, setShopNumber } = useUserStore();
 
 
   // Filter state lifted up
@@ -67,6 +67,10 @@ export default function Home() {
         }
          if (data.account && data.account.shopName) {
           setShopName(data.account.shopName);
+        }
+        const sNum = data.account?.shopNumber ?? data.account?.shopNo ?? data?.shopNumber;
+        if (sNum !== undefined && sNum !== null) {
+          setShopNumber(sNum);
         }
       } else {
           if(response.status === 401) {

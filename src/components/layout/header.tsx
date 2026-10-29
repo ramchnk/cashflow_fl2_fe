@@ -1,6 +1,6 @@
 'use client';
 
-import { Wallet, LogOut, Store, Home, Package, Receipt, Calculator, BarChart3, BookCopy } from 'lucide-react';
+import { Wallet, LogOut, Store, Home, Package, Receipt, Calculator, BarChart3, BookCopy, Layers } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -11,28 +11,39 @@ import {
     TooltipProvider,
     TooltipTrigger,
   } from "@/components/ui/tooltip"
-import { useUserStore } from '@/app/lib/user-store';
+import { useEffect } from 'react';
+import { useUserStore, isShopThree, syncAccountInfo } from '@/app/lib/user-store';
 
 
 export default function Header() {
     const router = useRouter();
     const pathname = usePathname();
-    const { shopName } = useUserStore();
+    const { shopName, shopNumber, resetUser } = useUserStore();
 
+    useEffect(() => {
+        const token = typeof window !== 'undefined' ? sessionStorage.getItem('accessToken') : null;
+        if (token && shopNumber === null) {
+            syncAccountInfo(token);
+        }
+    }, [shopNumber]);
 
     const handleLogout = () => {
         sessionStorage.removeItem('accessToken');
+        resetUser();
         router.push('/login');
     };
+
+    const isShop3 = isShopThree(shopNumber, shopName);
 
     const navLinks = [
         { href: "/", label: "Dashboard", icon: Home },
         { href: "/month-end-report", label: "Reports", icon: BookCopy },
         { href: "/purchase", label: "Purchase", icon: Package },
+        ...(isShop3 ? [{ href: "/tasmac-scanner", label: "TASMAC Scanner", icon: Layers }] : []),
         { href: "/expenses", label: "Expenses", icon: Receipt },
         { href: "/sales", label: "Sales", icon: BarChart3 },
         { href: "/purchase-estimate", label: "Purchase Estimate", icon: Calculator },
-    ]
+    ];
 
   return (
     <header className="bg-card sticky top-0 z-10 print-hidden">

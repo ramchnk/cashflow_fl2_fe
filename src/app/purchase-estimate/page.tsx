@@ -100,7 +100,7 @@ export default function PurchaseEstimatePage() {
 
   const { toast } = useToast();
   const router = useRouter();
-  const { shopName } = useUserStore();
+  const { shopName, setShopName, setShopNumber } = useUserStore();
 
   useEffect(() => {
     const fetchAccountInfo = async () => {
@@ -117,6 +117,13 @@ export default function PurchaseEstimatePage() {
           const data = await response.json();
           if (data.account && data.account.permittedUnit) {
             setPermittedUnit(data.account.permittedUnit);
+          }
+          if (data.account && data.account.shopName) {
+            setShopName(data.account.shopName);
+          }
+          const sNum = data.account?.shopNumber ?? data.account?.shopNo ?? data?.shopNumber;
+          if (sNum !== undefined && sNum !== null) {
+            setShopNumber(sNum);
           }
         }
       } catch (error) {
@@ -180,7 +187,15 @@ export default function PurchaseEstimatePage() {
 
             if (response.ok) {
                 const data = await response.json();
-                setProductMaster(data?.productList || []);
+                const rawList: ProductMasterItem[] = data?.productList || [];
+                const seen = new Set<string>();
+                const uniqueList = rawList.filter((p: ProductMasterItem) => {
+                    if (!p?.SKU) return false;
+                    if (seen.has(p.SKU)) return false;
+                    seen.add(p.SKU);
+                    return true;
+                });
+                setProductMaster(uniqueList);
             } else {
                  if(response.status === 401) {
                     toast({
@@ -1026,9 +1041,9 @@ export default function PurchaseEstimatePage() {
                                         <CommandEmpty>No product found.</CommandEmpty>
                                         <CommandGroup>
                                             {productMaster
-                                                .map((p) => (
+                                                .map((p, pIdx) => (
                                                 <CommandItem
-                                                    key={p.SKU}
+                                                    key={`${p.SKU}-${pIdx}`}
                                                     value={p.SKU}
                                                     onSelect={(currentValue) => {
                                                         setManualSku(p.SKU);
@@ -1263,11 +1278,11 @@ export default function PurchaseEstimatePage() {
                             </span>
                           </TableCell>
                         </TableRow>
-                        {group.items.map((item) => {
+                        {group.items.map((item, itemIdx) => {
                           const packSize = getPackSize(item.SKU);
                           const approvedQty = item.estInCase * packSize;
                           return (
-                            <TableRow key={item.SKU} className="hover:bg-muted/40 transition-colors">
+                            <TableRow key={`${item.SKU}-${itemIdx}`} className="hover:bg-muted/40 transition-colors">
                               <TableCell className="pl-6 font-medium">{item.SKU}</TableCell>
                               <TableCell className="text-right print-hidden">{item.totalSalesQty}</TableCell>
                               <TableCell className="text-right print-hidden">{Math.round(item.avgSalesPerDay)}</TableCell>
@@ -1293,11 +1308,11 @@ export default function PurchaseEstimatePage() {
                       </React.Fragment>
                     ))
                   ) : (
-                    filteredItems.map((item) => {
+                    filteredItems.map((item, itemIdx) => {
                       const packSize = getPackSize(item.SKU);
                       const approvedQty = item.estInCase * packSize;
                       return (
-                        <TableRow key={item.SKU}>
+                        <TableRow key={`${item.SKU}-${itemIdx}`}>
                           <TableCell>{item.SKU}</TableCell>
                           <TableCell className="text-right print-hidden">{item.totalSalesQty}</TableCell>
                           <TableCell className="text-right print-hidden">{Math.round(item.avgSalesPerDay)}</TableCell>

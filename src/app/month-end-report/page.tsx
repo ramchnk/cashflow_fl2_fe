@@ -81,7 +81,7 @@ function CashFlowReport({ shopName, token }: { shopName: string | null, token: s
     const [balances, setBalances] = useState<Balances>({});
     const [investAmount, setInvestAmount] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
-    const { setShopName } = useUserStore();
+    const { setShopName, setShopNumber } = useUserStore();
     const { toast } = useToast();
     const router = useRouter();
 
@@ -112,6 +112,10 @@ function CashFlowReport({ shopName, token }: { shopName: string | null, token: s
                     }
                     if (data.account && data.account.shopName && !shopName) {
                        setShopName(data.account.shopName);
+                    }
+                    const sNum = data.account?.shopNumber ?? data.account?.shopNo ?? data?.shopNumber;
+                    if (sNum !== undefined && sNum !== null) {
+                       setShopNumber(sNum);
                     }
                 } else {
                     if (response.status === 401) {

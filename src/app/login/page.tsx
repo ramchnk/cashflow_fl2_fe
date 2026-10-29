@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Wallet } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from 'next/navigation';
+import { syncAccountInfo } from '@/app/lib/user-store';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('gobi_demo');
@@ -39,6 +40,7 @@ export default function LoginPage() {
         const data = await response.json();
         if (data.accessToken) {
           sessionStorage.setItem('accessToken', data.accessToken);
+          syncAccountInfo(data.accessToken);
           toast({
             title: 'Login Successful',
             description: 'Redirecting to your dashboard...',
