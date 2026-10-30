@@ -86,6 +86,15 @@ interface MergeDialogData {
   mergedPreview: PurchaseItem;
 }
 
+interface DuplicateGroup {
+  key: string;
+  sku: string;
+  packSize: string;
+  price: number;
+  indices: number[];
+  items: PurchaseItem[];
+}
+
 interface ProductMasterResponse {
   productList: ProductMasterItem[];
   [key: string]: any;
@@ -753,13 +762,51 @@ export default function PurchasePage() {
     });
   };
 
+  const normalizePackSize = (packSize?: string): string => {
+    if (!packSize) return '';
+    const upper = packSize.toUpperCase().trim();
+    if (upper.includes('1LTR') || upper.includes('1 LTR') || upper.includes('1000ML') || upper.includes('1000 ML')) {
+      return '1000ML';
+    }
+    const ml = extractMl(packSize);
+    if (ml) return `${ml}ML`;
+    return upper.replace(/\s+/g, '');
+  };
+
+  const getItemEffectivePrice = (item: PurchaseItem): number => {
+    if (typeof item.itemPrice === 'number' && item.itemPrice > 0) {
+      return item.itemPrice;
+    }
+    if (typeof item.matchedProduct?.purchasePrice === 'number' && item.matchedProduct.purchasePrice > 0) {
+      return item.matchedProduct.purchasePrice;
+    }
+    return 0;
+  };
+
+  const getDuplicateGroupKey = (item: PurchaseItem): string => {
+    const sku = (item.apiSku || item.brandName || '').trim().toUpperCase();
+    if (!sku) return '';
+    const packSize = normalizePackSize(item.packSize);
+    const price = getItemEffectivePrice(item);
+    return `${sku}___${packSize}___${price.toFixed(2)}`;
+  };
+
   const duplicateGroups = useMemo(() => {
-    const groups: Record<string, { sku: string; indices: number[]; items: PurchaseItem[] }> = {};
+    const groups: Record<string, DuplicateGroup> = {};
     parsedItems.forEach((item, idx) => {
-      const key = (item.apiSku || item.brandName).trim().toUpperCase();
+      const sku = (item.apiSku || item.brandName || '').trim();
+      if (!sku) return;
+      const key = getDuplicateGroupKey(item);
       if (!key) return;
       if (!groups[key]) {
-        groups[key] = { sku: item.apiSku || item.brandName, indices: [], items: [] };
+        groups[key] = {
+          key,
+          sku: item.apiSku || item.brandName,
+          packSize: item.packSize,
+          price: getItemEffectivePrice(item),
+          indices: [],
+          items: [],
+        };
       }
       groups[key].indices.push(idx);
       groups[key].items.push(item);
@@ -767,10 +814,12 @@ export default function PurchasePage() {
     return Object.values(groups).filter(g => g.indices.length > 1);
   }, [parsedItems]);
 
-  const duplicateGroupMap = useMemo(() => {
-    const map = new Map<string, { sku: string; indices: number[]; items: PurchaseItem[] }>();
+  const duplicateGroupByRowIndex = useMemo(() => {
+    const map = new Map<number, DuplicateGroup>();
     duplicateGroups.forEach(g => {
-      map.set(g.sku.toUpperCase(), g);
+      g.indices.forEach(idx => {
+        map.set(idx, g);
+      });
     });
     return map;
   }, [duplicateGroups]);
@@ -779,22 +828,14 @@ export default function PurchasePage() {
     if (duplicateGroups.length === 0) return;
 
     setParsedItems(prev => {
-      const groups: Record<string, number[]> = {};
-      prev.forEach((item, idx) => {
-        const key = (item.apiSku || item.brandName).trim().toUpperCase();
-        if (!key) return;
-        if (!groups[key]) groups[key] = [];
-        groups[key].push(idx);
-      });
-
       const toRemove = new Set<number>();
       const next = [...prev];
 
-      Object.values(groups).forEach(indices => {
-        if (indices.length <= 1) return;
-        const sorted = [...indices].sort((a, b) => a - b);
+      duplicateGroups.forEach(group => {
+        const sorted = [...group.indices].sort((a, b) => a - b);
+        if (sorted.length <= 1) return;
         const targetIdx = sorted[0];
-        const itemsToMerge = sorted.map(i => prev[i]);
+        const itemsToMerge = sorted.map(i => prev[i]).filter(Boolean);
         next[targetIdx] = computeMergedItem(itemsToMerge);
         for (let i = 1; i < sorted.length; i++) {
           toRemove.add(sorted[i]);
@@ -806,13 +847,11 @@ export default function PurchasePage() {
 
     toast({
       title: "All Duplicates Merged",
-      description: `Successfully merged all duplicate items. Cases have been summed.`,
+      description: `Successfully merged all duplicate items matching the same pack size and price. Cases have been summed.`,
     });
   };
 
-  const handleOpenMergeForSku = (skuName: string) => {
-    const key = skuName.trim().toUpperCase();
-    const group = duplicateGroups.find(g => g.sku.toUpperCase() === key);
+  const handleOpenMergeForGroup = (group: DuplicateGroup) => {
     if (!group || group.indices.length <= 1) return;
 
     const itemsToMerge = group.indices.map(idx => parsedItems[idx]).filter(Boolean);
@@ -903,12 +942,13 @@ export default function PurchasePage() {
     });
     setOpenPopoverIndex(null);
 
-    // Check for duplicate items with the newly mapped SKU
+    // Check for duplicate items with the newly mapped SKU, pack size, and price
     const duplicateIndices: number[] = [];
+    const updatedKey = getDuplicateGroupKey(updatedItem);
     parsedItems.forEach((it, idx) => {
       if (idx === index) return;
-      const key = (it.apiSku || it.brandName).trim().toUpperCase();
-      if (key === selectedProduct.SKU.trim().toUpperCase()) {
+      const key = getDuplicateGroupKey(it);
+      if (key && key === updatedKey) {
         duplicateIndices.push(idx);
       }
     });
@@ -941,7 +981,7 @@ export default function PurchasePage() {
 
   const validateDuplicates = (): boolean => {
     if (duplicateGroups.length > 0) {
-      const duplicateNames = duplicateGroups.map(g => `${g.sku} (${g.indices.length} rows)`).join(', ');
+      const duplicateNames = duplicateGroups.map(g => `${g.sku}${g.packSize ? ` (${g.packSize})` : ''} (${g.indices.length} rows)`).join(', ');
       toast({
         variant: "destructive",
         title: "Duplicate Items Found",
@@ -1604,7 +1644,7 @@ export default function PurchasePage() {
                                         Duplicate Items Detected
                                     </DialogTitle>
                                     <DialogDescription>
-                                        Mapping resulted in duplicate entries for <span className="font-semibold text-foreground font-mono">{mergeDialogData?.sku}</span>. You can merge these rows to sum the cases.
+                                        Mapping resulted in duplicate entries for <span className="font-semibold text-foreground font-mono">{mergeDialogData?.sku}</span>{mergeDialogData?.mergedPreview.packSize ? ` (${mergeDialogData.mergedPreview.packSize})` : ''}. You can merge these rows to sum the cases.
                                     </DialogDescription>
                                 </DialogHeader>
 
@@ -1622,7 +1662,7 @@ export default function PurchasePage() {
                                                                 Row {mergeDialogData.indices[idx] + 1} {it.srNo ? `(Sr. No ${it.srNo})` : ''}
                                                             </div>
                                                             <div className="text-muted-foreground font-mono text-[11px]">
-                                                                {it.tasmacBrandName || it.brandName} • {it.packSize}
+                                                                {it.tasmacBrandName || it.brandName} • {it.packSize} • {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(it.itemPrice || it.matchedProduct?.purchasePrice || 0)}
                                                             </div>
                                                         </div>
                                                         <div className="text-right shrink-0">
@@ -1792,7 +1832,7 @@ export default function PurchasePage() {
                               Duplicate items found in purchase table ({duplicateGroups.length} SKU{duplicateGroups.length > 1 ? 's' : ''})
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {duplicateGroups.map(g => `${g.sku} (${g.indices.length} rows)`).join(', ')}
+                              {duplicateGroups.map(g => `${g.sku}${g.packSize ? ` (${g.packSize})` : ''} (${g.indices.length} rows)`).join(', ')}
                             </p>
                           </div>
                         </div>
@@ -1823,8 +1863,8 @@ export default function PurchasePage() {
                             </TableHeader>
                             <TableBody>
                                 {parsedItems.map((item, index) => {
-                                  const itemSku = (item.apiSku || item.brandName || '').trim().toUpperCase();
-                                  const isDuplicate = duplicateGroupMap.has(itemSku);
+                                  const itemDuplicateGroup = duplicateGroupByRowIndex.get(index);
+                                  const isDuplicate = !!itemDuplicateGroup;
                                   const itemPrice = item.itemPrice;
                                   const masterPrice = item.matchedProduct?.purchasePrice;
                                   const hasItemPrice = typeof itemPrice === 'number' && itemPrice > 0;
@@ -2031,8 +2071,8 @@ export default function PurchasePage() {
                                                   size="sm"
                                                   variant="ghost"
                                                   className="h-5 px-1.5 text-[10px] text-amber-700 dark:text-amber-300 bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900 border border-amber-400/50 flex items-center gap-1 font-semibold rounded"
-                                                  onClick={() => handleOpenMergeForSku(item.apiSku || item.brandName)}
-                                                  title="Click to merge duplicate rows for this SKU"
+                                                  onClick={() => handleOpenMergeForGroup(itemDuplicateGroup!)}
+                                                  title="Click to merge duplicate rows for this item"
                                                 >
                                                   <GitMerge className="h-3 w-3" />
                                                   Duplicate • Merge
