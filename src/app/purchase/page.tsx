@@ -138,6 +138,14 @@ export default function PurchasePage() {
   const [isFetchDialogOpen, setIsFetchDialogOpen] = useState(false);
   const [tasmacUsername, setTasmacUsername] = useState('');
   const [tasmacPassword, setTasmacPassword] = useState('');
+  const [tasmacIdentifier, setTasmacIdentifier] = useState('');
+  const [tasmacOtp, setTasmacOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpSessionToken, setOtpSessionToken] = useState('');
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState(0);
+  const [tasmacCookie, setTasmacCookie] = useState('');
+  const [fetchMode, setFetchMode] = useState<'otp' | 'cookie'>('otp');
   const [tasmacDate, setTasmacDate] = useState('');
   const [isFetchingTasmac, setIsFetchingTasmac] = useState(false);
   const [isSavingCredentials, setIsSavingCredentials] = useState(false);
@@ -150,60 +158,70 @@ export default function PurchasePage() {
   const [pastedMappingData, setPastedMappingData] = useState('');
   const [mergeDialogData, setMergeDialogData] = useState<MergeDialogData | null>(null);
 
-  const handleSaveTasmacCredentials = async () => {
-    if (!tasmacUsername || !tasmacPassword) {
+  // Load saved credentials / cookies on mount
+  useEffect(() => {
+    const savedId = localStorage.getItem('tasmac_identifier');
+    if (savedId) {
+      setTasmacIdentifier(savedId);
+      setTasmacUsername(savedId);
+    }
+    const savedCookie = localStorage.getItem('tasmac_cookie');
+    if (savedCookie) {
+      setTasmacCookie(savedCookie);
+    }
+  }, []);
+
+  // OTP Countdown timer
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (otpCountdown > 0) {
+      timer = setTimeout(() => setOtpCountdown((c) => c - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [otpCountdown]);
+
+  const handleSaveTasmacIdentifier = async () => {
+    const idToSave = (tasmacIdentifier || tasmacUsername).trim();
+    if (!idToSave) {
       toast({
         variant: "destructive",
         title: "Validation Error",
-        description: "Please enter both TASMAC Username and Password to save.",
+        description: "Please enter your TASMAC Mobile Number or Username to save.",
       });
       return;
     }
+
+    localStorage.setItem('tasmac_identifier', idToSave);
 
     const token = sessionStorage.getItem('accessToken');
-    if (!token) {
-      toast({
-        variant: "destructive",
-        title: "Authentication Error",
-        description: "Please login again.",
-      });
-      router.push('/login');
-      return;
-    }
-
-    setIsSavingCredentials(true);
-    try {
-      const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/account/tasmacCredentials', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userName: tasmacUsername,
-          password: tasmacPassword,
-        }),
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "TASMAC credentials saved successfully.",
+    if (token) {
+      setIsSavingCredentials(true);
+      try {
+        await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/account/tasmacCredentials', {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userName: idToSave,
+            password: 'OTP_AUTH',
+          }),
         });
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to save TASMAC credentials.');
+      } catch (e) {
+        // Local storage already saved
+      } finally {
+        setIsSavingCredentials(false);
       }
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Save Failed",
-        description: error.message || "Failed to save TASMAC credentials.",
-      });
-    } finally {
-      setIsSavingCredentials(false);
     }
+
+    toast({
+      title: "Saved",
+      description: "TASMAC Mobile Number / Username saved successfully.",
+    });
   };
+
+  const handleSaveTasmacCredentials = handleSaveTasmacIdentifier;
 
   const getMappingKey = (brand: string, size: string) => {
     const cleanBrand = brand.trim().replace(/\s+/g, ' ').replace(/-/g, ' ').toUpperCase();
@@ -211,13 +229,85 @@ export default function PurchasePage() {
     return `${cleanBrand}--${cleanSize}`;
   };
 
-  const handleFetchTasmac = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tasmacUsername || !tasmacPassword) {
+  const handleSendOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const idToUse = (tasmacIdentifier || tasmacUsername).trim();
+    if (!idToUse) {
       toast({
         variant: "destructive",
         title: "Validation Error",
-        description: "Please enter both TASMAC Username and Password.",
+        description: "Please enter your TASMAC Mobile Number or Username.",
+      });
+      return;
+    }
+
+    setIsSendingOtp(true);
+    try {
+      const fetchUrl = routeThroughLocal
+        ? `http://localhost:${localPort}/api/fetch-tasmac`
+        : '/api/fetch-tasmac';
+
+      const response = await fetch(fetchUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'send-otp',
+          identifier: idToUse,
+        }),
+      });
+
+      const result = await response.json();
+      if (response.ok && result.success) {
+        setOtpSessionToken(result.sessionToken);
+        setOtpSent(true);
+        setOtpCountdown(45);
+        setTasmacOtp('');
+        toast({
+          title: "OTP Sent!",
+          description: result.message || "Please check your mobile phone for the OTP.",
+        });
+        localStorage.setItem('tasmac_identifier', idToUse);
+      } else {
+        throw new Error(result.error || 'Failed to send OTP.');
+      }
+    } catch (error: any) {
+      let desc = error.message || "Could not request OTP from TASMAC.";
+      if (routeThroughLocal && (error.message === 'Failed to fetch' || error.name === 'TypeError')) {
+        desc = `Could not connect to local server on port ${localPort}. Ensure 'npm run dev' is running, or uncheck 'Route through client machine'.`;
+      }
+      toast({
+        variant: "destructive",
+        title: "Send OTP Failed",
+        description: desc,
+      });
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtpAndFetch = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (fetchMode === 'cookie') {
+      return handleFetchByCookie();
+    }
+
+    if (!tasmacOtp || tasmacOtp.trim().length < 4) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please enter the 6-digit OTP received on your mobile.",
+      });
+      return;
+    }
+
+    if (!otpSessionToken) {
+      toast({
+        variant: "destructive",
+        title: "Session Expired",
+        description: "Please click 'Send OTP' again to receive a fresh code.",
       });
       return;
     }
@@ -234,8 +324,9 @@ export default function PurchasePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          username: tasmacUsername,
-          password: tasmacPassword,
+          action: 'verify-otp',
+          sessionToken: otpSessionToken,
+          otp: tasmacOtp.trim(),
           targetDate: tasmacDate || undefined,
         }),
       });
@@ -248,17 +339,20 @@ export default function PurchasePage() {
           description: `Successfully fetched indent ${result.data.indentNo} details.`,
         });
 
-        // Set inputs
         setPastedData(result.data.tsv);
         setBillNumber('');
         setActualBillValue(result.data.netAmount.toString());
 
-        // Parse date "DD/MM/YYYY" to Date object
+        if (result.sessionCookie) {
+          localStorage.setItem('tasmac_cookie', result.sessionCookie);
+          setTasmacCookie(result.sessionCookie);
+        }
+
         if (result.data.indentDate) {
           const parts = result.data.indentDate.split('/');
           if (parts.length === 3) {
             const day = parseInt(parts[0], 10);
-            const month = parseInt(parts[1], 10) - 1; // 0-indexed
+            const month = parseInt(parts[1], 10) - 1;
             const year = parseInt(parts[2], 10);
             const parsedDate = new Date(year, month, day);
             if (!isNaN(parsedDate.getTime())) {
@@ -267,9 +361,11 @@ export default function PurchasePage() {
           }
         }
 
-        // Close dialog and reset date selection
         setIsFetchDialogOpen(false);
         setTasmacDate('');
+        setOtpSent(false);
+        setTasmacOtp('');
+        setOtpSessionToken('');
       } else {
         throw new Error(result.error || 'Failed to fetch data from TASMAC.');
       }
@@ -287,6 +383,79 @@ export default function PurchasePage() {
       setIsFetchingTasmac(false);
     }
   };
+
+  const handleFetchByCookie = async () => {
+    if (!tasmacCookie || !tasmacCookie.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please paste your TASMAC Cookie header.",
+      });
+      return;
+    }
+
+    setIsFetchingTasmac(true);
+    try {
+      const fetchUrl = routeThroughLocal 
+        ? `http://localhost:${localPort}/api/fetch-tasmac`
+        : '/api/fetch-tasmac';
+
+      const response = await fetch(fetchUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'fetch-by-cookie',
+          cookie: tasmacCookie.trim(),
+          targetDate: tasmacDate || undefined,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        toast({
+          title: "Data Fetched Successfully",
+          description: `Successfully fetched indent ${result.data.indentNo} details.`,
+        });
+
+        setPastedData(result.data.tsv);
+        setBillNumber('');
+        setActualBillValue(result.data.netAmount.toString());
+
+        localStorage.setItem('tasmac_cookie', tasmacCookie.trim());
+
+        if (result.data.indentDate) {
+          const parts = result.data.indentDate.split('/');
+          if (parts.length === 3) {
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const year = parseInt(parts[2], 10);
+            const parsedDate = new Date(year, month, day);
+            if (!isNaN(parsedDate.getTime())) {
+              setBillDate(parsedDate);
+            }
+          }
+        }
+
+        setIsFetchDialogOpen(false);
+        setTasmacDate('');
+      } else {
+        throw new Error(result.error || 'Failed to fetch data from TASMAC.');
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Fetch Failed",
+        description: error.message || "An unexpected error occurred during fetch.",
+      });
+    } finally {
+      setIsFetchingTasmac(false);
+    }
+  };
+
+  const handleFetchTasmac = handleVerifyOtpAndFetch;
 
   const fetchData = async () => {
     const token = sessionStorage.getItem('accessToken');
@@ -341,6 +510,7 @@ export default function PurchasePage() {
                 if (tasmacCreds) {
                     if (tasmacCreds.userName) {
                         setTasmacUsername(tasmacCreds.userName);
+                        setTasmacIdentifier((prev) => prev || tasmacCreds.userName || '');
                     }
                     if (tasmacCreds.password) {
                         setTasmacPassword(tasmacCreds.password);
@@ -348,6 +518,7 @@ export default function PurchasePage() {
                 } else {
                     if (data.account.tasmacUserName) {
                         setTasmacUsername(data.account.tasmacUserName);
+                        setTasmacIdentifier((prev) => prev || data.account.tasmacUserName || '');
                     }
                     if (data.account.tasmacPassword) {
                         setTasmacPassword(data.account.tasmacPassword);
@@ -1427,116 +1598,341 @@ export default function PurchasePage() {
                                 </Link>
                             </Button>
                         )}
-                        <Dialog open={isFetchDialogOpen} onOpenChange={setIsFetchDialogOpen}>
+                        <Dialog open={isFetchDialogOpen} onOpenChange={(open) => {
+                            setIsFetchDialogOpen(open);
+                            if (!open) {
+                                setOtpSent(false);
+                                setTasmacOtp('');
+                                setOtpCountdown(0);
+                            }
+                        }}>
                             <DialogTrigger asChild>
                                 <Button variant="default" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
                                     <KeyRound className="mr-2 h-4 w-4" />
                                     Fetch from TASMAC
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent className="sm:max-w-[425px]">
+                            <DialogContent className="sm:max-w-[480px]">
                                 <DialogHeader>
-                                    <DialogTitle>Fetch Indent from TASMAC</DialogTitle>
+                                    <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+                                        <KeyRound className="h-5 w-5 text-primary" />
+                                        Fetch Indent from TASMAC
+                                    </DialogTitle>
+                                    <DialogDescription className="text-xs text-muted-foreground">
+                                        Authenticate using registered Mobile Number OTP or Session Cookie to fetch the latest stock transfer indent.
+                                    </DialogDescription>
                                 </DialogHeader>
-                                <form onSubmit={handleFetchTasmac} className="space-y-4 py-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="tasmac-username">TASMAC Username</Label>
-                                        <Input
-                                            id="tasmac-username"
-                                            placeholder="e.g. 22/2022-23"
-                                            value={tasmacUsername}
-                                            onChange={(e) => setTasmacUsername(e.target.value)}
-                                            disabled={isFetchingTasmac}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="tasmac-password">TASMAC Password</Label>
-                                        <Input
-                                            id="tasmac-password"
-                                            type="password"
-                                            placeholder="••••••••"
-                                            value={tasmacPassword}
-                                            onChange={(e) => setTasmacPassword(e.target.value)}
-                                            disabled={isFetchingTasmac}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="flex justify-end">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={handleSaveTasmacCredentials}
-                                            disabled={isSavingCredentials || isFetchingTasmac || !tasmacUsername || !tasmacPassword}
-                                            className="h-8 px-3 text-xs flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
-                                            title="Save credentials to account"
-                                        >
-                                            {isSavingCredentials ? (
-                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                            ) : (
-                                                <Save className="h-3.5 w-3.5 text-primary" />
-                                            )}
-                                            <span>Save Credentials</span>
-                                        </Button>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="tasmac-date">Purchase Date (Optional)</Label>
-                                        <Input
-                                            id="tasmac-date"
-                                            type="date"
-                                            value={tasmacDate}
-                                            onChange={(e) => setTasmacDate(e.target.value)}
-                                            disabled={isFetchingTasmac}
-                                        />
-                                    </div>
-                                    <div className="flex items-center space-x-2 pt-2">
-                                        <Checkbox
-                                            id="route-local"
-                                            checked={routeThroughLocal}
-                                            onCheckedChange={(checked) => setRouteThroughLocal(checked === true)}
-                                            disabled={isFetchingTasmac}
-                                        />
-                                        <Label htmlFor="route-local" className="cursor-pointer font-medium text-sm">
-                                            Route through client machine (local dev server)
-                                        </Label>
-                                    </div>
-                                    {routeThroughLocal && (
-                                        <div className="space-y-2 pl-6">
-                                            <Label htmlFor="local-port">Local Dev Port</Label>
-                                            <Input
-                                                id="local-port"
-                                                type="text"
-                                                placeholder="9002"
-                                                value={localPort}
-                                                onChange={(e) => setLocalPort(e.target.value)}
-                                                disabled={isFetchingTasmac}
-                                                className="w-24"
-                                            />
-                                        </div>
-                                    )}
 
-                                    <DialogFooter className="pt-4">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={() => setIsFetchDialogOpen(false)}
-                                            disabled={isFetchingTasmac}
-                                        >
-                                            Cancel
-                                        </Button>
-                                        <Button type="submit" disabled={isFetchingTasmac}>
-                                            {isFetchingTasmac ? (
-                                                <>
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    Fetching...
-                                                </>
+                                {/* Tabs: Mobile OTP vs Session Cookie */}
+                                <div className="flex border-b border-border/60 pb-1 mb-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFetchMode('otp')}
+                                        className={cn(
+                                            "px-3 py-1.5 text-xs font-semibold rounded-t-md transition-colors",
+                                            fetchMode === 'otp'
+                                                ? "border-b-2 border-primary text-primary"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        Mobile Number OTP
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFetchMode('cookie')}
+                                        className={cn(
+                                            "px-3 py-1.5 text-xs font-semibold rounded-t-md transition-colors",
+                                            fetchMode === 'cookie'
+                                                ? "border-b-2 border-primary text-primary"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        Session Cookie
+                                    </button>
+                                </div>
+
+                                {fetchMode === 'otp' ? (
+                                    <form onSubmit={otpSent ? handleVerifyOtpAndFetch : (e) => { e.preventDefault(); handleSendOtp(); }} className="space-y-4 py-1">
+                                        <div className="space-y-1.5">
+                                            <div className="flex items-center justify-between">
+                                                <Label htmlFor="tasmac-identifier" className="text-xs font-semibold">
+                                                    TASMAC Mobile Number or Username
+                                                </Label>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={handleSaveTasmacIdentifier}
+                                                    disabled={isSavingCredentials || !tasmacIdentifier.trim()}
+                                                    className="h-6 px-2 text-[11px] flex items-center gap-1 text-muted-foreground hover:text-primary"
+                                                    title="Save identifier to browser and account"
+                                                >
+                                                    {isSavingCredentials ? (
+                                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                                    ) : (
+                                                        <Save className="h-3 w-3" />
+                                                    )}
+                                                    <span>Save</span>
+                                                </Button>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    id="tasmac-identifier"
+                                                    placeholder="e.g. 9840123456 or 22/2022-23"
+                                                    value={tasmacIdentifier}
+                                                    onChange={(e) => setTasmacIdentifier(e.target.value)}
+                                                    disabled={isSendingOtp || isFetchingTasmac || otpSent}
+                                                    className="text-sm font-medium"
+                                                    required
+                                                />
+                                                {!otpSent ? (
+                                                    <Button
+                                                        type="button"
+                                                        onClick={() => handleSendOtp()}
+                                                        disabled={isSendingOtp || !tasmacIdentifier.trim()}
+                                                        className="whitespace-nowrap font-medium"
+                                                    >
+                                                        {isSendingOtp ? (
+                                                            <>
+                                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                                Sending...
+                                                            </>
+                                                        ) : (
+                                                            'Send OTP'
+                                                        )}
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        onClick={() => {
+                                                            setOtpSent(false);
+                                                            setTasmacOtp('');
+                                                            setOtpCountdown(0);
+                                                        }}
+                                                        disabled={isFetchingTasmac}
+                                                        className="text-xs whitespace-nowrap"
+                                                    >
+                                                        Change
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {otpSent && (
+                                            <div className="space-y-3 p-3.5 bg-primary/5 rounded-lg border border-primary/20 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                <div className="flex items-center justify-between">
+                                                    <Label htmlFor="tasmac-otp" className="text-xs font-bold text-primary flex items-center gap-1.5">
+                                                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                        Enter 6-Digit OTP
+                                                    </Label>
+                                                    <Button
+                                                        type="button"
+                                                        variant="link"
+                                                        size="sm"
+                                                        onClick={() => handleSendOtp()}
+                                                        disabled={isSendingOtp || isFetchingTasmac || otpCountdown > 0}
+                                                        className="h-auto p-0 text-[11px] text-muted-foreground hover:text-primary"
+                                                    >
+                                                        {otpCountdown > 0 ? `Resend in ${otpCountdown}s` : 'Resend OTP'}
+                                                    </Button>
+                                                </div>
+                                                <Input
+                                                    id="tasmac-otp"
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
+                                                    maxLength={6}
+                                                    placeholder="••••••"
+                                                    value={tasmacOtp}
+                                                    onChange={(e) => setTasmacOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                                    disabled={isFetchingTasmac}
+                                                    className="text-center font-mono text-xl tracking-[0.4em] font-bold h-12"
+                                                    autoFocus
+                                                    required
+                                                />
+                                                <p className="text-[11px] text-muted-foreground">
+                                                    OTP sent to your registered mobile phone.
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="tasmac-date" className="text-xs font-semibold">Purchase Date (Optional)</Label>
+                                            <Input
+                                                id="tasmac-date"
+                                                type="date"
+                                                value={tasmacDate}
+                                                onChange={(e) => setTasmacDate(e.target.value)}
+                                                disabled={isFetchingTasmac}
+                                                className="text-xs"
+                                            />
+                                            <p className="text-[11px] text-muted-foreground">
+                                                Leave empty to automatically fetch the latest indent.
+                                            </p>
+                                        </div>
+
+                                        <div className="flex items-center space-x-2 pt-1">
+                                            <Checkbox
+                                                id="route-local"
+                                                checked={routeThroughLocal}
+                                                onCheckedChange={(checked) => setRouteThroughLocal(checked === true)}
+                                                disabled={isFetchingTasmac}
+                                            />
+                                            <Label htmlFor="route-local" className="cursor-pointer font-medium text-xs">
+                                                Route through client machine (local dev server)
+                                            </Label>
+                                        </div>
+                                        {routeThroughLocal && (
+                                            <div className="space-y-1 pl-6">
+                                                <Label htmlFor="local-port" className="text-[11px] text-muted-foreground">Local Dev Port</Label>
+                                                <Input
+                                                    id="local-port"
+                                                    type="text"
+                                                    placeholder="9002"
+                                                    value={localPort}
+                                                    onChange={(e) => setLocalPort(e.target.value)}
+                                                    disabled={isFetchingTasmac}
+                                                    className="w-20 h-7 text-xs"
+                                                />
+                                            </div>
+                                        )}
+
+                                        <DialogFooter className="pt-2">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => setIsFetchDialogOpen(false)}
+                                                disabled={isFetchingTasmac || isSendingOtp}
+                                            >
+                                                Cancel
+                                            </Button>
+                                            {otpSent ? (
+                                                <Button
+                                                    type="submit"
+                                                    disabled={isFetchingTasmac || !tasmacOtp || tasmacOtp.length < 4}
+                                                    className="font-semibold"
+                                                >
+                                                    {isFetchingTasmac ? (
+                                                        <>
+                                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                            Verifying & Fetching...
+                                                        </>
+                                                    ) : (
+                                                        'Verify & Fetch Indent'
+                                                    )}
+                                                </Button>
                                             ) : (
-                                                'Fetch'
+                                                <Button
+                                                    type="button"
+                                                    onClick={() => handleSendOtp()}
+                                                    disabled={isSendingOtp || !tasmacIdentifier.trim()}
+                                                    className="font-semibold"
+                                                >
+                                                    {isSendingOtp ? (
+                                                        <>
+                                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                            Sending OTP...
+                                                        </>
+                                                    ) : (
+                                                        'Send OTP'
+                                                    )}
+                                                </Button>
                                             )}
-                                        </Button>
-                                    </DialogFooter>
-                                </form>
+                                        </DialogFooter>
+                                    </form>
+                                ) : (
+                                    <div className="space-y-4 py-1">
+                                        <div className="space-y-1.5">
+                                            <div className="flex items-center justify-between">
+                                                <Label htmlFor="tasmac-cookie" className="text-xs font-semibold">
+                                                    TASMAC Cookie / Session Token
+                                                </Label>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        if (tasmacCookie.trim()) {
+                                                            localStorage.setItem('tasmac_cookie', tasmacCookie.trim());
+                                                            toast({ title: 'Cookie Saved', description: 'Saved in browser storage.' });
+                                                        }
+                                                    }}
+                                                    disabled={!tasmacCookie.trim()}
+                                                    className="h-6 px-2 text-[11px] text-muted-foreground hover:text-primary"
+                                                >
+                                                    <Save className="h-3 w-3 mr-1" />
+                                                    Save
+                                                </Button>
+                                            </div>
+                                            <textarea
+                                                id="tasmac-cookie"
+                                                rows={3}
+                                                placeholder="Paste your TASMAC Cookie header here (e.g. ASP.NET_SessionId=...)"
+                                                value={tasmacCookie}
+                                                onChange={(e) => setTasmacCookie(e.target.value)}
+                                                disabled={isFetchingTasmac}
+                                                className="w-full text-xs font-mono p-2 rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                                            />
+                                            <p className="text-[11px] text-muted-foreground">
+                                                Copied from TASMAC browser DevTools Network tab.
+                                            </p>
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="tasmac-date-cookie" className="text-xs font-semibold">Purchase Date (Optional)</Label>
+                                            <Input
+                                                id="tasmac-date-cookie"
+                                                type="date"
+                                                value={tasmacDate}
+                                                onChange={(e) => setTasmacDate(e.target.value)}
+                                                disabled={isFetchingTasmac}
+                                                className="text-xs"
+                                            />
+                                            <p className="text-[11px] text-muted-foreground">
+                                                Leave empty to automatically fetch the latest indent.
+                                            </p>
+                                        </div>
+
+                                        <div className="flex items-center space-x-2 pt-1">
+                                            <Checkbox
+                                                id="route-local-cookie"
+                                                checked={routeThroughLocal}
+                                                onCheckedChange={(checked) => setRouteThroughLocal(checked === true)}
+                                                disabled={isFetchingTasmac}
+                                            />
+                                            <Label htmlFor="route-local-cookie" className="cursor-pointer font-medium text-xs">
+                                                Route through client machine (local dev server)
+                                            </Label>
+                                        </div>
+
+                                        <DialogFooter className="pt-2">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => setIsFetchDialogOpen(false)}
+                                                disabled={isFetchingTasmac}
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                onClick={handleFetchByCookie}
+                                                disabled={isFetchingTasmac || !tasmacCookie.trim()}
+                                                className="font-semibold"
+                                            >
+                                                {isFetchingTasmac ? (
+                                                    <>
+                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                        Fetching...
+                                                    </>
+                                                ) : (
+                                                    'Fetch Indent'
+                                                )}
+                                            </Button>
+                                        </DialogFooter>
+                                    </div>
+                                )}
                             </DialogContent>
                         </Dialog>
 
