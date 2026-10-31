@@ -6,6 +6,7 @@ import querystring from 'querystring';
 // Enforce standard Node.js runtime instead of Edge
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
+export const maxDuration = 30;
 
 const SESSION_SECRET = process.env.TASMAC_SESSION_SECRET || 'tasmac-super-secret-key-32-chars!!';
 const CIPHER_KEY = crypto.createHash('sha256').update(SESSION_SECRET).digest();
@@ -137,6 +138,9 @@ class ProperSession {
       });
 
       req.on('error', reject);
+      req.setTimeout(20000, () => {
+        req.destroy(new Error('Connection to TASMAC server timed out (20s). The government portal may be blocking cloud IP ranges or experiencing high load.'));
+      });
       if (options.body) req.write(options.body);
       req.end();
     });

@@ -282,6 +282,8 @@ export default function PurchasePage() {
       let desc = error.message || "Could not request OTP from TASMAC.";
       if (routeThroughLocal && (error.message === 'Failed to fetch' || error.name === 'TypeError')) {
         desc = `Could not connect to local server on port ${localPort}. Ensure 'npm run dev' is running, or uncheck 'Route through client machine'.`;
+      } else if (desc.includes('ETIMEDOUT') || desc.includes('timed out')) {
+        desc = "Connection to TASMAC server timed out. TASMAC firewall may be blocking cloud IP ranges. You can check 'Route through client machine' or use the Session Cookie tab.";
       }
       toast({
         variant: "destructive",
@@ -379,6 +381,8 @@ export default function PurchasePage() {
       let desc = error.message || "An unexpected error occurred during fetch.";
       if (routeThroughLocal && (error.message === 'Failed to fetch' || error.name === 'TypeError')) {
         desc = `Could not connect to your local server on port ${localPort}. Please ensure you have run 'npm run dev' on your computer (port 9002), or uncheck the 'Route through client machine' checkbox to try using the Vercel server.`;
+      } else if (desc.includes('ETIMEDOUT') || desc.includes('timed out')) {
+        desc = "Connection to TASMAC server timed out. TASMAC firewall may be blocking cloud IP ranges. You can check 'Route through client machine' or use the Session Cookie tab.";
       }
       toast({
         variant: "destructive",
