@@ -149,7 +149,7 @@ export default function PurchasePage() {
   const [tasmacDate, setTasmacDate] = useState('');
   const [isFetchingTasmac, setIsFetchingTasmac] = useState(false);
   const [isSavingCredentials, setIsSavingCredentials] = useState(false);
-  const [routeThroughLocal, setRouteThroughLocal] = useState(true);
+  const [routeThroughLocal, setRouteThroughLocal] = useState(false);
   const [localPort, setLocalPort] = useState('9002');
   const [skuMappings, setSkuMappings] = useState<Record<string, string>>({});
   const [isMappingDialogOpen, setIsMappingDialogOpen] = useState(false);
@@ -158,7 +158,7 @@ export default function PurchasePage() {
   const [pastedMappingData, setPastedMappingData] = useState('');
   const [mergeDialogData, setMergeDialogData] = useState<MergeDialogData | null>(null);
 
-  // Load saved credentials / cookies on mount
+  // Load saved credentials / cookies / routing preference on mount
   useEffect(() => {
     const savedId = localStorage.getItem('tasmac_identifier');
     if (savedId) {
@@ -168,6 +168,12 @@ export default function PurchasePage() {
     const savedCookie = localStorage.getItem('tasmac_cookie');
     if (savedCookie) {
       setTasmacCookie(savedCookie);
+    }
+    const savedRouteLocal = localStorage.getItem('tasmac_route_local');
+    if (savedRouteLocal !== null) {
+      setRouteThroughLocal(savedRouteLocal === 'true');
+    } else {
+      setRouteThroughLocal(false);
     }
   }, []);
 
@@ -1776,7 +1782,11 @@ export default function PurchasePage() {
                                             <Checkbox
                                                 id="route-local"
                                                 checked={routeThroughLocal}
-                                                onCheckedChange={(checked) => setRouteThroughLocal(checked === true)}
+                                                onCheckedChange={(checked) => {
+                                                    const isChecked = checked === true;
+                                                    setRouteThroughLocal(isChecked);
+                                                    localStorage.setItem('tasmac_route_local', String(isChecked));
+                                                }}
                                                 disabled={isFetchingTasmac}
                                             />
                                             <Label htmlFor="route-local" className="cursor-pointer font-medium text-xs">
@@ -1898,7 +1908,11 @@ export default function PurchasePage() {
                                             <Checkbox
                                                 id="route-local-cookie"
                                                 checked={routeThroughLocal}
-                                                onCheckedChange={(checked) => setRouteThroughLocal(checked === true)}
+                                                onCheckedChange={(checked) => {
+                                                    const isChecked = checked === true;
+                                                    setRouteThroughLocal(isChecked);
+                                                    localStorage.setItem('tasmac_route_local', String(isChecked));
+                                                }}
                                                 disabled={isFetchingTasmac}
                                             />
                                             <Label htmlFor="route-local-cookie" className="cursor-pointer font-medium text-xs">
