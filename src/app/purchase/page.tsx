@@ -22,6 +22,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
+import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
 import { CalendarIcon, Sheet, Check, ChevronsUpDown, Loader2, KeyRound, Database, Trash2, RefreshCw, ArrowUpRight, ArrowDownRight, AlertCircle, Save, Layers, GitMerge } from 'lucide-react';
 import {
@@ -84,6 +85,17 @@ interface MergeDialogData {
   indices: number[];
   items: PurchaseItem[];
   mergedPreview: PurchaseItem;
+}
+
+interface PriceUpdateEntry {
+  sku: string;
+  brandName: string;
+  packSize?: string;
+  oldPrice: number | null;
+  newPrice: number;
+  diff: number;
+  percentDiff: number;
+  hasDiff: boolean;
 }
 
 interface DuplicateGroup {
@@ -157,6 +169,11 @@ export default function PurchasePage() {
   const [isSyncingSheet, setIsSyncingSheet] = useState(false);
   const [pastedMappingData, setPastedMappingData] = useState('');
   const [mergeDialogData, setMergeDialogData] = useState<MergeDialogData | null>(null);
+
+  const [isUpdatePricesDialogOpen, setIsUpdatePricesDialogOpen] = useState(false);
+  const [isUpdatingAllPrices, setIsUpdatingAllPrices] = useState(false);
+  const [updateAllProgress, setUpdateAllProgress] = useState({ current: 0, total: 0 });
+  const [updateOnlyChangedPrices, setUpdateOnlyChangedPrices] = useState(true);
 
   // Load saved credentials / cookies / routing preference on mount
   useEffect(() => {
@@ -1376,6 +1393,143 @@ export default function PurchasePage() {
     }
   };
 
+  const allUpdatableItems = useMemo<PriceUpdateEntry[]>(() => {
+    const skuMap = new Map<string, PriceUpdateEntry>();
+
+    parsedItems.forEach(item => {
+      const sku = (item.apiSku || item.matchedProduct?.SKU || '').trim();
+      if (!sku || typeof item.itemPrice !== 'number' || isNaN(item.itemPrice) || item.itemPrice <= 0) {
+        return;
+      }
+
+      if (!skuMap.has(sku)) {
+        const rawOld = item.matchedProduct?.purchasePrice;
+        const oldPrice = typeof rawOld === 'number' && !isNaN(rawOld) ? rawOld : null;
+        const newPrice = parseFloat(item.itemPrice.toFixed(4));
+        const diff = oldPrice !== null ? (newPrice - oldPrice) : 0;
+        const hasDiff = oldPrice === null || Math.abs(diff) >= 0.01;
+        const percentDiff = (hasDiff && oldPrice !== null && oldPrice > 0) ? ((diff / oldPrice) * 100) : 0;
+
+        skuMap.set(sku, {
+          sku,
+          brandName: item.tasmacBrandName || item.brandName || item.matchedProduct?.brand || sku,
+          packSize: item.packSize || item.matchedProduct?.size || '',
+          oldPrice,
+          newPrice,
+          diff,
+          percentDiff,
+          hasDiff,
+        });
+      }
+    });
+
+    return Array.from(skuMap.values());
+  }, [parsedItems]);
+
+  const itemsWithPriceDiff = useMemo(() => {
+    return allUpdatableItems.filter(item => item.hasDiff);
+  }, [allUpdatableItems]);
+
+  const itemsToDisplayForUpdate = useMemo(() => {
+    if (itemsWithPriceDiff.length > 0 && updateOnlyChangedPrices) {
+      return itemsWithPriceDiff;
+    }
+    return allUpdatableItems;
+  }, [allUpdatableItems, itemsWithPriceDiff, updateOnlyChangedPrices]);
+
+  const handleExecuteUpdateAllPrices = async (targets: PriceUpdateEntry[]) => {
+    if (targets.length === 0) return;
+
+    const token = sessionStorage.getItem('accessToken');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
+    setIsUpdatingAllPrices(true);
+    setUpdateAllProgress({ current: 0, total: targets.length });
+
+    const updatedSkuMap = new Map<string, number>();
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < targets.length; i++) {
+      const item = targets[i];
+      setUpdateAllProgress({ current: i + 1, total: targets.length });
+
+      try {
+        const response = await fetch('https://tnfl2-cb6ea45c64b3.herokuapp.com/services/productmaster/updatePurchasePrice', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            SKU: item.sku,
+            purchasePrice: item.newPrice
+          })
+        });
+
+        if (response.ok) {
+          updatedSkuMap.set(item.sku, item.newPrice);
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (err) {
+        failCount++;
+      }
+    }
+
+    if (updatedSkuMap.size > 0) {
+      // Update productMaster state
+      setProductMaster(prev => {
+        if (!prev || !prev.productList) return prev;
+        const updatedList = prev.productList.map(p => {
+          if (updatedSkuMap.has(p.SKU)) {
+            return { ...p, purchasePrice: updatedSkuMap.get(p.SKU)! };
+          }
+          return p;
+        });
+        return { ...prev, productList: updatedList };
+      });
+
+      // Update parsedItems state for items matching these SKUs
+      setParsedItems(prev => {
+        return prev.map(pItem => {
+          const sku = pItem.apiSku || pItem.matchedProduct?.SKU;
+          if (sku && updatedSkuMap.has(sku)) {
+            const newPrice = updatedSkuMap.get(sku)!;
+            return {
+              ...pItem,
+              matchedProduct: pItem.matchedProduct ? {
+                ...pItem.matchedProduct,
+                purchasePrice: newPrice
+              } : pItem.matchedProduct
+            };
+          }
+          return pItem;
+        });
+      });
+    }
+
+    setIsUpdatingAllPrices(false);
+    setIsUpdatePricesDialogOpen(false);
+
+    if (failCount === 0) {
+      toast({
+        title: "Purchase Prices Updated",
+        description: `Successfully updated purchase prices for ${successCount} item(s) in Product Master.`,
+      });
+    } else {
+      toast({
+        variant: successCount > 0 ? "default" : "destructive",
+        title: "Price Update Completed with Warnings",
+        description: `Updated ${successCount} item(s). Failed to update ${failCount} item(s).`,
+      });
+    }
+  };
+
 
   const parseCSV = (text: string): string[][] => {
     const lines: string[][] = [];
@@ -2143,6 +2297,181 @@ export default function PurchasePage() {
                             </DialogContent>
                         </Dialog>
 
+                        <Dialog open={isUpdatePricesDialogOpen} onOpenChange={(open) => { if (!isUpdatingAllPrices) setIsUpdatePricesDialogOpen(open); }}>
+                            <DialogContent className="sm:max-w-[620px] max-h-[85vh] flex flex-col p-0 overflow-hidden">
+                                <DialogHeader className="p-6 pb-2">
+                                    <DialogTitle className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400 text-lg">
+                                        <RefreshCw className={cn("h-5 w-5", isUpdatingAllPrices && "animate-spin")} />
+                                        Update All Item Purchase Prices
+                                    </DialogTitle>
+                                    <DialogDescription className="text-xs text-muted-foreground">
+                                        Sync Product Master purchase prices with the calculated rates from this purchase invoice.
+                                    </DialogDescription>
+                                </DialogHeader>
+
+                                <div className="flex-1 overflow-y-auto px-6 py-2 space-y-4">
+                                    {allUpdatableItems.length === 0 ? (
+                                        <div className="text-center py-8 text-muted-foreground text-sm">
+                                            No items with matched SKU and calculated price were found. Please map or match SKUs first.
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* Summary stats */}
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="p-3 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-lg">
+                                                    <div className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                                                        Rate Differences
+                                                    </div>
+                                                    <div className="text-xl font-bold text-indigo-950 dark:text-indigo-100 mt-0.5">
+                                                        {itemsWithPriceDiff.length} SKU{itemsWithPriceDiff.length === 1 ? '' : 's'}
+                                                    </div>
+                                                </div>
+                                                <div className="p-3 bg-muted/40 border rounded-lg">
+                                                    <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                                                        Total Matched Items
+                                                    </div>
+                                                    <div className="text-xl font-bold text-foreground mt-0.5">
+                                                        {allUpdatableItems.length} SKU{allUpdatableItems.length === 1 ? '' : 's'}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Filter scope toggle if some items have no difference */}
+                                            {itemsWithPriceDiff.length > 0 && itemsWithPriceDiff.length < allUpdatableItems.length && (
+                                                <div className="flex items-center justify-between p-2.5 bg-muted/30 border rounded-lg text-xs">
+                                                    <div className="space-y-0.5">
+                                                        <div className="font-semibold text-foreground">Update Scope</div>
+                                                        <div className="text-muted-foreground text-[11px]">
+                                                            {updateOnlyChangedPrices 
+                                                              ? `Updating ${itemsWithPriceDiff.length} items that have rate differences`
+                                                              : `Updating all ${allUpdatableItems.length} matched items`}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <label htmlFor="update-changed-only" className="text-xs font-medium cursor-pointer">
+                                                            Only changed ({itemsWithPriceDiff.length})
+                                                        </label>
+                                                        <Checkbox
+                                                            id="update-changed-only"
+                                                            checked={updateOnlyChangedPrices}
+                                                            onCheckedChange={(checked) => setUpdateOnlyChangedPrices(!!checked)}
+                                                            disabled={isUpdatingAllPrices}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Progress indicator during update */}
+                                            {isUpdatingAllPrices && (
+                                                <div className="p-3 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-300 dark:border-indigo-800 rounded-lg space-y-2">
+                                                    <div className="flex justify-between items-center text-xs font-medium text-indigo-900 dark:text-indigo-200">
+                                                        <span className="flex items-center gap-1.5">
+                                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                            Updating prices in Product Master...
+                                                        </span>
+                                                        <span className="font-mono">
+                                                            {updateAllProgress.current} / {updateAllProgress.total}
+                                                        </span>
+                                                    </div>
+                                                    <Progress value={updateAllProgress.total > 0 ? (updateAllProgress.current / updateAllProgress.total) * 100 : 0} className="h-2" />
+                                                </div>
+                                            )}
+
+                                            {/* Items List */}
+                                            <div className="space-y-1.5">
+                                                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex justify-between">
+                                                    <span>Items to Update ({itemsToDisplayForUpdate.length})</span>
+                                                    <span>Rate Comparison</span>
+                                                </div>
+                                                <ScrollArea className="h-64 border rounded-lg divide-y bg-muted/10">
+                                                    {itemsToDisplayForUpdate.length === 0 ? (
+                                                        <div className="p-6 text-center text-xs text-muted-foreground">
+                                                            All items already match Product Master prices.
+                                                        </div>
+                                                    ) : (
+                                                        <div className="divide-y">
+                                                            {itemsToDisplayForUpdate.map((item) => (
+                                                                <div key={item.sku} className="p-2.5 px-3 flex items-center justify-between gap-3 text-xs hover:bg-muted/30 transition-colors">
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <div className="font-semibold text-foreground truncate" title={item.brandName}>
+                                                                            {item.brandName}
+                                                                        </div>
+                                                                        <div className="text-[11px] font-mono text-muted-foreground flex items-center gap-1.5">
+                                                                            <span>{item.sku}</span>
+                                                                            {item.packSize && <span>• {item.packSize}</span>}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="text-right shrink-0 space-y-0.5">
+                                                                        <div className="flex items-center justify-end gap-1.5 font-mono">
+                                                                            <span className="text-muted-foreground line-through text-[11px]">
+                                                                                {item.oldPrice !== null ? `₹${item.oldPrice.toFixed(2)}` : 'Not set'}
+                                                                            </span>
+                                                                            <span className="text-muted-foreground">→</span>
+                                                                            <span className="font-bold text-foreground">
+                                                                                ₹{item.newPrice.toFixed(2)}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div>
+                                                                            {item.hasDiff ? (
+                                                                                <Badge
+                                                                                    variant="outline"
+                                                                                    className={cn(
+                                                                                        "text-[10px] px-1 py-0 font-medium font-mono",
+                                                                                        item.diff > 0
+                                                                                            ? "border-amber-500 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40"
+                                                                                            : "border-blue-500 text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40"
+                                                                                    )}
+                                                                                >
+                                                                                    {item.diff > 0
+                                                                                        ? `+₹${item.diff.toFixed(2)} (+${item.percentDiff.toFixed(1)}%)`
+                                                                                        : `-₹${Math.abs(item.diff).toFixed(2)} (${item.percentDiff.toFixed(1)}%)`}
+                                                                                </Badge>
+                                                                            ) : (
+                                                                                <span className="text-[10px] text-muted-foreground font-mono">Match</span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </ScrollArea>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                <DialogFooter className="p-4 px-6 border-t bg-muted/20 gap-2 sm:gap-0">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setIsUpdatePricesDialogOpen(false)}
+                                        disabled={isUpdatingAllPrices}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium flex items-center gap-1.5 shadow-sm"
+                                        onClick={() => handleExecuteUpdateAllPrices(itemsToDisplayForUpdate)}
+                                        disabled={isUpdatingAllPrices || itemsToDisplayForUpdate.length === 0}
+                                    >
+                                        {isUpdatingAllPrices ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                Updating ({updateAllProgress.current}/{updateAllProgress.total})...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <RefreshCw className="h-4 w-4" />
+                                                Confirm & Update ({itemsToDisplayForUpdate.length})
+                                            </>
+                                        )}
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+
                         {sheetLink && (
                             <Button
                                 variant="outline"
@@ -2227,6 +2556,32 @@ export default function PurchasePage() {
                               <span>Merge All Duplicates ({duplicateGroups.length})</span>
                             </Button>
                           )}
+                          {allUpdatableItems.length > 0 && (
+                            <Button
+                              size="sm"
+                              className={cn(
+                                "px-2.5 py-1 text-xs flex items-center gap-1.5 font-semibold shadow-sm transition-colors",
+                                itemsWithPriceDiff.length > 0
+                                  ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                                  : "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/60"
+                              )}
+                              onClick={() => setIsUpdatePricesDialogOpen(true)}
+                              disabled={isUpdatingAllPrices}
+                              title="Update purchase prices in Product Master"
+                            >
+                              {isUpdatingAllPrices ? (
+                                <>
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  <span>Updating ({updateAllProgress.current}/{updateAllProgress.total})...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <RefreshCw className="h-3.5 w-3.5" />
+                                  <span>Update All Item Prices {itemsWithPriceDiff.length > 0 ? `(${itemsWithPriceDiff.length})` : ''}</span>
+                                </>
+                              )}
+                            </Button>
+                          )}
                           {priceChangedCount > 0 && (
                             <Badge variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 text-xs flex items-center gap-1.5 font-medium">
                                 <AlertCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
@@ -2257,6 +2612,30 @@ export default function PurchasePage() {
                         >
                           <GitMerge className="h-3.5 w-3.5" />
                           Merge All Duplicates
+                        </Button>
+                      </div>
+                    )}
+                    {itemsWithPriceDiff.length > 0 && (
+                      <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3 text-indigo-950 dark:text-indigo-200">
+                        <div className="flex items-center gap-2.5">
+                          <RefreshCw className="h-5 w-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                          <div>
+                            <p className="text-sm font-semibold">
+                              Rate differences detected ({itemsWithPriceDiff.length} SKU{itemsWithPriceDiff.length > 1 ? 's' : ''})
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Purchase prices in this bill differ from Product Master. You can update all item prices at once.
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs flex items-center gap-1.5 shadow-sm"
+                          onClick={() => setIsUpdatePricesDialogOpen(true)}
+                          disabled={isUpdatingAllPrices}
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" />
+                          Review & Update All ({itemsWithPriceDiff.length})
                         </Button>
                       </div>
                     )}
