@@ -645,14 +645,14 @@ export default function PurchasePage() {
       const taxMultiplier = taxPercentValue / 100;
       base = ((rateNum * taxMultiplier) + rateNum) / packSizeNum;
     } else {
-      // Formula: =(((Rate1 * Tax) + Rate2) / PackQty) * 2% + (((Rate1 * Tax) + Rate2) / PackQty)
+      // Formula: =(((Rate1 * Tax) + Rate2) / PackQty) * 2% + (((Rate1 * Tax) + Rate2) / PackQty) + 10.20
       // Rate 1 = Added Value (from API)
       // Rate 2 = Rate (from API)
       // Tax = dynamic (Beer: 260% = 2.60, Wine: 250% = 2.50, Remaining Liquor: 220% = 2.20)
       base = ((avNum * taxRate) + rateNum) / packSizeNum;
     }
 
-    return (base * 0.02) + base;
+    return (base * 0.02) + base + 10.20;
   };
 
   const getCalculatedQty = (packSize: string, caseQtyVal: string | number): number => {
@@ -2427,6 +2427,10 @@ export default function PurchasePage() {
                                                       ? `${item.customTaxPercent ?? 58}% (on Rate)`
                                                       : `${item.taxRate ? (item.taxRate * 100).toFixed(0) : '220'}% (on AV)`}
                                                   </span>
+                                                </div>
+                                                <div className="flex justify-between gap-4">
+                                                  <span className="text-muted-foreground">Additional Charge:</span>
+                                                  <span className="font-mono font-medium">+₹10.20</span>
                                                 </div>
                                                 <div className="flex justify-between gap-4">
                                                   <span className="text-muted-foreground">Product Master Price:</span>
