@@ -597,7 +597,7 @@ export default function PurchasePage() {
     const size = packSize.toUpperCase();
     if (size.includes('180ML') || size.includes('180 ML')) return 48;
     if (size.includes('375ML') || size.includes('375 ML') || size.includes('200ML') || size.includes('200 ML')) return 24;
-    if (size.includes('750ML') || size.includes('750 ML') || size.includes('650ML') || size.includes('650 ML')) return 12;
+    if (size.includes('750ML') || size.includes('750 ML') || size.includes('700ML') || size.includes('700 ML') || size.includes('650ML') || size.includes('650 ML')) return 12;
     if (size.includes('1000ML') || size.includes('1000 ML') || size.includes('1LTR') || size.includes('1 LTR')) return 9;
     if (size.includes('325ML') || size.includes('325 ML') || size.includes('500ML') || size.includes('500 ML') || size.includes('330ML') || size.includes('330 ML')) return 24;
     
@@ -607,7 +607,7 @@ export default function PurchasePage() {
       const num = parseInt(numMatch[0], 10);
       if (num === 180) return 48;
       if (num === 375 || num === 200 || num === 325 || num === 500 || num === 330) return 24;
-      if (num === 750 || num === 650) return 12;
+      if (num === 750 || num === 700 || num === 650) return 12;
       if (num === 1000) return 9;
     }
     return 1;

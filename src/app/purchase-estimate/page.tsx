@@ -225,9 +225,9 @@ export default function PurchaseEstimatePage() {
     const size = sku.toUpperCase();
     if (size.includes('180ML')) return 48;
     if (size.includes('375ML') || size.includes('200ML')) return 24;
-    if (size.includes('750ML') || size.includes('650ML')) return 12;
+    if (size.includes('750ML') || size.includes('700ML') || size.includes('650ML')) return 12;
     if (size.includes('1000ML')) return 9;
-    if (size.includes('500ML') || size.includes('325ML')) return 24;
+    if (size.includes('500ML') || size.includes('325ML') || size.includes('330ML')) return 24;
     return 1;
   }
 
